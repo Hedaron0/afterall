@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace AfterAll.Player
 {
@@ -7,6 +8,7 @@ namespace AfterAll.Player
     {
         [SerializeField] private float moveSpeed = 4f;
         [SerializeField] private float gravity = -9.81f;
+        [SerializeField] private InputActionReference moveAction;
 
         private CharacterController _controller;
         private Vector3 _velocity;
@@ -16,12 +18,13 @@ namespace AfterAll.Player
             _controller = GetComponent<CharacterController>();
         }
 
+        private void OnEnable()  => moveAction.action.Enable();
+        private void OnDisable() => moveAction.action.Disable();
+
         private void Update()
         {
-            float horizontal = Input.GetAxisRaw("Horizontal");
-            float vertical = Input.GetAxisRaw("Vertical");
-
-            Vector3 move = transform.right * horizontal + transform.forward * vertical;
+            Vector2 input = moveAction.action.ReadValue<Vector2>();
+            Vector3 move = transform.right * input.x + transform.forward * input.y;
             _controller.Move(move.normalized * moveSpeed * Time.deltaTime);
 
             if (_controller.isGrounded && _velocity.y < 0f)

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace AfterAll.Interaction
 {
@@ -6,6 +7,7 @@ namespace AfterAll.Interaction
     {
         [SerializeField] private float interactRange = 2.5f;
         [SerializeField] private LayerMask interactableMask = ~0;
+        [SerializeField] private InputActionReference interactAction;
 
         private Camera _camera;
 
@@ -16,9 +18,12 @@ namespace AfterAll.Interaction
                 Debug.LogWarning("[AfterAll] PlayerInteractor needs a Camera on a child object.");
         }
 
+        private void OnEnable()  => interactAction.action.Enable();
+        private void OnDisable() => interactAction.action.Disable();
+
         private void Update()
         {
-            if (!Input.GetKeyDown(KeyCode.E))
+            if (!interactAction.action.WasPressedThisFrame())
                 return;
 
             if (_camera == null)
