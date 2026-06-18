@@ -9,6 +9,9 @@ namespace AfterAll.Interaction
         [SerializeField] private LayerMask interactableMask = ~0;
         [SerializeField] private InputActionReference interactAction;
 
+        public string CurrentPrompt { get; private set; } = string.Empty;
+        public bool HasInteractableTarget { get; private set; }
+
         private Camera _camera;
 
         private void Awake()
@@ -23,19 +26,31 @@ namespace AfterAll.Interaction
 
         private void Update()
         {
-            if (!interactAction.action.WasPressedThisFrame())
-                return;
+            CurrentPrompt = string.Empty;
+            HasInteractableTarget = false;
 
             if (_camera == null)
                 return;
 
             Ray ray = new Ray(_camera.transform.position, _camera.transform.forward);
-            if (!Physics.Raycast(ray, out RaycastHit hit, interactRange, interactableMask))
-                return;
+            if (Physics.Raycast(
+                ray,
+                out RaycastHit hit,
+                interactRange,
+                interactableMask,
+                QueryTriggerInteraction.Collide))
+            {
+                // Collider is often on a child mesh; script may be on parent (e.g. DoorHinge).
+                IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
+                if (interactable != null)
+                {
+                    HasInteractableTarget = true;
+                    CurrentPrompt = interactable.Prompt;
 
-            IInteractable interactable = hit.collider.GetComponent<IInteractable>();
-            if (interactable != null)
-                interactable.Interact();
+                    if (interactAction.action.WasPressedThisFrame())
+                        interactable.Interact();
+                }
+            }
         }
     }
 }
