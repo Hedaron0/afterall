@@ -40,7 +40,7 @@ namespace AfterAll.Interaction
                 interactableMask,
                 QueryTriggerInteraction.Collide))
             {
-                // Collider is often on a child mesh; script may be on parent (e.g. DoorHinge).
+                // Collider is on the door model; Door script sits on the root.
                 IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
                 if (interactable != null)
                 {

@@ -1,3 +1,4 @@
+using AfterAll.Audio;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -10,12 +11,16 @@ namespace AfterAll.Player
         [SerializeField] private float gravity = -9.81f;
         [SerializeField] private InputActionReference moveAction;
 
+        public float MoveSpeed => moveSpeed;
+
         private CharacterController _controller;
+        private FootstepAudio _footsteps;
         private Vector3 _velocity;
 
         private void Awake()
         {
             _controller = GetComponent<CharacterController>();
+            _footsteps = GetComponent<FootstepAudio>();
         }
 
         private void OnEnable()  => moveAction.action.Enable();
@@ -25,7 +30,11 @@ namespace AfterAll.Player
         {
             Vector2 input = moveAction.action.ReadValue<Vector2>();
             Vector3 move = transform.right * input.x + transform.forward * input.y;
-            _controller.Move(move.normalized * moveSpeed * Time.deltaTime);
+            Vector3 horizontalMove = move.normalized * moveSpeed * Time.deltaTime;
+            _controller.Move(horizontalMove);
+
+            if (_footsteps != null)
+                _footsteps.RegisterMovement(horizontalMove.magnitude, _controller.isGrounded);
 
             if (_controller.isGrounded && _velocity.y < 0f)
                 _velocity.y = 0f;

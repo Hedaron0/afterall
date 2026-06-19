@@ -1,0 +1,12 @@
+Sound effects — CC0 / public domain
+
+100 CC0 SFX #2 (rubberduck) — https://opengameart.org/content/100-cc0-sfx-2
+- footstep_01.ogg, footstep_02.ogg (wet/carpet)
+- door_open.ogg, door_close.ogg, door_unlock.ogg
+- key_pickup.ogg, key_equip.ogg
+- ambience_liminal.ogg (loop_ambient_04 — liminal drone)
+
+Full CC0 pack in Audio/SFX/pack/
+
+Better Backrooms ambience (optional upgrade):
+https://liminal-space-dev.itch.io/free-horror-sfx-sounds

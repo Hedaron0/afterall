@@ -9,6 +9,8 @@ namespace AfterAll.Items
     {
         [SerializeField] private string _promptText = "Pick up Key";
         [SerializeField] private string _fullPromptText = "Inventory full";
+        [SerializeField] private AudioClip _pickupClip;
+        [SerializeField] private float _pickupVolume = 0.55f;
 
         private Inventory _inventory;
 
@@ -35,6 +37,8 @@ namespace AfterAll.Items
             if (_inventory.TryAddItem(ItemType.Key))
             {
                 GameFeedbackUI.Show("Key picked up.");
+                if (_pickupClip != null)
+                    AudioSource.PlayClipAtPoint(_pickupClip, transform.position, _pickupVolume);
                 gameObject.SetActive(false);
             }
             else
