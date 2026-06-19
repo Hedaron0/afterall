@@ -13,47 +13,57 @@ namespace AfterAll.Inventories
         public event Action OnInventoryChanged;
         public event Action OnSelectionChanged;
 
-        [SerializeField] private InputActionReference[] _slotSelectActions = new InputActionReference[SlotCount];
+        [SerializeField] private InputActionAsset _inputActions;
 
         private readonly ItemType[] _slots = new ItemType[SlotCount];
-        private readonly System.Action<InputAction.CallbackContext>[] _slotCallbacks =
-            new System.Action<InputAction.CallbackContext>[SlotCount];
+        private readonly Action<InputAction.CallbackContext>[] _slotCallbacks =
+            new Action<InputAction.CallbackContext>[SlotCount];
+
+        private InputAction[] _slotActions;
 
         public int SelectedSlot { get; private set; }
 
         public ItemType SelectedItem => _slots[SelectedSlot];
 
+        private void Awake()
+        {
+            ResolveInputActions();
+        }
+
         private void OnEnable()
         {
-            if (_slotSelectActions == null)
+            ResolveInputActions();
+            if (_inputActions == null)
                 return;
 
-            for (int i = 0; i < _slotSelectActions.Length; i++)
+            var playerMap = _inputActions.FindActionMap("Player", true);
+            _slotActions = new[]
             {
-                if (_slotSelectActions[i] == null)
-                    continue;
+                playerMap.FindAction("Slot1", true),
+                playerMap.FindAction("Slot2", true),
+                playerMap.FindAction("Slot3", true),
+            };
 
+            for (int i = 0; i < _slotActions.Length; i++)
+            {
                 int slotIndex = i;
                 _slotCallbacks[i] = _ => SetSelectedSlot(slotIndex);
-                _slotSelectActions[i].action.performed += _slotCallbacks[i];
-                _slotSelectActions[i].action.Enable();
+                _slotActions[i].performed += _slotCallbacks[i];
+                _slotActions[i].Enable();
             }
         }
 
         private void OnDisable()
         {
-            if (_slotSelectActions == null)
+            if (_slotActions == null)
                 return;
 
-            for (int i = 0; i < _slotSelectActions.Length; i++)
+            for (int i = 0; i < _slotActions.Length; i++)
             {
-                if (_slotSelectActions[i] == null)
-                    continue;
-
                 if (_slotCallbacks[i] != null)
-                    _slotSelectActions[i].action.performed -= _slotCallbacks[i];
+                    _slotActions[i].performed -= _slotCallbacks[i];
 
-                _slotSelectActions[i].action.Disable();
+                _slotActions[i].Disable();
             }
         }
 
@@ -115,6 +125,20 @@ namespace AfterAll.Inventories
         }
 
         public ItemType GetSlot(int index) => _slots[index];
-    }
 
+        private void ResolveInputActions()
+        {
+            if (_inputActions != null)
+                return;
+
+            foreach (var asset in Resources.FindObjectsOfTypeAll<InputActionAsset>())
+            {
+                if (asset.name != "InputSystem_Actions")
+                    continue;
+
+                _inputActions = asset;
+                return;
+            }
+        }
+    }
 }

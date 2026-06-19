@@ -26,7 +26,7 @@ namespace AfterAll.Items
 
         private void Awake()
         {
-            _inventory = FindFirstObjectByType<Inventory>();
+            _inventory = FindAnyObjectByType<Inventory>();
         }
 
         public void Interact()

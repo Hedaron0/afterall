@@ -12,7 +12,7 @@ namespace AfterAll.UI
         private void Awake()
         {
             if (_inventory == null)
-                _inventory = FindFirstObjectByType<Inventory>();
+                _inventory = FindAnyObjectByType<Inventory>();
         }
 
         private void OnEnable()

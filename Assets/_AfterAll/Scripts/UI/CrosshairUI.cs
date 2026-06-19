@@ -12,7 +12,7 @@ namespace AfterAll.UI
         private void Awake()
         {
             if (_interactor == null)
-                _interactor = FindFirstObjectByType<PlayerInteractor>();
+                _interactor = FindAnyObjectByType<PlayerInteractor>();
 
             if (_crosshair != null)
                 _crosshair.enabled = false;

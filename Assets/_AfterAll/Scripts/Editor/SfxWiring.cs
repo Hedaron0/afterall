@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using AfterAll.Audio;
 using AfterAll.Items;
+using AfterAll.Player;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -10,6 +11,7 @@ namespace AfterAll.EditorTools
     public static class SfxWiring
     {
         const string SfxFolder = "Assets/Audio/SFX";
+        const string SfxPackFolder = "Assets/Audio/SFX/pack";
 
         [MenuItem("AfterAll/Wire Audio")]
         public static void WireAudio()
@@ -35,21 +37,27 @@ namespace AfterAll.EditorTools
                 return;
             }
 
-            Ensure2DClip("footstep_01.ogg");
-            Ensure2DClip("footstep_02.ogg");
+            Ensure2DClipInFolder(SfxPackFolder, "sfx100v2_footstep_wood_02.ogg");
+            Ensure2DClipInFolder(SfxPackFolder, "sfx100v2_footstep_wood_03.ogg");
 
-            var footsteps = player.GetComponent<FootstepAudio>();
-            if (footsteps == null)
-                footsteps = player.AddComponent<FootstepAudio>();
+            if (player.GetComponent<AudioSource>() == null)
+                player.AddComponent<AudioSource>();
 
-            var so = new SerializedObject(footsteps);
-            so.FindProperty("_clips").arraySize = 2;
-            so.FindProperty("_clips").GetArrayElementAtIndex(0).objectReferenceValue =
-                LoadClip("footstep_01.ogg");
-            so.FindProperty("_clips").GetArrayElementAtIndex(1).objectReferenceValue =
-                LoadClip("footstep_02.ogg");
-            so.FindProperty("_stepDistance").floatValue = 1.4f;
-            so.FindProperty("_volume").floatValue = 0.55f;
+            var movement = player.GetComponent<PlayerMovement>();
+            if (movement == null)
+            {
+                Debug.LogWarning("[AfterAll] PlayerMovement not found — skipped footsteps.");
+                return;
+            }
+
+            var so = new SerializedObject(movement);
+            so.FindProperty("_footstepClips").arraySize = 2;
+            so.FindProperty("_footstepClips").GetArrayElementAtIndex(0).objectReferenceValue =
+                LoadClipFromFolder(SfxPackFolder, "sfx100v2_footstep_wood_02.ogg");
+            so.FindProperty("_footstepClips").GetArrayElementAtIndex(1).objectReferenceValue =
+                LoadClipFromFolder(SfxPackFolder, "sfx100v2_footstep_wood_03.ogg");
+            so.FindProperty("_stepDistance").floatValue = 1.35f;
+            so.FindProperty("_footstepVolume").floatValue = 0.6f;
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
@@ -130,9 +138,14 @@ namespace AfterAll.EditorTools
             return AssetDatabase.LoadAssetAtPath<AudioClip>($"{SfxFolder}/{fileName}");
         }
 
-        static void Ensure2DClip(string fileName)
+        static AudioClip LoadClipFromFolder(string folder, string fileName)
         {
-            string path = $"{SfxFolder}/{fileName}";
+            return AssetDatabase.LoadAssetAtPath<AudioClip>($"{folder}/{fileName}");
+        }
+
+        static void Ensure2DClipInFolder(string folder, string fileName)
+        {
+            string path = $"{folder}/{fileName}";
             var importer = AssetImporter.GetAtPath(path) as AudioImporter;
             if (importer == null)
                 return;

@@ -18,7 +18,7 @@ namespace AfterAll.UI
         private void Awake()
         {
             if (_inventory == null)
-                _inventory = FindFirstObjectByType<Inventory>();
+                _inventory = FindAnyObjectByType<Inventory>();
 
             if (_holdAnchor == null)
                 _holdAnchor = transform;

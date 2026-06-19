@@ -31,11 +31,6 @@ namespace AfterAll.Player
             EnhancedTouchSupport.Disable();
         }
 
-        private void Start()
-        {
-            Cursor.lockState = CursorLockMode.Locked;
-        }
-
         private void Update()
         {
             if (Touchscreen.current != null)
@@ -44,10 +39,7 @@ namespace AfterAll.Player
                 _targetDelta = lookAction.action.ReadValue<Vector2>() * mouseSensitivity;
 
             _currentDelta = Vector2.Lerp(_currentDelta, _targetDelta, smoothing * Time.deltaTime);
-
             ApplyLook(_currentDelta);
-
-            // Reset target each frame so camera stops when finger lifts
             _targetDelta = Vector2.zero;
         }
 

@@ -47,7 +47,7 @@ namespace AfterAll.Door
         {
             ResolveReferences();
             _unlocked = !_startsLocked;
-            _inventory = FindFirstObjectByType<Inventory>();
+            _inventory = FindAnyObjectByType<Inventory>();
             _closedRotation = _pivot.localRotation;
             _openRotation = _closedRotation * Quaternion.Euler(0f, _openAngle, 0f);
         }
