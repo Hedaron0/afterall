@@ -13,6 +13,7 @@ namespace AfterAll.Interaction
         public bool HasInteractableTarget { get; private set; }
 
         private Camera _camera;
+        private IInteractable _currentInteractable;
 
         private void Awake()
         {
@@ -28,6 +29,7 @@ namespace AfterAll.Interaction
         {
             CurrentPrompt = string.Empty;
             HasInteractableTarget = false;
+            _currentInteractable = null;
 
             if (_camera == null)
                 return;
@@ -46,11 +48,19 @@ namespace AfterAll.Interaction
                 {
                     HasInteractableTarget = true;
                     CurrentPrompt = interactable.Prompt;
+                    _currentInteractable = interactable;
 
                     if (interactAction.action.WasPressedThisFrame())
                         interactable.Interact();
                 }
             }
+        }
+
+        /// <summary>Called by mobile tap-to-interact in the look zone.</summary>
+        public void TryInteract()
+        {
+            if (_currentInteractable != null)
+                _currentInteractable.Interact();
         }
     }
 }

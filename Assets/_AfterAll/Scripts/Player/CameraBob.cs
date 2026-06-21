@@ -33,6 +33,19 @@ namespace AfterAll.Player
         [Header("Crouch Camera")]
         [SerializeField] private float _crouchPivotOffset = -0.55f;
 
+        [Header("Jump / Land Camera")]
+        [SerializeField] private float _jumpPivotRise    = 0.06f;
+        [SerializeField] private float _landPivotDrop    = -0.11f;
+        [SerializeField] private float _jumpPitchDegrees = -3.5f;
+        [SerializeField] private float _landPitchDegrees =  4.5f;
+        [SerializeField] private float _jumpFOVBoost     =  2f;
+        [SerializeField] private float _landFOVPinch     = -2.5f;
+        [Tooltip("Ramp-in time — mirrors crouch enter feel.")]
+        [SerializeField] private float _jumpAttackTime  = 0.05f;
+        [SerializeField] private float _jumpReleaseTime = 0.18f;
+        [SerializeField] private float _landAttackTime  = 0.04f;
+        [SerializeField] private float _landReleaseTime = 0.15f;
+
         [Header("Sprint Vignette")]
         [SerializeField] private float _sprintVignetteMax = 0.30f;
         [SerializeField] private float _vignetteSmoothing = 5f;
@@ -42,8 +55,17 @@ namespace AfterAll.Player
         private Vector3 _bobOffset;
         private Vector3 _bobVelocity;
         private float   _currentZRot;
+        private float   _currentPitchKick;
+        private float   _pitchKickVelocity;
         private Vignette _vignette;
         private float   _currentVignetteIntensity;
+
+        private float _jumpEnvelope;
+        private float _landEnvelope;
+        private float _jumpTimer;
+        private float _landTimer;
+        private bool  _jumpPlaying;
+        private bool  _landPlaying;
 
         private void Awake()
         {
@@ -83,9 +105,72 @@ namespace AfterAll.Player
         private void Update()
         {
             if (_movement == null) return;
+            UpdateJumpLandEnvelopes();
             UpdateFOV();
             UpdateBob();
             UpdateVignette();
+        }
+
+        // ── Jump / land envelopes (smooth attack + release, same family as crouch) ──
+
+        private void UpdateJumpLandEnvelopes()
+        {
+            if (_movement.JustJumped)
+            {
+                _jumpPlaying = true;
+                _jumpTimer   = 0f;
+            }
+
+            if (_movement.JustLanded)
+            {
+                _landPlaying = true;
+                _landTimer   = 0f;
+            }
+
+            if (_jumpPlaying)
+            {
+                _jumpTimer += Time.deltaTime;
+                float duration = _jumpAttackTime + _jumpReleaseTime;
+                _jumpEnvelope = EvaluateEnvelope(_jumpTimer, _jumpAttackTime, _jumpReleaseTime);
+                if (_jumpTimer >= duration)
+                {
+                    _jumpPlaying  = false;
+                    _jumpEnvelope = 0f;
+                }
+            }
+            else
+            {
+                _jumpEnvelope = 0f;
+            }
+
+            if (_landPlaying)
+            {
+                _landTimer += Time.deltaTime;
+                float duration = _landAttackTime + _landReleaseTime;
+                _landEnvelope = EvaluateEnvelope(_landTimer, _landAttackTime, _landReleaseTime);
+                if (_landTimer >= duration)
+                {
+                    _landPlaying  = false;
+                    _landEnvelope = 0f;
+                }
+            }
+            else
+            {
+                _landEnvelope = 0f;
+            }
+        }
+
+        /// <summary>0 → 1 → 0 with SmoothStep ramps (no hard snap).</summary>
+        private static float EvaluateEnvelope(float timer, float attack, float release)
+        {
+            if (timer <= 0f) return 0f;
+
+            if (timer < attack)
+                return Mathf.SmoothStep(0f, 1f, timer / attack);
+
+            float releaseT = (timer - attack) / release;
+            if (releaseT >= 1f) return 0f;
+            return Mathf.SmoothStep(1f, 0f, releaseT);
         }
 
         // ── FOV ───────────────────────────────────────────────────────────────
@@ -95,7 +180,8 @@ namespace AfterAll.Player
             if (_camera == null) return;
 
             float crouchOffset = _crouchFOVOffset * _movement.CrouchT;
-            float target = Mathf.Lerp(_baseFOV, _sprintFOV, _movement.SprintT) + crouchOffset;
+            float jumpLandFOV  = _jumpFOVBoost * _jumpEnvelope + _landFOVPinch * _landEnvelope;
+            float target = Mathf.Lerp(_baseFOV, _sprintFOV, _movement.SprintT) + crouchOffset + jumpLandFOV;
 
             float speed = target > _camera.fieldOfView ? _fovSmoothing : _fovSmoothing * 0.5f;
             _camera.fieldOfView = Mathf.Lerp(_camera.fieldOfView, target, speed * Time.deltaTime);
@@ -136,8 +222,15 @@ namespace AfterAll.Player
             _bobVelocity += force * Time.deltaTime;
             _bobOffset   += _bobVelocity * Time.deltaTime;
 
-            float crouchY = Mathf.Lerp(0f, _crouchPivotOffset, _movement.CrouchT);
-            _cameraPivot.localPosition = _defaultPivotPos + _bobOffset + new Vector3(0f, crouchY, 0f);
+            float crouchY   = Mathf.Lerp(0f, _crouchPivotOffset, _movement.CrouchT);
+            float jumpLandY = _jumpPivotRise * _jumpEnvelope + _landPivotDrop * _landEnvelope;
+            _cameraPivot.localPosition = _defaultPivotPos + _bobOffset
+                + new Vector3(0f, crouchY + jumpLandY, 0f);
+
+            // Pitch kick on camera child — SmoothDamp so it eases like crouch FOV.
+            float targetPitchKick = _jumpPitchDegrees * _jumpEnvelope + _landPitchDegrees * _landEnvelope;
+            _currentPitchKick = Mathf.SmoothDamp(
+                _currentPitchKick, targetPitchKick, ref _pitchKickVelocity, 0.08f);
 
             // Z sway on camera, not pivot — avoids fighting PlayerLook's strafe roll.
             float targetZRot = isMoving ? Mathf.Sin(_bobTimer * 0.5f) * 0.4f : 0f;
@@ -145,7 +238,7 @@ namespace AfterAll.Player
                 (isMoving ? 8f : _bobReturnSpeed) * Time.deltaTime);
 
             if (_camera != null)
-                _camera.transform.localRotation = Quaternion.Euler(0f, 0f, _currentZRot);
+                _camera.transform.localRotation = Quaternion.Euler(_currentPitchKick, 0f, _currentZRot);
         }
 
         // ── Vignette ──────────────────────────────────────────────────────────

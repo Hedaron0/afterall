@@ -61,6 +61,9 @@ namespace AfterAll.Player
         private float   _distanceSinceStep;
         private int     _nextClipIndex;
         private bool    _wasGrounded;
+        private Vector2 _mobileMove;
+
+        public void SetMobileMove(Vector2 input) => _mobileMove = input;
 
         private void Awake()
         {
@@ -111,7 +114,9 @@ namespace AfterAll.Player
                 ? crouchSpeed
                 : Mathf.Lerp(moveSpeed, sprintSpeed, SprintT);
 
-            Vector2 input = moveAction.action.ReadValue<Vector2>();
+            Vector2 input = AfterAll.UI.MobileInput.IsActive
+                ? _mobileMove
+                : moveAction.action.ReadValue<Vector2>();
             StrafeInput = input;
 
             Vector3 wishDir = transform.right * input.x + transform.forward * input.y;

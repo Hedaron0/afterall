@@ -35,7 +35,11 @@ namespace AfterAll.UI
             }
 
             if (show)
-                _promptText.text = prompt;
+            {
+                _promptText.text = MobileInput.IsActive
+                    ? $"{prompt}  ·  Tap"
+                    : prompt;
+            }
         }
     }
 }

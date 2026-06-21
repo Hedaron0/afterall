@@ -1,31 +1,54 @@
 using UnityEngine;
+using UnityEngine.InputSystem.EnhancedTouch;
 
 namespace AfterAll.UI
 {
     /// <summary>
-    /// Activates mobile-only HUD elements (joystick, interact button) when running on
-    /// Android or iOS. Hides them on PC / editor (unless _simulateMobileInEditor is on).
-    ///
-    /// Attach to the HUD object. Wire Joystick_BG and the InteractButton via the inspector,
-    /// or run AfterAll → Setup Mobile HUD to wire everything automatically.
+    /// Toggles invisible mobile action strips (jump / crouch only).
+    /// Move + look + interact are handled in code on the Player — no joystick, no E button.
     /// </summary>
     public class MobileHUD : MonoBehaviour
     {
-        [SerializeField] private GameObject _joystickRoot;
-        [SerializeField] private GameObject _interactButtonRoot;
+        [SerializeField] private GameObject _mobileControlsRoot;
 
         [Tooltip("Show mobile UI during Editor Play Mode for layout testing.")]
         [SerializeField] private bool _simulateMobileInEditor;
 
-        private void Awake()
+        private void Awake() => ApplyMobileMode();
+
+#if UNITY_EDITOR
+        private void OnValidate()
         {
-            bool mobile = IsMobilePlatform();
+            if (Application.isPlaying)
+                ApplyMobileMode();
+        }
+#endif
 
-            if (_joystickRoot != null)
-                _joystickRoot.SetActive(mobile);
+        private void OnDestroy()
+        {
+#if UNITY_EDITOR
+            TouchSimulation.Disable();
+#endif
+        }
 
-            if (_interactButtonRoot != null)
-                _interactButtonRoot.SetActive(mobile);
+        private void ApplyMobileMode()
+        {
+            MobileInput.SetSimulateInEditor(_simulateMobileInEditor);
+
+            if (_mobileControlsRoot != null)
+                _mobileControlsRoot.SetActive(MobileInput.IsActive);
+
+#if UNITY_EDITOR
+            if (_simulateMobileInEditor)
+            {
+                EnhancedTouchSupport.Enable();
+                TouchSimulation.Enable();
+            }
+            else
+            {
+                TouchSimulation.Disable();
+            }
+#endif
 
 #if (UNITY_ANDROID || UNITY_IOS) && !UNITY_EDITOR
             Screen.orientation = ScreenOrientation.LandscapeLeft;
@@ -33,17 +56,6 @@ namespace AfterAll.UI
             Screen.autorotateToPortraitUpsideDown = false;
             Screen.autorotateToLandscapeLeft = true;
             Screen.autorotateToLandscapeRight = true;
-#endif
-        }
-
-        private bool IsMobilePlatform()
-        {
-#if UNITY_EDITOR
-            return _simulateMobileInEditor;
-#elif UNITY_ANDROID || UNITY_IOS
-            return true;
-#else
-            return false;
 #endif
         }
     }
