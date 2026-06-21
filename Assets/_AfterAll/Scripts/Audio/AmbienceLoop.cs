@@ -6,19 +6,28 @@ namespace AfterAll.Audio
     public class AmbienceLoop : MonoBehaviour
     {
         [SerializeField] private AudioClip _clip;
-        [SerializeField] private float _volume = 0.22f;
+        [SerializeField] [Range(0f, 1f)] private float _volume = 0.35f;
+
+        private AudioSource _source;
 
         private void Awake()
         {
-            var source = GetComponent<AudioSource>();
-            source.clip = _clip;
-            source.loop = true;
-            source.volume = _volume;
-            source.spatialBlend = 0f;
-            source.playOnAwake = true;
+            _source = GetComponent<AudioSource>();
 
-            if (!source.isPlaying)
-                source.Play();
+            if (_clip == null)
+            {
+                Debug.LogError($"[AmbienceLoop] No AudioClip assigned on '{gameObject.name}'. Ambience will be silent.", this);
+                return;
+            }
+
+            _source.clip = _clip;
+            _source.loop = true;
+            _source.volume = _volume;
+            _source.spatialBlend = 0f;
+            _source.playOnAwake = false;
+            _source.Play();
         }
+
+        public void SetVolume(float v) => _source.volume = Mathf.Clamp01(v);
     }
 }

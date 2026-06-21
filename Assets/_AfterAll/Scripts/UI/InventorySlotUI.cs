@@ -6,7 +6,7 @@ using AfterAll.Inventories;
 namespace AfterAll.UI
 {
     [RequireComponent(typeof(Image))]
-    public class InventorySlotUI : MonoBehaviour, IPointerClickHandler, IPointerDownHandler
+    public class InventorySlotUI : MonoBehaviour, IPointerClickHandler
     {
         [SerializeField] private Inventory _inventory;
         [SerializeField] private int _slotIndex;
@@ -28,11 +28,6 @@ namespace AfterAll.UI
         }
 
         public void OnPointerClick(PointerEventData eventData)
-        {
-            _inventory.SetSelectedSlot(_slotIndex);
-        }
-
-        public void OnPointerDown(PointerEventData eventData)
         {
             _inventory.SetSelectedSlot(_slotIndex);
         }

@@ -12,7 +12,7 @@ Short horror runs where each playthrough can branch into different builds throug
 
 - Unity 6 (3D URP)
 - C#
-- Platform: Mobile (iOS + Android) — keyboard prototype for now
+- Platform: Mobile (iOS + Android) — **keyboard/mouse prototype only** (mobile controls stripped 2026-06-20, rebuild next)
 
 ## 📁 Project Structure
 
