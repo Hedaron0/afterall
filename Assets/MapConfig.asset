@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d216acda0cc0dfd459e908e212f3b579, type: 3}
+  m_Name: MapConfig
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Generation.MapConfig
+  _seed: 42
+  _chunkSize: 32
+  _wallHeight: 2.7
+  _minRoomSize: 6
+  _splitMin: 0.25
+  _splitMax: 0.75
+  _earlyStopChance: 0.08
+  _maxDepth: 6
+  _axisFlipChance: 0.3
+  _wallPrefab: {fileID: 3383612957307780772, guid: 0e6a04f9c814ab64a867fb72fbf3730c, type: 3}
+  _floorPrefab: {fileID: 142167879359793201, guid: 098dac1dadf4cb346bfbbea7ac89d3cf, type: 3}
+  _ceilingPrefab: {fileID: 1972633983865370864, guid: ec70ac4b598f845439dcb74a12406ecd, type: 3}
+  _wallThickness: 0.2
+  _slabThickness: 0.4
+  _minOpeningsPerBoundary: 1
+  _maxOpeningsPerBoundary: 2
+  _openingMinWidth: 0.9
+  _openingMaxWidth: 2.2
+  _openingEdgeMargin: 0.8
