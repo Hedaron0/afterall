@@ -56,6 +56,7 @@ namespace AfterAll.Player
 
         private CharacterController _controller;
         private AudioSource         _footstepSource;
+        private Stamina             _stamina;
         private Vector3 _horizontalVelocity;
         private float   _verticalVelocity;
         private float   _distanceSinceStep;
@@ -69,6 +70,7 @@ namespace AfterAll.Player
         {
             _controller = GetComponent<CharacterController>();
             _footstepSource = GetComponent<AudioSource>();
+            _stamina = GetComponent<Stamina>();
             _footstepSource.playOnAwake = false;
             _footstepSource.loop = false;
             _footstepSource.spatialBlend = 0f;
@@ -107,8 +109,17 @@ namespace AfterAll.Player
 
             UpdateCrouch();
 
-            bool wantSprint = !IsCrouching && sprintAction != null && sprintAction.action.IsPressed();
+            bool pcSprint     = sprintAction != null && sprintAction.action.IsPressed();
+            bool mobileSprint = AfterAll.UI.MobileSprintBridge.WantsSprint;
+            bool wantSprint   = !IsCrouching
+                && (pcSprint || mobileSprint)
+                && (_stamina == null || _stamina.CanSprint);
+
             SprintT = Mathf.MoveTowards(SprintT, wantSprint ? 1f : 0f, sprintAcceleration * Time.deltaTime);
+
+            bool isSprinting = SprintT > 0.01f;
+            bool isMoving    = MoveMagnitude > 0.1f;
+            _stamina?.Tick(isSprinting, isMoving, IsCrouching);
 
             float topSpeed = IsCrouching
                 ? crouchSpeed
