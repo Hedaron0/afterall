@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace AfterAll.Generation
 {
@@ -51,11 +52,13 @@ namespace AfterAll.Generation
         [SerializeField] [Min(0.1f)] private float _slabThickness = 0.4f;
 
         [Header("Openings")]
-        [Tooltip("Minimum number of openings (doorway gaps) per boundary. 1 = always at least one passage.")]
-        [SerializeField] [Range(0, 4)] private int _minOpeningsPerBoundary = 1;
+        [Tooltip("Each wall line gets at most one doorway. These pick how many different walls per room are open.")]
+        [FormerlySerializedAs("_minOpeningsPerBoundary")]
+        [SerializeField] [Range(1, 4)] private int _minOpeningsPerRoom = 1;
 
-        [Tooltip("Maximum number of openings per boundary.")]
-        [SerializeField] [Range(1, 5)] private int _maxOpeningsPerBoundary = 2;
+        [FormerlySerializedAs("_maxOpeningsPerBoundary")]
+        [Tooltip("Maximum different walls with a doorway per room. Extra openings always go on another wall, never the same one.")]
+        [SerializeField] [Range(1, 4)] private int _maxOpeningsPerRoom = 2;
 
         [Tooltip("Minimum doorway width in metres.")]
         [SerializeField] [Min(0.5f)] private float _openingMinWidth = 0.9f;
@@ -74,8 +77,8 @@ namespace AfterAll.Generation
         [Tooltip("Spawn solid walls along all four chunk edges. Disable when ChunkManager stitches neighbours.")]
         [SerializeField] private bool _addPerimeterWalls = true;
 
-        [Header("Lights — Prefab")]
-        [Tooltip("FluorescentPanel prefab from Assets/_AfterAll/Prefabs/Backrooms_Modular/FluorescentPanel.prefab")]
+        [Header("Lights — Prefab Reference")]
+        [Tooltip("Which FluorescentPanel prefab to spawn. FluorescentLight settings live on that prefab — not here.")]
         [SerializeField] private GameObject _lightPanelPrefab;
 
         [Tooltip("Probability that a light grid position is left dark (0 = all lit, 1 = all dark).")]
@@ -119,8 +122,8 @@ namespace AfterAll.Generation
         public float WallThickness   => _wallThickness;
         public float SlabThickness   => _slabThickness;
 
-        public int MinOpeningsPerBoundary  => _minOpeningsPerBoundary;
-        public int MaxOpeningsPerBoundary  => _maxOpeningsPerBoundary;
+        public int MinOpeningsPerRoom  => _minOpeningsPerRoom;
+        public int MaxOpeningsPerRoom  => _maxOpeningsPerRoom;
         public float OpeningMinWidth       => _openingMinWidth;
         public float OpeningMaxWidth       => _openingMaxWidth;
         public float OpeningEdgeMargin     => _openingEdgeMargin;
@@ -139,5 +142,17 @@ namespace AfterAll.Generation
         public float LightSpacing          => _ceilingTileSize * _lightSpacingTiles;
         public float LightGridOffsetX      => _lightGridOffsetX;
         public float LightGridOffsetZ      => _lightGridOffsetZ;
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (_maxOpeningsPerRoom < _minOpeningsPerRoom)
+                _maxOpeningsPerRoom = _minOpeningsPerRoom;
+
+            // Prevent accidental inspector drag from blocking all light placement.
+            float maxInset = Mathf.Max(0.2f, _minRoomSize * 0.45f);
+            _lightRoomInset = Mathf.Clamp(_lightRoomInset, 0.2f, maxInset);
+        }
+#endif
     }
 }

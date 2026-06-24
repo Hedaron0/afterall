@@ -29,6 +29,7 @@ namespace AfterAll.Generation
         private bool       _initialized;
 
         public IReadOnlyDictionary<ChunkCoord, Chunk> ActiveChunks => _active;
+        public Transform PlayerTransform => _player;
 
         private void Awake()
         {
@@ -102,6 +103,13 @@ namespace AfterAll.Generation
         // ──────────────────────────────────────────────────────────────────────────
         //  Streaming
         // ──────────────────────────────────────────────────────────────────────────
+
+        [ContextMenu("Regenerate All Active Chunks")]
+        public void RegenerateAllActive()
+        {
+            foreach (var kv in _active)
+                kv.Value.Generate();
+        }
 
         [ContextMenu("Refresh Chunks")]
         public void Refresh(bool force)

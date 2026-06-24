@@ -11,8 +11,6 @@ namespace AfterAll.Generation
     {
         public enum Border { South, North, West, East }
 
-        private const float kMinStubBetweenOpenings = 0.5f;
-
         /// <summary>
         /// Stable seed for one infinite-world border line. Neighbouring chunks
         /// that share the same physical edge always get the same seed.
@@ -42,7 +40,7 @@ namespace AfterAll.Generation
             float edgeLength, int borderSeed, MapConfig config)
         {
             var rng = new Rng(borderSeed);
-            return GenerateOpeningsAlongEdge(edgeLength, config, rng);
+            return OpeningGenerator.PlaceSingleOpening(edgeLength, config, rng);
         }
 
         /// <summary>
@@ -76,44 +74,6 @@ namespace AfterAll.Generation
             }
 
             return result;
-        }
-
-        private static IReadOnlyList<OpeningSpec> GenerateOpeningsAlongEdge(
-            float length, MapConfig config, Rng rng)
-        {
-            float margin = config.OpeningEdgeMargin;
-            float usableStart = margin;
-            float usableEnd   = length - margin;
-
-            if (usableEnd - usableStart < config.OpeningMinWidth)
-            {
-                float centre = length * 0.5f;
-                float halfW  = Math.Min(config.OpeningMinWidth * 0.5f, length * 0.35f);
-                return new[] { new OpeningSpec(centre - halfW, halfW * 2f) };
-            }
-
-            int count = rng.Range(config.MinOpeningsPerBoundary, config.MaxOpeningsPerBoundary + 1);
-            count = Math.Max(1, count);
-
-            var openings = new List<OpeningSpec>(count);
-            float cursor  = usableStart;
-
-            for (int i = 0; i < count; i++)
-            {
-                float remaining = usableEnd - cursor;
-                if (remaining < config.OpeningMinWidth) break;
-
-                float maxWidth  = Math.Min(config.OpeningMaxWidth, remaining);
-                float width     = rng.Range(config.OpeningMinWidth, maxWidth);
-
-                float gapRoom   = remaining - width;
-                float gapBefore = gapRoom > 0f ? rng.Range(0f, gapRoom) : 0f;
-
-                openings.Add(new OpeningSpec(cursor + gapBefore, width));
-                cursor = cursor + gapBefore + width + kMinStubBetweenOpenings;
-            }
-
-            return openings;
         }
     }
 }

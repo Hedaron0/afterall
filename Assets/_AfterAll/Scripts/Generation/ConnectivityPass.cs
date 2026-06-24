@@ -184,6 +184,10 @@ namespace AfterAll.Generation
         {
             var rb = rooms[sealedRoomIdx].Bounds;
 
+            int bestNoOpening = -1;
+            int bestFewest    = -1;
+            int fewestCount   = int.MaxValue;
+
             for (int wi = 0; wi < walls.Count; wi++)
             {
                 if (!WallLayout.IsInteriorBspWall(walls[wi], bspBoundaries)) continue;
@@ -201,7 +205,15 @@ namespace AfterAll.Generation
 
                     if (Mathf.Abs(rb.xMax - vx) < kEpsilon ||
                         Mathf.Abs(rb.xMin - vx) < kEpsilon)
-                        return wi;
+                    {
+                        if (walls[wi].Openings.Count == 0)
+                            bestNoOpening = wi;
+                        else if (walls[wi].Openings.Count < fewestCount)
+                        {
+                            fewestCount = walls[wi].Openings.Count;
+                            bestFewest  = wi;
+                        }
+                    }
                 }
                 else
                 {
@@ -214,9 +226,23 @@ namespace AfterAll.Generation
 
                     if (Mathf.Abs(rb.yMax - sz) < kEpsilon ||
                         Mathf.Abs(rb.yMin - sz) < kEpsilon)
-                        return wi;
+                    {
+                        if (walls[wi].Openings.Count == 0)
+                            bestNoOpening = wi;
+                        else if (walls[wi].Openings.Count < fewestCount)
+                        {
+                            fewestCount = walls[wi].Openings.Count;
+                            bestFewest  = wi;
+                        }
+                    }
                 }
             }
+
+            if (bestNoOpening >= 0)
+                return bestNoOpening;
+
+            if (bestFewest >= 0)
+                return bestFewest;
 
             return -1;
         }

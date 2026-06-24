@@ -17,7 +17,6 @@ namespace AfterAll.Generation
     /// </summary>
     public static class WallLayout
     {
-        private const float kMinStubBetweenOpenings = 0.5f;
         private const float kEps                    = 0.001f;
 
         private enum Face { South, North, West, East }
@@ -31,12 +30,15 @@ namespace AfterAll.Generation
             float halfT     = config.WallThickness * 0.5f;
             float chunkSize = config.ChunkSize;
 
-            // Step 1 — openings on full BSP boundaries (unchanged RNG sequence).
-            var boundaryOpenings = new Dictionary<BoundaryKey, IReadOnlyList<OpeningSpec>>();
+            // Step 1 — one opening per selected BSP boundary (room planner picks walls).
+            var openBoundaries = RoomOpeningPlanner.PlanOpenBoundaries(bsp, config, rng);
+            var boundaryOpenings = new Dictionary<RoomOpeningPlanner.BoundaryKey, IReadOnlyList<OpeningSpec>>();
             foreach (var boundary in bsp.Boundaries)
             {
-                boundaryOpenings[new BoundaryKey(boundary)] =
-                    GenerateOpenings(boundary, config, rng);
+                var key = new RoomOpeningPlanner.BoundaryKey(boundary);
+                boundaryOpenings[key] = openBoundaries.Contains(key)
+                    ? OpeningGenerator.PlaceSingleOpening(boundary.Length, config, rng)
+                    : System.Array.Empty<OpeningSpec>();
             }
 
             // Pre-compute stitched openings for each chunk border (shared with neighbours).
@@ -94,7 +96,7 @@ namespace AfterAll.Generation
             float halfT,
             float chunkSize,
             IReadOnlyList<BspBoundary> bspBoundaries,
-            Dictionary<BoundaryKey, IReadOnlyList<OpeningSpec>> boundaryOpenings,
+            Dictionary<RoomOpeningPlanner.BoundaryKey, IReadOnlyList<OpeningSpec>> boundaryOpenings,
             IReadOnlyDictionary<EdgeStitcher.Border, IReadOnlyList<OpeningSpec>> borderOpenings,
             ChunkCoord? coord)
         {
@@ -156,7 +158,7 @@ namespace AfterAll.Generation
 
             if (bspBoundary.HasValue)
             {
-                var bspOpenings = boundaryOpenings[new BoundaryKey(bspBoundary.Value)];
+                var bspOpenings = boundaryOpenings[new RoomOpeningPlanner.BoundaryKey(bspBoundary.Value)];
                 openings = ClipOpeningsToFace(bspOpenings, bspBoundary.Value,
                                               faceBoundary, isVertical, halfT, rangeMin, rangeMax);
             }
@@ -295,69 +297,6 @@ namespace AfterAll.Generation
 
             public override bool Equals(object obj) => obj is WallKey k && Equals(k);
             public override int GetHashCode() => HashCode.Combine(_ax, _ay, _bx, _by);
-        }
-
-        private readonly struct BoundaryKey : IEquatable<BoundaryKey>
-        {
-            private readonly int _ax, _ay, _bx, _by;
-
-            public BoundaryKey(BspBoundary b)
-            {
-                _ax = Q(b.Start.x); _ay = Q(b.Start.y);
-                _bx = Q(b.End.x);   _by = Q(b.End.y);
-            }
-
-            private static int Q(float v) => Mathf.RoundToInt(v * 1000f);
-
-            public bool Equals(BoundaryKey other) =>
-                _ax == other._ax && _ay == other._ay && _bx == other._bx && _by == other._by;
-
-            public override bool Equals(object obj) => obj is BoundaryKey k && Equals(k);
-            public override int GetHashCode() => HashCode.Combine(_ax, _ay, _bx, _by);
-        }
-
-        // ──────────────────────────────────────────────────────────────────────────
-        //  Opening generation
-        // ──────────────────────────────────────────────────────────────────────────
-
-        private static IReadOnlyList<OpeningSpec> GenerateOpenings(
-            BspBoundary boundary, MapConfig config, Rng rng)
-        {
-            float length = boundary.Length;
-            float margin = config.OpeningEdgeMargin;
-
-            float usableStart = margin;
-            float usableEnd   = length - margin;
-
-            if (usableEnd - usableStart < config.OpeningMinWidth)
-            {
-                float centre = length * 0.5f;
-                float halfW  = Mathf.Min(config.OpeningMinWidth * 0.5f, length * 0.35f);
-                return new[] { new OpeningSpec(centre - halfW, halfW * 2f) };
-            }
-
-            int count = rng.Range(config.MinOpeningsPerBoundary, config.MaxOpeningsPerBoundary + 1);
-            count = Mathf.Max(1, count);
-
-            var openings = new List<OpeningSpec>(count);
-            float cursor  = usableStart;
-
-            for (int i = 0; i < count; i++)
-            {
-                float remaining = usableEnd - cursor;
-                if (remaining < config.OpeningMinWidth) break;
-
-                float maxWidth  = Mathf.Min(config.OpeningMaxWidth, remaining);
-                float width     = rng.Range(config.OpeningMinWidth, maxWidth);
-
-                float gapRoom   = remaining - width;
-                float gapBefore = gapRoom > 0f ? rng.Range(0f, gapRoom) : 0f;
-
-                openings.Add(new OpeningSpec(cursor + gapBefore, width));
-                cursor = cursor + gapBefore + width + kMinStubBetweenOpenings;
-            }
-
-            return openings;
         }
 
         // ──────────────────────────────────────────────────────────────────────────

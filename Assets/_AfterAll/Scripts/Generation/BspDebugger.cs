@@ -7,11 +7,9 @@ using UnityEditor;
 namespace AfterAll.Generation
 {
     /// <summary>
-    /// Editor-only debug visualiser for BSP partitioning.
-    /// Add this to any scene GameObject, assign a MapConfig, and the gizmos
-    /// will draw the leaf regions and partition boundaries in the Scene view.
-    ///
-    /// Step 1 only — no meshes are spawned here.
+    /// Editor-only debug visualiser for BSP partitioning and wall layout.
+    /// Assign MapConfig — tweak wall thickness, openings, etc. and see the result
+    /// in Scene view without spawning meshes.
     /// </summary>
     [AddComponentMenu("AfterAll/Generation/BSP Debugger")]
     public class BspDebugger : MonoBehaviour
@@ -23,14 +21,20 @@ namespace AfterAll.Generation
         [SerializeField] private int _seedOverride = -1;
 
         [Header("Visibility")]
-        [SerializeField] private bool _drawRooms      = true;
-        [SerializeField] private bool _drawBoundaries = true;
-        [SerializeField] private bool _drawLabels     = true;
+        [SerializeField] private bool _drawRooms           = true;
+        [SerializeField] private bool _drawBoundaries      = false;
+        [SerializeField] private bool _drawWalls             = true;
+        [SerializeField] private bool _drawOpenings          = true;
+        [SerializeField] private bool _drawWallHeight        = true;
+        [SerializeField] private bool _applyConnectivityPass = true;
+        [SerializeField] private bool _drawLabels            = true;
 
         [Header("Colours")]
         [SerializeField] private Color _roomShallowColor = new Color(0.25f, 0.85f, 0.35f, 0.30f);
         [SerializeField] private Color _roomDeepColor    = new Color(0.35f, 0.45f, 1.00f, 0.30f);
         [SerializeField] private Color _boundaryColor    = new Color(1.00f, 0.90f, 0.10f, 1.00f);
+        [SerializeField] private Color _wallColor          = new Color(0.95f, 0.55f, 0.15f, 0.85f);
+        [SerializeField] private Color _openingColor     = new Color(0.20f, 1.00f, 0.90f, 0.70f);
         [SerializeField] private Color _chunkBorderColor = new Color(0.00f, 0.90f, 1.00f, 1.00f);
 
         // ──────────────────────────────────────────────────────────────────────────
@@ -55,10 +59,37 @@ namespace AfterAll.Generation
             if (_drawBoundaries)
                 DrawBoundaries(origin, result);
 
+            if (_drawWalls)
+                DrawWallLayout(origin, result);
+
 #if UNITY_EDITOR
             if (_drawLabels)
                 DrawLabels(origin, result, _config.MaxDepth);
 #endif
+        }
+
+        private void DrawWallLayout(Vector3 origin, BspResult bsp)
+        {
+            int seed = _seedOverride >= 0 ? _seedOverride : _config.Seed;
+
+            var rootRng = new Rng(seed);
+            var wallRng = rootRng.Derive(1);
+
+            var spec = WallLayout.Build(bsp, _config, wallRng);
+
+            if (_applyConnectivityPass)
+                spec = ConnectivityPass.Apply(bsp, spec, _config.OpeningMinWidth);
+
+            float wallHeight = _drawWallHeight ? _config.WallHeight : 0f;
+
+            WallGizmoDrawer.DrawChunk(
+                origin,
+                spec,
+                _config.WallThickness,
+                _wallColor,
+                _openingColor,
+                _drawOpenings,
+                wallHeight);
         }
 
         private void DrawChunkBorder(Vector3 origin, float size)

@@ -28,7 +28,7 @@ namespace AfterAll.Generation
             Rect  bounds  = spec.ChunkBounds;
             float panelY    = spec.WallHeight;
             float halfT     = config.WallThickness * 0.5f;
-            float roomInset = config.LightRoomInset;
+            float roomInset = Mathf.Min(config.LightRoomInset, config.MinRoomSize * 0.45f);
 
             float worldXMin = worldOrigin.x + bounds.xMin;
             float worldXMax = worldOrigin.x + bounds.xMax;

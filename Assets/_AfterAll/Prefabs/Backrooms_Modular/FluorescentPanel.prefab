@@ -63,7 +63,7 @@ MeshRenderer:
   m_RayTraceProcedural: 0
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
+  m_SmallMeshCulling: 0
   m_ForceMeshLod: -1
   m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
@@ -105,14 +105,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ec515630dba486a4ebccd0d67da495d1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.FluorescentLight
-  _spot: {fileID: 7208831411558647822}
-  _point: {fileID: 4061912701517991042}
-  _panel: {fileID: 2943957280117053927}
+  _emissionColor: {r: 0.94, g: 0.97, b: 0.82, a: 1}
+  _emissionIntensity: 7.5
   _flickerEnabled: 1
   _minIdleSeconds: 4
   _maxIdleSeconds: 14
-  _range: 40
-  _useDistanceActivation: 1
 --- !u!1 &4889902080107169408
 GameObject:
   m_ObjectHideFlags: 0
@@ -153,17 +150,17 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4889902080107169408}
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 13
   m_Type: 0
   m_Color: {r: 0.94, g: 0.97, b: 0.82, a: 1}
   m_Intensity: 32
-  m_Range: 40
+  m_Range: 7
   m_SpotAngle: 130.78136
   m_InnerSpotAngle: 73.316666
   m_CookieSize2D: {x: 0.5, y: 0.5}
   m_Shadows:
-    m_Type: 2
+    m_Type: 0
     m_Resolution: -1
     m_CustomResolution: -1
     m_Strength: 1
@@ -280,12 +277,12 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7032130892786030621}
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 13
   m_Type: 2
   m_Color: {r: 0.94, g: 0.97, b: 0.82, a: 1}
   m_Intensity: 8
-  m_Range: 40
+  m_Range: 7
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
   m_CookieSize2D: {x: 0.5, y: 0.5}

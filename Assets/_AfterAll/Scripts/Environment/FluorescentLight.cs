@@ -1,110 +1,65 @@
 using System.Collections;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace AfterAll.Environment
 {
     /// <summary>
-    /// Fluorescent troffer — drives spot + point child lights and panel emission together.
-    /// One Range value controls culling distance and sets both lights' Light.range when active.
+    /// Fluorescent troffer — flicker settings only. FluorescentLightManager drives emission + lights.
     /// </summary>
+    [DefaultExecutionOrder(50)]
     public class FluorescentLight : MonoBehaviour
     {
         static readonly int EmissionColorId = Shader.PropertyToID("_EmissionColor");
 
-        [Header("References")]
-        [FormerlySerializedAs("_light")]
-        [SerializeField] private Light    _spot;
-        [SerializeField] private Light    _point;
-        [SerializeField] private Renderer _panel;
+        [Header("Emission")]
+        [ColorUsage(false, true)]
+        [SerializeField] private Color  _emissionColor = new Color(0.94f, 0.97f, 0.82f, 1f);
+        [SerializeField] private float    _emissionIntensity = 7.5f;
 
         [Header("Flicker")]
         [SerializeField] private bool  _flickerEnabled = true;
         [SerializeField] private float _minIdleSeconds = 4f;
         [SerializeField] private float _maxIdleSeconds = 14f;
 
-        [Header("Distance")]
-        [Tooltip("Panel and all lights turn on within this distance (metres). Sets Light.range on both.")]
-        [FormerlySerializedAs("_activationRange")]
-        [FormerlySerializedAs("_lightRange")]
-        [SerializeField] [Min(1f)] private float _range = 40f;
+        private Light    _spotLight;
+        private Light    _pointLight;
+        private float    _spotBaseIntensity;
+        private float    _pointBaseIntensity;
+        private bool     _lightsResolved;
 
-        [Tooltip("Disable the panel beyond Range to save GPU.")]
-        [SerializeField] private bool _useDistanceActivation = true;
+        private Renderer              _panel;
+        private MaterialPropertyBlock _propertyBlock;
+        private Color                 _baseEmission;
+        private Coroutine             _flickerRoutine;
+        private bool                  _hasEmission;
+        private bool                  _useSpot;
+        private bool                  _useFlicker;
+        private FluorescentLightTier  _tier = FluorescentLightTier.Off;
+        private float                 _quality = 1f;
 
-        private Light[]  _lights;
-        private float[]  _baseIntensities;
-        private Material _panelMaterial;
-        private Color    _baseEmission;
-        private Coroutine _flickerRoutine;
-        private bool     _hasEmission;
-        private bool     _activeByDistance;
+        public Vector3 WorldPosition => transform.position;
+        public Vector3 HorizontalPosition => transform.position;
+        public FluorescentLightTier CurrentTier => _tier;
 
         private void Awake()
         {
+            _panel = GetComponent<Renderer>();
+            _propertyBlock = new MaterialPropertyBlock();
             ResolveLights();
-
-            if (_panel == null)
-                _panel = GetComponent<Renderer>();
-
-            _lights          = CollectLights();
-            _baseIntensities = new float[_lights.Length];
-
-            for (int i = 0; i < _lights.Length; i++)
-            {
-                _baseIntensities[i] = _lights[i].intensity;
-                _lights[i].intensity = 0f;
-                _lights[i].range     = _range;
-                _lights[i].enabled   = false;
-            }
-
-            CacheEmission();
-        }
-
-        private void ResolveLights()
-        {
-            if (_spot != null && _point != null)
-                return;
-
-            foreach (var l in GetComponentsInChildren<Light>(true))
-            {
-                if (_spot == null && l.type == LightType.Spot)
-                    _spot = l;
-                else if (_point == null && l.type == LightType.Point)
-                    _point = l;
-            }
-        }
-
-        private Light[] CollectLights()
-        {
-            var list = new System.Collections.Generic.List<Light>(2);
-            if (_spot  != null) list.Add(_spot);
-            if (_point != null) list.Add(_point);
-            return list.ToArray();
+            SetupEmission();
         }
 
         private void OnEnable()
         {
+            _tier = FluorescentLightTier.Off;
+            _quality = 1f;
+            ApplyTier(FluorescentLightTier.Off, 1f, false, false);
             FluorescentLightManager.EnsureExists().Register(this);
-
-            if (!_useDistanceActivation)
-            {
-                _activeByDistance = true;
-                SetActive(true);
-                if (_flickerEnabled && _lights.Length > 0)
-                    _flickerRoutine = StartCoroutine(FlickerLoop());
-            }
-            else
-            {
-                _activeByDistance = false;
-                SetActive(false);
-            }
         }
 
         private void OnDisable()
         {
-            if (FluorescentLightManager.Instance != null)
-                FluorescentLightManager.Instance.Unregister(this);
+            FluorescentLightManager.Instance?.Unregister(this);
 
             if (_flickerRoutine != null)
             {
@@ -112,56 +67,139 @@ namespace AfterAll.Environment
                 _flickerRoutine = null;
             }
 
-            SetActive(true);
+            RestoreDefaultVisuals();
         }
 
-        public void RefreshCullState(Vector3 playerPos)
+        public void ApplyTier(FluorescentLightTier tier, float quality, bool useSpot, bool useFlicker)
         {
-            if (!_useDistanceActivation)
+            quality = Mathf.Clamp(quality, 0.2f, 1f);
+
+            if (_tier == tier
+                && Mathf.Approximately(_quality, quality)
+                && _useSpot == useSpot
+                && _useFlicker == useFlicker)
                 return;
 
-            bool inRange = (playerPos - transform.position).sqrMagnitude <= _range * _range;
-            if (inRange == _activeByDistance)
-                return;
+            _tier = tier;
+            _quality = quality;
+            _useSpot = useSpot;
+            _useFlicker = useFlicker;
 
-            _activeByDistance = inRange;
+            bool emissionOn = tier != FluorescentLightTier.Off;
 
-            if (inRange)
-            {
-                SetActive(true);
-                if (_flickerEnabled && _lights.Length > 0 && _flickerRoutine == null)
-                    _flickerRoutine = StartCoroutine(FlickerLoop());
-            }
-            else
-            {
-                if (_flickerRoutine != null)
-                {
-                    StopCoroutine(_flickerRoutine);
-                    _flickerRoutine = null;
-                }
+            if (_panel != null)
+                _panel.enabled = true;
 
-                SetActive(false);
-            }
+            ApplyLightComponents(tier, quality, useSpot);
+            SetPanelEmission(emissionOn ? 1f : 0f);
+            UpdateFlickerState();
         }
+
+        public void ApplyTier(FluorescentLightTier tier, float quality) =>
+            ApplyTier(tier, quality, tier == FluorescentLightTier.Full, tier == FluorescentLightTier.Full);
 
         public void TriggerFlicker()
         {
-            if (_lights.Length == 0 || !isActiveAndEnabled || !_activeByDistance)
+            if (!isActiveAndEnabled || !_useFlicker)
                 return;
 
             StartCoroutine(FlickerBurst());
         }
 
-        private void CacheEmission()
+        public static float HorizontalDistanceSqr(Vector3 a, Vector3 b)
+        {
+            float dx = a.x - b.x;
+            float dz = a.z - b.z;
+            return dx * dx + dz * dz;
+        }
+
+        private void ApplyLightComponents(FluorescentLightTier tier, float quality, bool useSpot)
+        {
+            ResolveLights();
+
+            bool point = tier == FluorescentLightTier.Full
+                      || tier == FluorescentLightTier.CorridorPartial;
+            bool spot = point && useSpot;
+
+            float pointScale = tier == FluorescentLightTier.CorridorPartial && !useSpot
+                ? quality
+                : 1f;
+
+            SetLightState(_spotLight, spot, _spotBaseIntensity, 1f);
+            SetLightState(_pointLight, point, _pointBaseIntensity, pointScale);
+        }
+
+        private static void SetLightState(Light light, bool active, float baseIntensity, float scale)
+        {
+            if (light == null)
+                return;
+
+            light.enabled   = active;
+            light.intensity = active ? baseIntensity * scale : 0f;
+            light.shadows   = LightShadows.None;
+        }
+
+        private void ResolveLights()
+        {
+            if (_lightsResolved)
+                return;
+
+            foreach (var light in GetComponentsInChildren<Light>(true))
+            {
+                if (light.type == LightType.Spot)
+                {
+                    _spotLight = light;
+                    _spotBaseIntensity = light.intensity;
+                }
+                else if (light.type == LightType.Point)
+                {
+                    _pointLight = light;
+                    _pointBaseIntensity = light.intensity;
+                }
+
+                light.intensity = 0f;
+                light.enabled   = false;
+                light.shadows   = LightShadows.None;
+            }
+
+            _lightsResolved = true;
+        }
+
+        private void SetupEmission()
         {
             if (_panel == null)
                 return;
 
-            _panelMaterial = _panel.material;
-            if (_panelMaterial != null && _panelMaterial.HasProperty(EmissionColorId))
+            _baseEmission = _emissionColor * _emissionIntensity;
+            _hasEmission  = _baseEmission.maxColorComponent > 0.01f;
+
+            if (!_hasEmission)
+                return;
+
+            var shared = _panel.sharedMaterial;
+            if (shared == null)
+                return;
+
+            shared.EnableKeyword("_EMISSION");
+            shared.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+
+            if (shared.HasProperty(EmissionColorId))
+                shared.SetColor(EmissionColorId, _baseEmission);
+        }
+
+        private void UpdateFlickerState()
+        {
+            if (_useFlicker && _tier != FluorescentLightTier.Off && _tier != FluorescentLightTier.EmissionOnly)
             {
-                _baseEmission = _panelMaterial.GetColor(EmissionColorId);
-                _hasEmission  = _baseEmission.maxColorComponent > 0f;
+                if (_flickerEnabled && _flickerRoutine == null && isActiveAndEnabled)
+                    _flickerRoutine = StartCoroutine(FlickerLoop());
+                return;
+            }
+
+            if (_flickerRoutine != null)
+            {
+                StopCoroutine(_flickerRoutine);
+                _flickerRoutine = null;
             }
         }
 
@@ -173,7 +211,8 @@ namespace AfterAll.Environment
             {
                 if (!ShouldRunFlicker())
                 {
-                    ApplyIntensity(_activeByDistance ? 1f : 0f);
+                    ApplyVisualIntensity(1f);
+                    SetPanelEmission(1f);
                     yield return wait;
                     continue;
                 }
@@ -188,61 +227,69 @@ namespace AfterAll.Environment
             int steps = Random.Range(2, 5);
             for (int i = 0; i < steps; i++)
             {
-                ApplyIntensity(Random.Range(0.2f, 0.75f));
+                ApplyVisualIntensity(Random.Range(0.2f, 0.75f) * _quality);
                 yield return new WaitForSeconds(Random.Range(0.04f, 0.14f));
             }
 
             if (Random.value < 0.15f)
             {
-                ApplyIntensity(0f);
+                ApplyVisualIntensity(0f);
                 yield return new WaitForSeconds(Random.Range(0.05f, 0.12f));
             }
 
-            ApplyIntensity(1f);
+            ApplyVisualIntensity(1f);
+            SetPanelEmission(1f);
         }
 
-        private bool ShouldRunFlicker() => _flickerEnabled && _activeByDistance;
+        private bool ShouldRunFlicker() =>
+            _flickerEnabled && _useFlicker;
 
-        private void SetActive(bool active)
-        {
-            for (int i = 0; i < _lights.Length; i++)
-            {
-                var l = _lights[i];
-                if (l == null) continue;
-
-                l.enabled   = active;
-                l.range     = _range;
-                l.intensity = active ? _baseIntensities[i] : 0f;
-            }
-
-            if (_panel != null)
-                _panel.enabled = active;
-
-            ApplyIntensity(active ? 1f : 0f);
-        }
-
-        private void ApplyIntensity(float normalized)
+        private void ApplyVisualIntensity(float normalized)
         {
             normalized = Mathf.Clamp01(normalized);
 
-            for (int i = 0; i < _lights.Length; i++)
+            if (_spotLight != null && _spotLight.enabled)
+                _spotLight.intensity = _spotBaseIntensity * normalized;
+
+            if (_pointLight != null && _pointLight.enabled)
             {
-                if (_lights[i] != null && _lights[i].enabled)
-                    _lights[i].intensity = _baseIntensities[i] * normalized;
+                float pointScale = _tier == FluorescentLightTier.CorridorPartial && !_useSpot
+                    ? _quality
+                    : 1f;
+                _pointLight.intensity = _pointBaseIntensity * normalized * pointScale;
             }
 
-            if (!_hasEmission || _panelMaterial == null)
+            if (_useFlicker)
+                SetPanelEmission(normalized);
+        }
+
+        private void SetPanelEmission(float normalized)
+        {
+            if (!_hasEmission || _panel == null)
                 return;
 
-            _panelMaterial.SetColor(EmissionColorId, _baseEmission * normalized);
+            _panel.GetPropertyBlock(_propertyBlock);
+
+            if (normalized <= 0.001f)
+            {
+                _propertyBlock.SetColor(EmissionColorId, Color.black);
+            }
+            else
+            {
+                var color = _baseEmission * normalized;
+                _propertyBlock.SetColor(EmissionColorId, color);
+            }
+
+            _panel.SetPropertyBlock(_propertyBlock);
         }
 
-#if UNITY_EDITOR
-        private void OnDrawGizmosSelected()
+        private void RestoreDefaultVisuals()
         {
-            Gizmos.color = new Color(1f, 0.95f, 0.4f, 0.3f);
-            Gizmos.DrawWireSphere(transform.position, _range);
+            SetLightState(_spotLight, false, _spotBaseIntensity, 1f);
+            SetLightState(_pointLight, false, _pointBaseIntensity, 1f);
+
+            if (_panel != null)
+                _panel.SetPropertyBlock(null);
         }
-#endif
     }
 }

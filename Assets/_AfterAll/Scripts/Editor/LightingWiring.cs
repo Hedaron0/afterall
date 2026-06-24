@@ -22,30 +22,18 @@ namespace AfterAll.EditorTools
                 return;
             }
 
-            var controller = fluorescent.GetComponent<FluorescentLight>();
-            if (controller == null)
-                controller = fluorescent.AddComponent<FluorescentLight>();
-
-            Light spot = null, point = null;
-            foreach (var l in fluorescent.GetComponentsInChildren<Light>())
-            {
-                if (l.type == LightType.Spot)  spot  = l;
-                if (l.type == LightType.Point) point = l;
-            }
+            if (fluorescent.GetComponent<FluorescentLight>() == null)
+                fluorescent.AddComponent<FluorescentLight>();
 
             var panel = fluorescent.GetComponent<Renderer>();
-
-            var so = new SerializedObject(controller);
-            so.FindProperty("_spot").objectReferenceValue  = spot;
-            so.FindProperty("_point").objectReferenceValue = point;
-            so.FindProperty("_panel").objectReferenceValue = panel;
-            so.ApplyModifiedPropertiesWithoutUndo();
-
             if (panel != null)
             {
                 panel.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 panel.receiveShadows = false;
             }
+
+            foreach (var l in fluorescent.GetComponentsInChildren<Light>())
+                l.shadows = LightShadows.None;
 
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
             Debug.Log("[AfterAll] FluorescentLight wired on 'Fluorescent'. Save scene (Ctrl+S).");
@@ -73,7 +61,6 @@ namespace AfterAll.EditorTools
 
             var ceiling = (GameObject)PrefabUtility.InstantiatePrefab(ceilingAsset, root.transform);
             ceiling.name = "Ceiling";
-            // Keep Ceiling.prefab default offset (y = 4) — do not zero it out.
 
             var panel = GameObject.CreatePrimitive(PrimitiveType.Cube);
             panel.name = "FluorescentPanel";
@@ -108,43 +95,18 @@ namespace AfterAll.EditorTools
                 light.range = templateLight.range;
                 light.spotAngle = templateLight.spotAngle;
                 light.innerSpotAngle = templateLight.innerSpotAngle;
-                light.shadows = templateLight.shadows;
-                light.shadowStrength = templateLight.shadowStrength;
-                light.shadowBias = templateLight.shadowBias;
-                light.shadowNormalBias = templateLight.shadowNormalBias;
+                light.shadows = LightShadows.None;
 
                 lightGo.AddComponent<UnityEngine.Rendering.Universal.UniversalAdditionalLightData>();
             }
 
             panel.AddComponent<FluorescentLight>();
-            WireFluorescentOnPanel(panel);
 
             PrefabUtility.SaveAsPrefabAsset(root, OutputPrefabPath);
             Object.DestroyImmediate(root);
 
             AssetDatabase.Refresh();
             Debug.Log($"[AfterAll] Saved {OutputPrefabPath}. Drag into scene to replace ceiling tiles + old Point Lights.");
-        }
-
-        static void WireFluorescentOnPanel(GameObject panel)
-        {
-            var controller = panel.GetComponent<FluorescentLight>();
-            if (controller == null)
-                return;
-
-            Light spot = null, point = null;
-            foreach (var l in panel.GetComponentsInChildren<Light>())
-            {
-                if (l.type == LightType.Spot)  spot  = l;
-                if (l.type == LightType.Point) point = l;
-            }
-
-            var renderer = panel.GetComponent<Renderer>();
-            var so = new SerializedObject(controller);
-            so.FindProperty("_spot").objectReferenceValue  = spot;
-            so.FindProperty("_point").objectReferenceValue = point;
-            so.FindProperty("_panel").objectReferenceValue = renderer;
-            so.ApplyModifiedPropertiesWithoutUndo();
         }
     }
 }

@@ -97,8 +97,15 @@ namespace AfterAll.Generation
             _spawned.AddRange(GeometrySpawner.Spawn(spec, _config, origin, transform));
             LightPlacer.Place(spec, _config, lightRng, origin, transform, _spawned);
 
+            int lightCount = 0;
+            for (int i = 0; i < _spawned.Count; i++)
+            {
+                if (_spawned[i] != null && _spawned[i].name == "Light")
+                    lightCount++;
+            }
+
             Debug.Log($"[Chunk] Generated {(_managed ? _coord.ToString() : "standalone")} " +
-                      $"seed={seed}: {bsp.Rooms.Count} rooms, {_spawned.Count} objects.", this);
+                      $"seed={seed}: {bsp.Rooms.Count} rooms, {_spawned.Count} objects, {lightCount} lights.", this);
         }
 
         [ContextMenu("Despawn")]

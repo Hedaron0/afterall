@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7a4c2b18f4035249a1d6e5f7b8c9012, type: 3}
+  m_Name: FluorescentLightBudget_PC
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.LightRenderSettings
+  bubbleRadius: 11
+  bubbleFlickerRadius: 11
+  maxBubblePanels: 30
+  spotLightMaxDistance: 30
+  viewHalfAngle: 75
+  rayCount: 30
+  rayMaxDistance: 55
+  wallOcclusionMask:
+    serializedVersion: 2
+    m_Bits: 64
+  requireLineOfSight: 0
+  lineOfSightEyeHeight: 1.6
+  occlusionEndSlack: 0.35
+  floorOcclusionHeight: 0.5
+  anchorStartDistance: 11
+  anchorSpacing: 5.67
+  anchorInfluenceRadius: 4.01
+  maxPanelsPerAnchor: 14
+  maxCorridorPanels: 100
+  rearCutoffDistance: 0
+  allowRearEmission: 0
+  rearEmissionQuality: 0.1
+  corridorQualityFadeDistance: 45.1
+  minFarQuality: 0.2
+  gizmoShowBubble: 1
+  gizmoShowSpotRadius: 1
+  gizmoShowViewCone: 1
+  gizmoShowRays: 1
+  gizmoShowAnchors: 1
+  gizmoShowAnchorRadii: 1
+  gizmoShowPanelStates: 1
+  gizmoShowLabels: 0
+  spatialCellSize: 6
+  tickInterval: 0.15
