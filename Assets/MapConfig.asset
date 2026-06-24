@@ -31,3 +31,12 @@ MonoBehaviour:
   _openingMinWidth: 0.9
   _openingMaxWidth: 2.2
   _openingEdgeMargin: 0.8
+  _loadRadius: 1
+  _addPerimeterWalls: 1
+  _lightPanelPrefab: {fileID: 1513273640798747932, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+  _lightDarkChance: 0.15
+  _lightRoomInset: 0.8
+  _ceilingTileSize: 1.327
+  _lightSpacingTiles: 3
+  _lightGridOffsetX: 0.221
+  _lightGridOffsetZ: 0.483

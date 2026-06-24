@@ -4,30 +4,30 @@ using UnityEngine;
 namespace AfterAll.Generation
 {
     /// <summary>
-    /// Owns the geometry for one 32×32m chunk.
-    /// Drives the Generate → Despawn lifecycle; all spawned objects are children
-    /// of this GameObject so pooling/unloading is a single SetActive / Destroy call.
-    ///
-    /// Usage (test):
-    ///   1. Add this component to an empty GameObject in the scene.
-    ///   2. Assign a MapConfig asset (make sure it has the three prefabs set).
-    ///   3. Hit Play — or right-click the component → Generate.
+    /// Owns the geometry for one chunk region.
+    /// Driven by ChunkManager for streaming, or used standalone for single-chunk tests.
     /// </summary>
     [AddComponentMenu("AfterAll/Generation/Chunk")]
     public class Chunk : MonoBehaviour
     {
         [SerializeField] private MapConfig _config;
 
-        [Tooltip("Override seed for quick iteration. −1 = use MapConfig.Seed.")]
+        [Tooltip("Override seed for standalone testing only. −1 = derive from grid coord or MapConfig.")]
         [SerializeField] private int _seedOverride = -1;
 
-        [Tooltip("World-space XZ position of this chunk's (0,0) local corner.")]
+        [Tooltip("Standalone mode: world XZ of local (0,0). Ignored when managed by ChunkManager.")]
         [SerializeField] private Vector2 _worldOrigin = Vector2.zero;
 
-        [Tooltip("Generate automatically when the scene starts (useful for the single-chunk test).")]
+        [Tooltip("Standalone mode only — auto-generate on Start when not managed by ChunkManager.")]
         [SerializeField] private bool _generateOnStart = true;
 
         private readonly List<GameObject> _spawned = new();
+
+        private ChunkCoord _coord;
+        private bool       _managed;
+
+        public ChunkCoord Coord     => _coord;
+        public bool       IsManaged => _managed;
 
         // ──────────────────────────────────────────────────────────────────────────
         //  Unity lifecycle
@@ -35,14 +35,32 @@ namespace AfterAll.Generation
 
         private void Start()
         {
-            if (_generateOnStart)
+            if (!_managed && _generateOnStart && !IsStreamingActive())
                 Generate();
         }
+
+        private static bool IsStreamingActive() =>
+            FindAnyObjectByType<ChunkManager>() != null;
 
         private void OnDestroy() => Despawn();
 
         // ──────────────────────────────────────────────────────────────────────────
-        //  Public API (also accessible via right-click context menu in Inspector)
+        //  ChunkManager API
+        // ──────────────────────────────────────────────────────────────────────────
+
+        /// <summary>Called by ChunkManager before the first Generate().</summary>
+        public void SetupManaged(MapConfig config, ChunkCoord coord, Transform parent)
+        {
+            _config  = config;
+            _coord   = coord;
+            _managed = true;
+
+            transform.SetParent(parent, false);
+            name = $"Chunk_{coord.X}_{coord.Z}";
+        }
+
+        // ──────────────────────────────────────────────────────────────────────────
+        //  Generation
         // ──────────────────────────────────────────────────────────────────────────
 
         [ContextMenu("Generate")]
@@ -56,23 +74,31 @@ namespace AfterAll.Generation
 
             Despawn();
 
-            int seed = _seedOverride >= 0 ? _seedOverride : _config.Seed;
+            float chunkSize = _config.ChunkSize;
+            Vector2 origin  = _managed
+                ? _coord.WorldOrigin(chunkSize)
+                : _worldOrigin;
 
-            // BSP uses the raw chunk seed.
-            var chunkBounds = new UnityEngine.Rect(0f, 0f, _config.ChunkSize, _config.ChunkSize);
+            transform.position = new Vector3(origin.x, 0f, origin.y);
+
+            int seed = ResolveSeed();
+
+            var chunkBounds = new Rect(0f, 0f, chunkSize, chunkSize);
             var bsp         = BspPartitioner.Partition(chunkBounds, _config, seed);
 
-            // Each sub-system gets its own derived seed — changing one won't shift the others.
             var rootRng  = new Rng(seed);
-            var wallRng  = rootRng.Derive(1); // wall openings
-            var lightRng = rootRng.Derive(2); // light dark-patches
+            var wallRng  = rootRng.Derive(1);
+            var lightRng = rootRng.Derive(2);
 
-            var spec = WallLayout.Build(bsp, _config, wallRng);
-            _spawned.AddRange(GeometrySpawner.Spawn(spec, _config, _worldOrigin, transform));
-            LightPlacer.Place(spec, _config, lightRng, _worldOrigin, transform, _spawned);
+            ChunkCoord? stitchCoord = _managed ? _coord : (ChunkCoord?)null;
+            var spec = WallLayout.Build(bsp, _config, wallRng, stitchCoord);
+            spec = ConnectivityPass.Apply(bsp, spec, _config.OpeningMinWidth);
 
-            Debug.Log($"[Chunk] Generated seed={seed}: {bsp.Rooms.Count} rooms, " +
-                      $"{bsp.Boundaries.Count} boundaries, {_spawned.Count} objects.", this);
+            _spawned.AddRange(GeometrySpawner.Spawn(spec, _config, origin, transform));
+            LightPlacer.Place(spec, _config, lightRng, origin, transform, _spawned);
+
+            Debug.Log($"[Chunk] Generated {(_managed ? _coord.ToString() : "standalone")} " +
+                      $"seed={seed}: {bsp.Rooms.Count} rooms, {_spawned.Count} objects.", this);
         }
 
         [ContextMenu("Despawn")]
@@ -90,6 +116,17 @@ namespace AfterAll.Generation
             }
 
             _spawned.Clear();
+        }
+
+        private int ResolveSeed()
+        {
+            if (_seedOverride >= 0)
+                return _seedOverride;
+
+            if (_managed)
+                return new Rng(_config.Seed).Derive(_coord.X, _coord.Z).Seed;
+
+            return _config.Seed;
         }
     }
 }

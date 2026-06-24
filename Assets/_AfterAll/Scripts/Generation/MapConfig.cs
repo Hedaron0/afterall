@@ -45,7 +45,7 @@ namespace AfterAll.Generation
 
         [Header("Wall Geometry")]
         [Tooltip("Wall thickness in metres. Keep thin — Backrooms walls are office partitions.")]
-        [SerializeField] [Range(0.1f, 0.5f)] private float _wallThickness = 0.2f;
+        [SerializeField] [Range(0.02f, 0.5f)] private float _wallThickness = 0.04f;
 
         [Tooltip("Floor and ceiling slab thickness in metres.")]
         [SerializeField] [Min(0.1f)] private float _slabThickness = 0.4f;
@@ -66,19 +66,41 @@ namespace AfterAll.Generation
         [Tooltip("Minimum distance from each boundary end to the nearest opening edge, in metres.")]
         [SerializeField] [Min(0f)] private float _openingEdgeMargin = 0.8f;
 
+        [Header("Streaming")]
+        [Tooltip("Chunk grid radius around the player (1 = 5 chunks, 2 = 13 chunks circular).")]
+        [SerializeField] [Range(1, 4)] private int _loadRadius = 1;
+
         [Header("Perimeter")]
         [Tooltip("Spawn solid walls along all four chunk edges. Disable when ChunkManager stitches neighbours.")]
         [SerializeField] private bool _addPerimeterWalls = true;
 
-        [Header("Lights")]
+        [Header("Lights — Prefab")]
         [Tooltip("FluorescentPanel prefab from Assets/_AfterAll/Prefabs/Backrooms_Modular/FluorescentPanel.prefab")]
         [SerializeField] private GameObject _lightPanelPrefab;
 
-        [Tooltip("Grid spacing between ceiling lights in metres. Backrooms feel: ~3.6m.")]
-        [SerializeField] [Min(1f)] private float _lightSpacing = 3.6f;
-
         [Tooltip("Probability that a light grid position is left dark (0 = all lit, 1 = all dark).")]
         [SerializeField] [Range(0f, 0.9f)] private float _lightDarkChance = 0.15f;
+
+        [Tooltip("Minimum clearance from room edges when placing lights (metres).")]
+        [SerializeField] [Min(0.2f)] private float _lightRoomInset = 0.8f;
+
+        [Header("Lights — Grid Alignment")]
+        [Tooltip("World-space size of one ceiling tile (measured from reference panels in scene). " +
+                 "Default 1.327 m — re-measure if you change the ceiling shader tiling.")]
+        [SerializeField] [Min(0.1f)] private float _ceilingTileSize = 1.327f;
+
+        [Tooltip("How many ceiling tiles between consecutive lights. " +
+                 "3 tiles × 1.327 m = ~3.98 m spacing — matches Backrooms troffer rows.")]
+        [SerializeField] [Range(1, 8)] private int _lightSpacingTiles = 3;
+
+        [Tooltip("World-space X anchor of the light grid. " +
+                 "Measured from scene reference panels so lights sit in ceiling tile centres. " +
+                 "Default 0.221 m — retune if ceiling tile size changes.")]
+        [SerializeField] private float _lightGridOffsetX = 0.221f;
+
+        [Tooltip("World-space Z anchor of the light grid. " +
+                 "Default 0.483 m — retune if ceiling tile size changes.")]
+        [SerializeField] private float _lightGridOffsetZ = 0.483f;
 
         public int Seed              => _seed;
         public float ChunkSize       => _chunkSize;
@@ -103,10 +125,19 @@ namespace AfterAll.Generation
         public float OpeningMaxWidth       => _openingMaxWidth;
         public float OpeningEdgeMargin     => _openingEdgeMargin;
 
+        public int   LoadRadius              => _loadRadius;
+
         public bool AddPerimeterWalls      => _addPerimeterWalls;
 
-        public GameObject LightPanelPrefab => _lightPanelPrefab;
-        public float LightSpacing          => _lightSpacing;
+        public GameObject LightPanelPrefab  => _lightPanelPrefab;
         public float LightDarkChance       => _lightDarkChance;
+        public float LightRoomInset        => _lightRoomInset;
+
+        public float CeilingTileSize       => _ceilingTileSize;
+        public int   LightSpacingTiles     => _lightSpacingTiles;
+        /// <summary>Derived light-to-light spacing in metres (= CeilingTileSize × LightSpacingTiles).</summary>
+        public float LightSpacing          => _ceilingTileSize * _lightSpacingTiles;
+        public float LightGridOffsetX      => _lightGridOffsetX;
+        public float LightGridOffsetZ      => _lightGridOffsetZ;
     }
 }

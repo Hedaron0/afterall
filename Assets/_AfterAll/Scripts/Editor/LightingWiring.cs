@@ -26,14 +26,19 @@ namespace AfterAll.EditorTools
             if (controller == null)
                 controller = fluorescent.AddComponent<FluorescentLight>();
 
-            var light = fluorescent.GetComponentInChildren<Light>();
+            Light spot = null, point = null;
+            foreach (var l in fluorescent.GetComponentsInChildren<Light>())
+            {
+                if (l.type == LightType.Spot)  spot  = l;
+                if (l.type == LightType.Point) point = l;
+            }
+
             var panel = fluorescent.GetComponent<Renderer>();
 
             var so = new SerializedObject(controller);
-            so.FindProperty("_light").objectReferenceValue = light;
+            so.FindProperty("_spot").objectReferenceValue  = spot;
+            so.FindProperty("_point").objectReferenceValue = point;
             so.FindProperty("_panel").objectReferenceValue = panel;
-            if (light != null)
-                so.FindProperty("_baseIntensity").floatValue = light.intensity;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             if (panel != null)
@@ -127,13 +132,18 @@ namespace AfterAll.EditorTools
             if (controller == null)
                 return;
 
-            var light = panel.GetComponentInChildren<Light>();
+            Light spot = null, point = null;
+            foreach (var l in panel.GetComponentsInChildren<Light>())
+            {
+                if (l.type == LightType.Spot)  spot  = l;
+                if (l.type == LightType.Point) point = l;
+            }
+
             var renderer = panel.GetComponent<Renderer>();
             var so = new SerializedObject(controller);
-            so.FindProperty("_light").objectReferenceValue = light;
+            so.FindProperty("_spot").objectReferenceValue  = spot;
+            so.FindProperty("_point").objectReferenceValue = point;
             so.FindProperty("_panel").objectReferenceValue = renderer;
-            if (light != null)
-                so.FindProperty("_baseIntensity").floatValue = light.intensity;
             so.ApplyModifiedPropertiesWithoutUndo();
         }
     }

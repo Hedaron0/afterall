@@ -53,7 +53,7 @@ namespace AfterAll.Generation
             // Leaf: emit a room and stop
             if (atMaxDepth || earlyStop || (!canSplitX && !canSplitY))
             {
-                rooms.Add(new RoomSpec(bounds, depth));
+                rooms.Add(new RoomSpec(bounds, depth, roomId: rooms.Count));
                 return;
             }
 

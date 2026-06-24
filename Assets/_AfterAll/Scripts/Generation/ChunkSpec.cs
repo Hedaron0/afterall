@@ -5,7 +5,7 @@ namespace AfterAll.Generation
 {
     /// <summary>
     /// Self-contained data package for one chunk.
-    /// Produced by WallLayout; consumed by GeometrySpawner.
+    /// Produced by WallLayout; consumed by GeometrySpawner and future passes.
     /// All coordinates are in local chunk space (0,0 → chunkSize,chunkSize).
     /// </summary>
     public sealed class ChunkSpec
@@ -19,16 +19,25 @@ namespace AfterAll.Generation
         /// <summary>Thickness of the floor and ceiling slabs in metres.</summary>
         public float SlabThickness { get; }
 
-        /// <summary>All partition boundaries with their doorway openings resolved.</summary>
+        /// <summary>All wall faces with their doorway openings resolved.</summary>
         public IReadOnlyList<WallSpec> Walls { get; }
 
+        /// <summary>
+        /// All leaf rooms produced by BSP.
+        /// Future passes (props, room themes, nav-mesh hints) iterate this directly
+        /// instead of re-deriving rooms from wall geometry.
+        /// </summary>
+        public IReadOnlyList<RoomSpec> Rooms { get; }
+
         public ChunkSpec(Rect chunkBounds, float wallHeight, float slabThickness,
-                         IReadOnlyList<WallSpec> walls)
+                         IReadOnlyList<WallSpec> walls,
+                         IReadOnlyList<RoomSpec> rooms = null)
         {
             ChunkBounds    = chunkBounds;
             WallHeight     = wallHeight;
             SlabThickness  = slabThickness;
             Walls          = walls;
+            Rooms          = rooms ?? System.Array.Empty<RoomSpec>();
         }
     }
 }

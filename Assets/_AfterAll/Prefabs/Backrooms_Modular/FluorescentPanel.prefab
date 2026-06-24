@@ -29,7 +29,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 2.103, y: 3.996498, z: -1.905}
-  m_LocalScale: {x: 1.35265, y: 0.007003827, z: 1.3518698}
+  m_LocalScale: {x: 1.3, y: 0.007003827, z: 1.3}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 8887077753155741309}
@@ -105,13 +105,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ec515630dba486a4ebccd0d67da495d1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.FluorescentLight
-  _light: {fileID: 7208831411558647822}
+  _spot: {fileID: 7208831411558647822}
+  _point: {fileID: 4061912701517991042}
   _panel: {fileID: 2943957280117053927}
-  _baseIntensity: 32
   _flickerEnabled: 1
   _minIdleSeconds: 4
   _maxIdleSeconds: 14
-  _mobileCullDistance: 25
+  _range: 40
+  _useDistanceActivation: 1
 --- !u!1 &4889902080107169408
 GameObject:
   m_ObjectHideFlags: 0
@@ -152,12 +153,12 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4889902080107169408}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 13
   m_Type: 0
   m_Color: {r: 0.94, g: 0.97, b: 0.82, a: 1}
   m_Intensity: 32
-  m_Range: 9
+  m_Range: 40
   m_SpotAngle: 130.78136
   m_InnerSpotAngle: 73.316666
   m_CookieSize2D: {x: 0.5, y: 0.5}
@@ -279,12 +280,12 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7032130892786030621}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 13
   m_Type: 2
   m_Color: {r: 0.94, g: 0.97, b: 0.82, a: 1}
   m_Intensity: 8
-  m_Range: 8
+  m_Range: 40
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
   m_CookieSize2D: {x: 0.5, y: 0.5}

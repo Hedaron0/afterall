@@ -4,14 +4,14 @@ using UnityEngine;
 namespace AfterAll.Generation
 {
     /// <summary>
-    /// Places FluorescentPanel prefabs in a uniform grid across the ceiling.
-    /// Some positions are randomly culled to create the dark-patch Backrooms feel.
-    ///
-    /// Uses a dedicated child Rng (Derive(2) in Chunk) so the light pattern is
-    /// fully independent of BSP splits and wall openings.
+    /// Places FluorescentPanel prefabs on a world-space grid locked to the ceiling tile pattern.
+    /// Skips grid cells that fall inside a wall or outside all rooms.
     /// </summary>
     public static class LightPlacer
     {
+        // Panel prefab scale ~1.3 m — keep centre this far from wall centre-lines.
+        private const float kPanelHalfExtent = 0.65f;
+
         public static void Place(
             ChunkSpec spec, MapConfig config, Rng rng,
             Vector2 worldOrigin, Transform parent, List<GameObject> spawned)
@@ -23,27 +23,38 @@ namespace AfterAll.Generation
             }
 
             float spacing = config.LightSpacing;
+            float anchorX = config.LightGridOffsetX;
+            float anchorZ = config.LightGridOffsetZ;
             Rect  bounds  = spec.ChunkBounds;
+            float panelY    = spec.WallHeight;
+            float halfT     = config.WallThickness * 0.5f;
+            float roomInset = config.LightRoomInset;
 
-            // Panel sits just below the ceiling slab (panel Y scale is ~0.007m, negligible).
-            float panelY = spec.WallHeight - 0.004f;
+            float worldXMin = worldOrigin.x + bounds.xMin;
+            float worldXMax = worldOrigin.x + bounds.xMax;
+            float worldZMin = worldOrigin.y + bounds.yMin;
+            float worldZMax = worldOrigin.y + bounds.yMax;
 
-            // Fit as many lights as possible, then centre the grid in the chunk.
-            int countX = Mathf.Max(1, Mathf.FloorToInt(bounds.width  / spacing));
-            int countZ = Mathf.Max(1, Mathf.FloorToInt(bounds.height / spacing));
+            int nMin = Mathf.CeilToInt ((worldXMin - anchorX) / spacing);
+            int nMax = Mathf.FloorToInt((worldXMax - anchorX) / spacing);
+            int mMin = Mathf.CeilToInt ((worldZMin - anchorZ) / spacing);
+            int mMax = Mathf.FloorToInt((worldZMax - anchorZ) / spacing);
 
-            float startX = bounds.xMin + (bounds.width  - (countX - 1) * spacing) * 0.5f;
-            float startZ = bounds.yMin + (bounds.height - (countZ - 1) * spacing) * 0.5f;
-
-            for (int ix = 0; ix < countX; ix++)
+            for (int n = nMin; n <= nMax; n++)
             {
-                for (int iz = 0; iz < countZ; iz++)
+                for (int m = mMin; m <= mMax; m++)
                 {
                     if (rng.Chance(config.LightDarkChance))
-                        continue; // leave this spot dark
+                        continue;
 
-                    float wx = worldOrigin.x + startX + ix * spacing;
-                    float wz = worldOrigin.y + startZ + iz * spacing;
+                    float wx = anchorX + n * spacing;
+                    float wz = anchorZ + m * spacing;
+
+                    float localX = wx - worldOrigin.x;
+                    float localZ = wz - worldOrigin.y;
+
+                    if (!IsValidLightPosition(localX, localZ, spec, halfT, roomInset))
+                        continue;
 
                     var go = Object.Instantiate(
                         config.LightPanelPrefab,
@@ -55,6 +66,78 @@ namespace AfterAll.Generation
                     spawned.Add(go);
                 }
             }
+        }
+
+        private static bool IsValidLightPosition(
+            float localX, float localZ, ChunkSpec spec, float halfT, float roomInset)
+        {
+            if (!IsInsideAnyRoom(localX, localZ, spec, roomInset))
+                return false;
+
+            foreach (var wall in spec.Walls)
+            {
+                if (IntersectsSolidWall(localX, localZ, wall, halfT))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static bool IsInsideAnyRoom(
+            float localX, float localZ, ChunkSpec spec, float inset)
+        {
+            foreach (var room in spec.Rooms)
+            {
+                var b = room.Bounds;
+                if (localX >= b.xMin + inset && localX <= b.xMax - inset &&
+                    localZ >= b.yMin + inset && localZ <= b.yMax - inset)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool IntersectsSolidWall(
+            float px, float pz, WallSpec wall, float halfT)
+        {
+            float margin = halfT + kPanelHalfExtent;
+            var b = wall.Boundary;
+
+            if (b.IsHorizontal)
+            {
+                float wallZ = b.Start.y;
+                if (Mathf.Abs(pz - wallZ) > margin)
+                    return false;
+
+                float wallStart = Mathf.Min(b.Start.x, b.End.x);
+                float along     = px - wallStart;
+                if (along < -kPanelHalfExtent || along > b.Length + kPanelHalfExtent)
+                    return false;
+
+                return !IsInOpening(along, wall.Openings);
+            }
+
+            float wallX = b.Start.x;
+            if (Mathf.Abs(px - wallX) > margin)
+                return false;
+
+            float zStart = Mathf.Min(b.Start.y, b.End.y);
+            float alongZ = pz - zStart;
+            if (alongZ < -kPanelHalfExtent || alongZ > b.Length + kPanelHalfExtent)
+                return false;
+
+            return !IsInOpening(alongZ, wall.Openings);
+        }
+
+        private static bool IsInOpening(float along, IReadOnlyList<OpeningSpec> openings)
+        {
+            foreach (var o in openings)
+            {
+                if (along >= o.Offset && along <= o.EndOffset)
+                    return true;
+            }
+
+            return false;
         }
     }
 }
