@@ -34,7 +34,7 @@ MonoBehaviour:
   rearCutoffDistance: 0
   allowRearEmission: 0
   rearEmissionQuality: 0.1
-  corridorQualityFadeDistance: 45.1
+  corridorQualityFadeDistance: 34.88
   minFarQuality: 0.2
   gizmoShowBubble: 1
   gizmoShowSpotRadius: 1

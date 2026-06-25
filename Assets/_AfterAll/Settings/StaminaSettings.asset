@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: StaminaSettings
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Player.StaminaSettings
   MaxStamina: 100
-  DrainPerSecond: 18
-  RegenPerSecond: 10
+  DrainPerSecond: 10
+  RegenPerSecond: 20
   CrouchRegenMultiplier: 2.2
   RegenDelay: 0.6
   MinNormalizedToResume: 0.15

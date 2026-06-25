@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d216acda0cc0dfd459e908e212f3b579, type: 3}
   m_Name: MapConfig
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Generation.MapConfig
-  _seed: 43
+  _seed: 1
   _chunkSize: 45
   _wallHeight: 4
   _minRoomSize: 6
@@ -28,8 +28,8 @@ MonoBehaviour:
   _slabThickness: 0.4
   _minOpeningsPerRoom: 1
   _maxOpeningsPerRoom: 4
-  _openingMinWidth: 0.9
-  _openingMaxWidth: 2.2
+  _openingMinWidth: 1
+  _openingMaxWidth: 3
   _openingEdgeMargin: 0.8
   _loadRadius: 1
   _addPerimeterWalls: 1
