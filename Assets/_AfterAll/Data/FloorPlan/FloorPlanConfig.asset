@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f9d190e710e2e184f9490bfaf08052e5, type: 3}
+  m_Name: FloorPlanConfig
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Generation.FloorPlan.FloorPlanConfig
+  _worldSeed: 445747888
+  _cellSize: 0.5
+  _chunkCells: 64
+  _mazeOverlayCount: 80
+  _mazeFillTarget: 0.62
+  _mazeCollisionStopProbability: 0.45
+  _stampPool:
+  - Stamp: {fileID: 11400000, guid: a09a6f14c38d7324483999be8dffb68d, type: 2}
+    WeightMultiplier: 1.2
+  - Stamp: {fileID: 11400000, guid: 4bc2ab14c5eee204aa5051bd0bf9f043, type: 2}
+    WeightMultiplier: 0.8
+  - Stamp: {fileID: 11400000, guid: 945d025d74f58c4438765d7ef4cbeb25, type: 2}
+    WeightMultiplier: 0.35
+  _stampPlacementAttempts: 8
+  _globalStampWeightMultiplier: 1
+  _autoPunchGaps: 0
+  _maxConnectivityPunches: 6
+  _borderMergeMode: 0
+  _showRegions: 1
+  _showChunkGrid: 0
+  _chunkPreviewRadius: 0
+  _goldenSeeds: b092911a
