@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using AfterAll.Generation.FloorPlan;
 using UnityEngine;
 
 namespace AfterAll.Generation
@@ -10,9 +11,9 @@ namespace AfterAll.Generation
     [AddComponentMenu("AfterAll/Generation/Chunk")]
     public class Chunk : MonoBehaviour
     {
-        [SerializeField] private MapConfig _config;
+        [SerializeField] private FloorPlanConfig _config;
 
-        [Tooltip("Override seed for standalone testing only. −1 = derive from grid coord or MapConfig.")]
+        [Tooltip("Override seed for standalone testing only. −1 = derive from grid coord or FloorPlanConfig.")]
         [SerializeField] private int _seedOverride = -1;
 
         [Tooltip("Standalone mode: world XZ of local (0,0). Ignored when managed by ChunkManager.")]
@@ -29,10 +30,6 @@ namespace AfterAll.Generation
         public ChunkCoord Coord     => _coord;
         public bool       IsManaged => _managed;
 
-        // ──────────────────────────────────────────────────────────────────────────
-        //  Unity lifecycle
-        // ──────────────────────────────────────────────────────────────────────────
-
         private void Start()
         {
             if (!_managed && _generateOnStart && !IsStreamingActive())
@@ -44,12 +41,7 @@ namespace AfterAll.Generation
 
         private void OnDestroy() => Despawn();
 
-        // ──────────────────────────────────────────────────────────────────────────
-        //  ChunkManager API
-        // ──────────────────────────────────────────────────────────────────────────
-
-        /// <summary>Called by ChunkManager before the first Generate().</summary>
-        public void SetupManaged(MapConfig config, ChunkCoord coord, Transform parent)
+        public void SetupManaged(FloorPlanConfig config, ChunkCoord coord, Transform parent)
         {
             _config  = config;
             _coord   = coord;
@@ -59,43 +51,30 @@ namespace AfterAll.Generation
             name = $"Chunk_{coord.X}_{coord.Z}";
         }
 
-        // ──────────────────────────────────────────────────────────────────────────
-        //  Generation
-        // ──────────────────────────────────────────────────────────────────────────
-
         [ContextMenu("Generate")]
         public void Generate()
         {
             if (_config == null)
             {
-                Debug.LogError("[Chunk] MapConfig is not assigned.", this);
+                Debug.LogError("[Chunk] FloorPlanConfig is not assigned.", this);
                 return;
             }
 
             Despawn();
 
-            float chunkSize = _config.ChunkSize;
+            float chunkSize = _config.ChunkSizeMetres;
             Vector2 origin  = _managed
                 ? _coord.WorldOrigin(chunkSize)
                 : _worldOrigin;
 
             transform.position = new Vector3(origin.x, 0f, origin.y);
 
-            int seed = ResolveSeed();
+            int chunkX = _managed ? _coord.X : 0;
+            int chunkZ = _managed ? _coord.Z : 0;
+            int seed   = ResolveSeed();
 
-            var chunkBounds = new Rect(0f, 0f, chunkSize, chunkSize);
-            var bsp         = BspPartitioner.Partition(chunkBounds, _config, seed);
-
-            var rootRng  = new Rng(seed);
-            var wallRng  = rootRng.Derive(1);
-            var lightRng = rootRng.Derive(2);
-
-            ChunkCoord? stitchCoord = _managed ? _coord : (ChunkCoord?)null;
-            var spec = WallLayout.Build(bsp, _config, wallRng, stitchCoord);
-            spec = ConnectivityPass.Apply(bsp, spec, _config.OpeningMinWidth);
-
-            _spawned.AddRange(GeometrySpawner.Spawn(spec, _config, origin, transform));
-            LightPlacer.Place(spec, _config, lightRng, origin, transform, _spawned);
+            var result = FloorPlanGenerator.Generate(_config, chunkX, chunkZ, seed);
+            _spawned.AddRange(FloorPlanGeometrySpawner.Spawn(result, _config, origin, transform));
 
             int lightCount = 0;
             for (int i = 0; i < _spawned.Count; i++)
@@ -105,7 +84,8 @@ namespace AfterAll.Generation
             }
 
             Debug.Log($"[Chunk] Generated {(_managed ? _coord.ToString() : "standalone")} " +
-                      $"seed={seed}: {bsp.Rooms.Count} rooms, {_spawned.Count} objects, {lightCount} lights.", this);
+                      $"seed={seed}: {result.WallBlocks.Count} wall blocks, " +
+                      $"{result.Pillars.Count} pillars, {_spawned.Count} objects, {lightCount} lights.", this);
         }
 
         [ContextMenu("Despawn")]
@@ -131,9 +111,9 @@ namespace AfterAll.Generation
                 return _seedOverride;
 
             if (_managed)
-                return new Rng(_config.Seed).Derive(_coord.X, _coord.Z).Seed;
+                return FloorPlanGenerator.DeriveChunkSeed(_config.WorldSeed, _coord.X, _coord.Z);
 
-            return _config.Seed;
+            return _config.WorldSeed;
         }
     }
 }

@@ -15,11 +15,17 @@ namespace AfterAll.Generation.FloorPlan
       int stamps = StampCarvePass.Apply(grid, config, rng.Derive(2));
       int punches = ConnectivityPass.Apply(grid, config, rng.Derive(3));
       var regions = RegionClassifier.Classify(grid);
+      var walls = WallExtractor.Extract(grid);
+      var pillars = WallExtractor.ExtractPillars(grid);
+      var lights = LightPlacementPass.Apply(grid, config, rng.Derive(4));
 
       return new FloorPlanResult
       {
         Grid = grid,
         Regions = regions,
+        WallBlocks = walls,
+        Pillars = pillars,
+        Lights = lights,
         Seed = seed,
         ChunkX = chunkX,
         ChunkZ = chunkZ,
@@ -81,11 +87,17 @@ namespace AfterAll.Generation.FloorPlan
       CopyChunkIntoMerged(merged, chunkGrids, radius, n);
 
       var regions = RegionClassifier.Classify(merged);
+      var walls = WallExtractor.Extract(merged);
+      var pillars = WallExtractor.ExtractPillars(merged);
+      var lights = LightPlacementPass.Apply(merged, config, new Rng(baseSeed).Derive(99));
 
       return new FloorPlanResult
       {
         Grid = merged,
         Regions = regions,
+        WallBlocks = walls,
+        Pillars = pillars,
+        Lights = lights,
         Seed = baseSeed,
         ChunkX = 0,
         ChunkZ = 0,

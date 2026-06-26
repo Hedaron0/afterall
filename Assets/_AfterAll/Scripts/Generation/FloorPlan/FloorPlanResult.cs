@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 
 namespace AfterAll.Generation.FloorPlan
@@ -19,8 +18,8 @@ namespace AfterAll.Generation.FloorPlan
     {
       get
       {
-        int w = Math.Max(1, Width);
-        int h = Math.Max(1, Height);
+        int w = System.Math.Max(1, Width);
+        int h = System.Math.Max(1, Height);
         return w > h ? (float)w / h : (float)h / w;
       }
     }
@@ -30,6 +29,9 @@ namespace AfterAll.Generation.FloorPlan
   {
     public FloorPlanGrid Grid;
     public IReadOnlyList<FloorPlanRegion> Regions;
+    public IReadOnlyList<WallBlockSpec> WallBlocks;
+    public IReadOnlyList<PillarBlockSpec> Pillars;
+    public IReadOnlyList<LightCellSpec> Lights;
     public int Seed;
     public int ChunkX;
     public int ChunkZ;

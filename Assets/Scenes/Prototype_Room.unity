@@ -12538,7 +12538,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 317627d9c5de5214ebca29c89f2ca16c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Generation.ChunkManager
-  _config: {fileID: 11400000, guid: 29262d1e14f97d840a98761313e1cc4f, type: 2}
+  _config: {fileID: 11400000, guid: 7a10becbb07a17b439166920f56e0218, type: 2}
   _player: {fileID: 50913681}
   _refreshInterval: 0.25
 --- !u!114 &1938829597

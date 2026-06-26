@@ -23,7 +23,7 @@ namespace AfterAll.Generation.FloorPlan
 
   /// <summary>
   /// All knobs for the hybrid-chaotic Backrooms floor-plan generator.
-  /// Edited in the Floor Plan Lab and (later) drives 3D chunk spawning.
+  /// Drives Floor Plan Lab preview and 3D chunk spawning.
   /// </summary>
   [CreateAssetMenu(fileName = "FloorPlanConfig", menuName = "AfterAll/Generation/Floor Plan Config")]
   public sealed class FloorPlanConfig : ScriptableObject
@@ -62,9 +62,43 @@ namespace AfterAll.Generation.FloorPlan
     [Header("Border Stitching")]
     [SerializeField] private BorderMergeMode _borderMergeMode = BorderMergeMode.LowerSeedWins;
 
+    [Header("3D Geometry")]
+    [SerializeField] [Min(0.1f)] private float _wallHeight = 2.7f;
+    [SerializeField] [Min(0.05f)] private float _slabThickness = 0.4f;
+    [SerializeField] [Min(0.1f)] private float _pillarFootprint = 0.4f;
+
+    [Tooltip("Optional cube prefab with wall material. If empty, a primitive cube is created.")]
+    [SerializeField] private GameObject _wallBlockPrefab;
+
+    [Tooltip("Optional floor slab prefab. If empty, primitive cube + FloorMaterial.")]
+    [SerializeField] private GameObject _floorPrefab;
+
+    [Tooltip("Optional ceiling slab prefab. If empty, primitive cube + CeilingMaterial.")]
+    [SerializeField] private GameObject _ceilingPrefab;
+
+    [Tooltip("Optional pillar prefab. If empty, primitive cube + WallMaterial.")]
+    [SerializeField] private GameObject _pillarPrefab;
+
+    [SerializeField] private Material _wallMaterial;
+    [SerializeField] private Material _floorMaterial;
+    [SerializeField] private Material _ceilingMaterial;
+
+    [Header("Lights")]
+    [SerializeField] private GameObject _lightPanelPrefab;
+    [SerializeField] [Range(0f, 0.9f)] private float _lightDarkChance = 0.15f;
+    [SerializeField] [Min(0.1f)] private float _lightRoomInset = 0.8f;
+    [SerializeField] [Min(0.1f)] private float _ceilingTileSize = 1.327f;
+    [SerializeField] [Range(1, 8)] private int _lightSpacingTiles = 3;
+    [SerializeField] private float _lightGridOffsetX = 0.221f;
+    [SerializeField] private float _lightGridOffsetZ = 0.483f;
+
+    [Header("Streaming")]
+    [SerializeField] [Range(1, 4)] private int _loadRadius = 1;
+
     [Header("Lab Preview")]
     [SerializeField] private bool _showRegions = true;
     [SerializeField] private bool _showChunkGrid = true;
+    [SerializeField] private bool _showLightsLayer = true;
     [SerializeField] [Range(0, 2)] private int _chunkPreviewRadius = 0;
 
     [Header("Golden Seeds")]
@@ -83,8 +117,29 @@ namespace AfterAll.Generation.FloorPlan
     public bool AutoPunchGaps => _autoPunchGaps;
     public int MaxConnectivityPunches => _maxConnectivityPunches;
     public BorderMergeMode BorderMerge => _borderMergeMode;
+    public float WallHeight => _wallHeight;
+    public float SlabThickness => _slabThickness;
+    public float PillarFootprint => _pillarFootprint;
+    public GameObject WallBlockPrefab => _wallBlockPrefab;
+    public GameObject FloorPrefab => _floorPrefab;
+    public GameObject CeilingPrefab => _ceilingPrefab;
+    public GameObject PillarPrefab => _pillarPrefab;
+    public Material WallMaterial => _wallMaterial;
+    public Material FloorMaterial => _floorMaterial;
+    public Material CeilingMaterial => _ceilingMaterial;
+    public GameObject LightPanelPrefab => _lightPanelPrefab;
+    public float LightDarkChance => _lightDarkChance;
+    public float LightRoomInset => _lightRoomInset;
+    public float LightRoomInsetCells => _lightRoomInset / _cellSize;
+    public float CeilingTileSize => _ceilingTileSize;
+    public int LightSpacingTiles => _lightSpacingTiles;
+    public float LightSpacing => _ceilingTileSize * _lightSpacingTiles;
+    public float LightGridOffsetX => _lightGridOffsetX;
+    public float LightGridOffsetZ => _lightGridOffsetZ;
+    public int LoadRadius => _loadRadius;
     public bool ShowRegions => _showRegions;
     public bool ShowChunkGrid => _showChunkGrid;
+    public bool ShowLightsLayer => _showLightsLayer;
     public int ChunkPreviewRadius => _chunkPreviewRadius;
     public IReadOnlyList<int> GoldenSeeds => _goldenSeeds;
 
@@ -95,5 +150,12 @@ namespace AfterAll.Generation.FloorPlan
       if (!_goldenSeeds.Contains(seed))
         _goldenSeeds.Add(seed);
     }
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+      _lightRoomInset = Mathf.Max(0.1f, _lightRoomInset);
+    }
+#endif
   }
 }

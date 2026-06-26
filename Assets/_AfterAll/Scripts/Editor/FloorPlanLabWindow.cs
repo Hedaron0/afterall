@@ -18,6 +18,7 @@ namespace AfterAll.EditorTools
     private static readonly Color FloorColor = new(0.95f, 0.95f, 0.92f);
     private static readonly Color PillarColor = new(0.45f, 0.45f, 0.45f);
     private static readonly Color GridLineColor = new(1f, 1f, 1f, 0.12f);
+    private static readonly Color LightColor = new(1f, 0.92f, 0.2f);
 
     [MenuItem("AfterAll/Floor Plan Lab")]
     public static void Open()
@@ -93,6 +94,19 @@ namespace AfterAll.EditorTools
         _multiChunkPreview = GUILayout.Toggle(_multiChunkPreview, "3×3 Chunk Preview");
         _previewScale = EditorGUILayout.IntSlider("Zoom", _previewScale, 1, 12);
       }
+
+      if (_config != null)
+      {
+        EditorGUI.BeginChangeCheck();
+        bool showLights = EditorGUILayout.Toggle("Lights Layer", _config.ShowLightsLayer);
+        if (EditorGUI.EndChangeCheck())
+        {
+          var so = new SerializedObject(_config);
+          so.FindProperty("_showLightsLayer").boolValue = showLights;
+          so.ApplyModifiedProperties();
+          RebuildTexture(_result);
+        }
+      }
     }
 
     private void DrawPreview()
@@ -116,6 +130,8 @@ namespace AfterAll.EditorTools
       EditorGUILayout.LabelField($"Seed: {_result.Seed}");
       EditorGUILayout.LabelField($"Floor: {_result.FloorPercent:P1}  |  Regions: {_result.RegionCount}");
       EditorGUILayout.LabelField($"Stamps: {_result.StampPlacements}  |  Connectivity punches: {_result.ConnectivityPunches}");
+      if (_result.WallBlocks != null)
+        EditorGUILayout.LabelField($"Wall blocks: {_result.WallBlocks.Count}  |  Lights: {_result.Lights?.Count ?? 0}");
       EditorGUILayout.LabelField(
         _result.IsFullyConnected ? "Connectivity: OK" : "Connectivity: SEALED POCKETS",
         _result.IsFullyConnected ? EditorStyles.label : EditorStyles.boldLabel);
@@ -152,9 +168,37 @@ namespace AfterAll.EditorTools
       DrawProperty(so, "_borderMergeMode");
 
       EditorGUILayout.Space(4);
+      EditorGUILayout.LabelField("3D Spawn", EditorStyles.miniBoldLabel);
+      DrawProperty(so, "_wallHeight");
+      DrawProperty(so, "_slabThickness");
+      DrawProperty(so, "_pillarFootprint");
+      DrawProperty(so, "_wallBlockPrefab");
+      DrawProperty(so, "_floorPrefab");
+      DrawProperty(so, "_ceilingPrefab");
+      DrawProperty(so, "_pillarPrefab");
+      DrawProperty(so, "_wallMaterial");
+      DrawProperty(so, "_floorMaterial");
+      DrawProperty(so, "_ceilingMaterial");
+
+      EditorGUILayout.Space(4);
+      EditorGUILayout.LabelField("Lights", EditorStyles.miniBoldLabel);
+      DrawProperty(so, "_lightPanelPrefab");
+      DrawProperty(so, "_lightDarkChance");
+      DrawProperty(so, "_lightRoomInset");
+      DrawProperty(so, "_ceilingTileSize");
+      DrawProperty(so, "_lightSpacingTiles");
+      DrawProperty(so, "_lightGridOffsetX");
+      DrawProperty(so, "_lightGridOffsetZ");
+
+      EditorGUILayout.Space(4);
+      EditorGUILayout.LabelField("Streaming", EditorStyles.miniBoldLabel);
+      DrawProperty(so, "_loadRadius");
+
+      EditorGUILayout.Space(4);
       EditorGUILayout.LabelField("Preview", EditorStyles.miniBoldLabel);
       DrawProperty(so, "_showRegions");
       DrawProperty(so, "_showChunkGrid");
+      DrawProperty(so, "_showLightsLayer");
       DrawProperty(so, "_goldenSeeds");
 
       if (so.ApplyModifiedProperties())
@@ -262,6 +306,17 @@ namespace AfterAll.EditorTools
           }
 
           _preview.SetPixel(x, h - 1 - y, c);
+        }
+      }
+
+      if (_config.ShowLightsLayer && result.Lights != null)
+      {
+        float cell = grid.CellSize;
+        foreach (var light in result.Lights)
+        {
+          int px = Mathf.Clamp(Mathf.FloorToInt(light.LocalX / cell), 0, w - 1);
+          int py = Mathf.Clamp(Mathf.FloorToInt(light.LocalZ / cell), 0, h - 1);
+          _preview.SetPixel(px, h - 1 - py, LightColor);
         }
       }
 

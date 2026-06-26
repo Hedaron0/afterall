@@ -1,19 +1,18 @@
 using System.Collections.Generic;
 using AfterAll.Environment;
+using AfterAll.Generation.FloorPlan;
 using UnityEngine;
 
 namespace AfterAll.Generation
 {
     /// <summary>
-    /// Streams procedural chunks around the player.
-    /// Loads a square grid (loadRadius × 2 + 1), pools unloaded chunks, and
-    /// stitches border openings so adjacent chunks align at seams.
+    /// Streams procedural chunks around the player using FloorPlanGenerator.
     /// </summary>
     [AddComponentMenu("AfterAll/Generation/Chunk Manager")]
     [DefaultExecutionOrder(-100)]
     public class ChunkManager : MonoBehaviour
     {
-        [SerializeField] private MapConfig _config;
+        [SerializeField] private FloorPlanConfig _config;
 
         [Tooltip("Player transform used to decide which chunks to load. Auto-found if empty.")]
         [SerializeField] private Transform _player;
@@ -37,15 +36,11 @@ namespace AfterAll.Generation
             FluorescentLightManager.EnsureExists();
         }
 
-        // ──────────────────────────────────────────────────────────────────────────
-        //  Unity lifecycle
-        // ──────────────────────────────────────────────────────────────────────────
-
         private void Start()
         {
             if (_config == null)
             {
-                Debug.LogError("[ChunkManager] MapConfig is not assigned.", this);
+                Debug.LogError("[ChunkManager] FloorPlanConfig is not assigned.", this);
                 enabled = false;
                 return;
             }
@@ -100,10 +95,6 @@ namespace AfterAll.Generation
             }
         }
 
-        // ──────────────────────────────────────────────────────────────────────────
-        //  Streaming
-        // ──────────────────────────────────────────────────────────────────────────
-
         [ContextMenu("Regenerate All Active Chunks")]
         public void RegenerateAllActive()
         {
@@ -114,7 +105,7 @@ namespace AfterAll.Generation
         [ContextMenu("Refresh Chunks")]
         public void Refresh(bool force)
         {
-            var playerChunk = ChunkCoord.FromWorldPosition(_player.position, _config.ChunkSize);
+            var playerChunk = ChunkCoord.FromWorldPosition(_player.position, _config.ChunkSizeMetres);
 
             if (!force && playerChunk == _lastPlayerChunk)
                 return;
@@ -136,7 +127,6 @@ namespace AfterAll.Generation
                 }
             }
 
-            // Unload chunks outside the needed set.
             var toRemove = new List<ChunkCoord>();
             foreach (var kv in _active)
             {
@@ -150,7 +140,6 @@ namespace AfterAll.Generation
                 _active.Remove(coord);
             }
 
-            // Load missing chunks.
             foreach (var coord in needed)
             {
                 if (_active.ContainsKey(coord)) continue;
@@ -187,9 +176,6 @@ namespace AfterAll.Generation
             _pool.Enqueue(chunk);
         }
 
-        /// <summary>
-        /// Disables standalone Chunk components in the scene so they don't fight the manager.
-        /// </summary>
         private static void DisableStandaloneChunks()
         {
             var chunks = FindObjectsByType<Chunk>();
