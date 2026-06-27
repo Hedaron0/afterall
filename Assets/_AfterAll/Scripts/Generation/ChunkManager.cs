@@ -1,18 +1,18 @@
 using System.Collections.Generic;
 using AfterAll.Environment;
-using AfterAll.Generation.FloorPlan;
+using AfterAll.Generation.BackroomsMap;
 using UnityEngine;
 
 namespace AfterAll.Generation
 {
     /// <summary>
-    /// Streams procedural chunks around the player using FloorPlanGenerator.
+    /// Streams procedural chunks around the player using BackroomsMapGenerator.
     /// </summary>
     [AddComponentMenu("AfterAll/Generation/Chunk Manager")]
     [DefaultExecutionOrder(-100)]
     public class ChunkManager : MonoBehaviour
     {
-        [SerializeField] private FloorPlanConfig _config;
+        [SerializeField] private BackroomsMapConfig _config;
 
         [Tooltip("Player transform used to decide which chunks to load. Auto-found if empty.")]
         [SerializeField] private Transform _player;
@@ -40,7 +40,7 @@ namespace AfterAll.Generation
         {
             if (_config == null)
             {
-                Debug.LogError("[ChunkManager] FloorPlanConfig is not assigned.", this);
+                Debug.LogError("[ChunkManager] BackroomsMapConfig is not assigned.", this);
                 enabled = false;
                 return;
             }

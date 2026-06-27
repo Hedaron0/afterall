@@ -3,40 +3,45 @@ using System;
 namespace AfterAll.Generation
 {
     /// <summary>
-    /// Deterministic seeded random number generator wrapping System.Random.
-    /// Use Derive() to create isolated child RNGs for sub-systems (chunks, passes, etc.)
-    /// so they don't pollute each other's sequence.
+    /// Deterministic xorshift32 PRNG. Platform-stable unlike System.Random / UnityEngine.Random.
+    /// Use Derive() for isolated child sequences (chunks, passes, edges).
     /// </summary>
     public sealed class Rng
     {
-        private readonly Random _rnd;
+        private uint _state;
 
         public int Seed { get; }
 
         public Rng(int seed)
         {
             Seed = seed;
-            _rnd = new Random(seed);
+            _state = (uint)seed;
+            if (_state == 0)
+                _state = 0x6a09e667u;
         }
 
         /// <summary>Returns a random float in [min, max).</summary>
         public float Range(float min, float max) =>
-            min + (float)_rnd.NextDouble() * (max - min);
+            min + Value() * (max - min);
 
         /// <summary>Returns a random int in [minInclusive, maxExclusive).</summary>
-        public int Range(int minInclusive, int maxExclusive) =>
-            _rnd.Next(minInclusive, maxExclusive);
+        public int Range(int minInclusive, int maxExclusive)
+        {
+            if (maxExclusive <= minInclusive)
+                return minInclusive;
+
+            uint span = (uint)(maxExclusive - minInclusive);
+            return minInclusive + (int)(NextUInt() % span);
+        }
 
         /// <summary>Returns a random float in [0, 1).</summary>
-        public float Value() => (float)_rnd.NextDouble();
+        public float Value() => NextUInt() / (float)uint.MaxValue;
 
         /// <summary>Returns true with the given probability (0 = never, 1 = always).</summary>
-        public bool Chance(float probability) => _rnd.NextDouble() < probability;
+        public bool Chance(float probability) => Value() < probability;
 
         /// <summary>
         /// Creates a child Rng with a seed derived from this seed and an extra integer.
-        /// Lets chunk generation, per-partition passes, etc. each have their own
-        /// independent sequence while remaining fully reproducible from the root seed.
         /// </summary>
         public Rng Derive(int extra)
         {
@@ -50,9 +55,17 @@ namespace AfterAll.Generation
             }
         }
 
-        /// <summary>
-        /// Derives a child Rng from two integers (e.g. chunk grid X/Z coordinates).
-        /// </summary>
+        /// <summary>Derives a child Rng from two integers (e.g. chunk grid X/Z).</summary>
         public Rng Derive(int a, int b) => Derive(a ^ (b * 1000003));
+
+        private uint NextUInt()
+        {
+            uint x = _state;
+            x ^= x << 13;
+            x ^= x >> 17;
+            x ^= x << 5;
+            _state = x;
+            return x;
+        }
     }
 }

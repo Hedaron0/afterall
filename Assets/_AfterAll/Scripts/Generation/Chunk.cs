@@ -1,19 +1,17 @@
-using System.Collections.Generic;
-using AfterAll.Generation.FloorPlan;
+using AfterAll.Generation.BackroomsMap;
 using UnityEngine;
 
 namespace AfterAll.Generation
 {
     /// <summary>
-    /// Owns the geometry for one chunk region.
-    /// Driven by ChunkManager for streaming, or used standalone for single-chunk tests.
+    /// Owns layout data for one chunk region. Geometry spawn deferred until v3 step 8.
     /// </summary>
     [AddComponentMenu("AfterAll/Generation/Chunk")]
     public class Chunk : MonoBehaviour
     {
-        [SerializeField] private FloorPlanConfig _config;
+        [SerializeField] private BackroomsMapConfig _config;
 
-        [Tooltip("Override seed for standalone testing only. −1 = derive from grid coord or FloorPlanConfig.")]
+        [Tooltip("Override seed for standalone testing only. −1 = derive from grid coord or config.")]
         [SerializeField] private int _seedOverride = -1;
 
         [Tooltip("Standalone mode: world XZ of local (0,0). Ignored when managed by ChunkManager.")]
@@ -22,13 +20,13 @@ namespace AfterAll.Generation
         [Tooltip("Standalone mode only — auto-generate on Start when not managed by ChunkManager.")]
         [SerializeField] private bool _generateOnStart = true;
 
-        private readonly List<GameObject> _spawned = new();
-
+        private ChunkData _data;
         private ChunkCoord _coord;
         private bool       _managed;
 
         public ChunkCoord Coord     => _coord;
         public bool       IsManaged => _managed;
+        public ChunkData  Data      => _data;
 
         private void Start()
         {
@@ -39,9 +37,7 @@ namespace AfterAll.Generation
         private static bool IsStreamingActive() =>
             FindAnyObjectByType<ChunkManager>() != null;
 
-        private void OnDestroy() => Despawn();
-
-        public void SetupManaged(FloorPlanConfig config, ChunkCoord coord, Transform parent)
+        public void SetupManaged(BackroomsMapConfig config, ChunkCoord coord, Transform parent)
         {
             _config  = config;
             _coord   = coord;
@@ -56,11 +52,9 @@ namespace AfterAll.Generation
         {
             if (_config == null)
             {
-                Debug.LogError("[Chunk] FloorPlanConfig is not assigned.", this);
+                Debug.LogError("[Chunk] BackroomsMapConfig is not assigned.", this);
                 return;
             }
-
-            Despawn();
 
             float chunkSize = _config.ChunkSizeMetres;
             Vector2 origin  = _managed
@@ -73,36 +67,17 @@ namespace AfterAll.Generation
             int chunkZ = _managed ? _coord.Z : 0;
             int seed   = ResolveSeed();
 
-            var result = FloorPlanGenerator.Generate(_config, chunkX, chunkZ, seed);
-            _spawned.AddRange(FloorPlanGeometrySpawner.Spawn(result, _config, origin, transform));
+            _data = BackroomsMapGenerator.Generate(_config, chunkX, chunkZ, seed);
 
-            int lightCount = 0;
-            for (int i = 0; i < _spawned.Count; i++)
-            {
-                if (_spawned[i] != null && _spawned[i].name == "Light")
-                    lightCount++;
-            }
-
-            Debug.Log($"[Chunk] Generated {(_managed ? _coord.ToString() : "standalone")} " +
-                      $"seed={seed}: {result.WallBlocks.Count} wall blocks, " +
-                      $"{result.Pillars.Count} pillars, {_spawned.Count} objects, {lightCount} lights.", this);
+            Debug.Log($"[Chunk] v3 data generated {(_managed ? _coord.ToString() : "standalone")} " +
+                      $"seed={seed}: { _data.ZoneCount} zones, floor={_data.FloorFraction():P0}. " +
+                      "3D spawn deferred.", this);
         }
 
         [ContextMenu("Despawn")]
         public void Despawn()
         {
-            foreach (var go in _spawned)
-            {
-                if (go == null) continue;
-#if UNITY_EDITOR
-                if (!Application.isPlaying)
-                    DestroyImmediate(go);
-                else
-#endif
-                    Destroy(go);
-            }
-
-            _spawned.Clear();
+            _data = null;
         }
 
         private int ResolveSeed()
@@ -111,7 +86,7 @@ namespace AfterAll.Generation
                 return _seedOverride;
 
             if (_managed)
-                return FloorPlanGenerator.DeriveChunkSeed(_config.WorldSeed, _coord.X, _coord.Z);
+                return BackroomsMapGenerator.DeriveChunkSeed(_config.WorldSeed, _coord.X, _coord.Z);
 
             return _config.WorldSeed;
         }
