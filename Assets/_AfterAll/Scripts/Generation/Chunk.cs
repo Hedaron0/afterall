@@ -4,12 +4,13 @@ using UnityEngine;
 namespace AfterAll.Generation
 {
     /// <summary>
-    /// Owns layout data for one chunk region. Geometry spawn deferred until v3 step 8.
+    /// Owns layout data and spawned geometry for one chunk region.
     /// </summary>
     [AddComponentMenu("AfterAll/Generation/Chunk")]
     public class Chunk : MonoBehaviour
     {
         [SerializeField] private BackroomsMapConfig _config;
+        [SerializeField] private ChunkSpawnProfile _spawnProfile;
 
         [Tooltip("Override seed for standalone testing only. −1 = derive from grid coord or config.")]
         [SerializeField] private int _seedOverride = -1;
@@ -37,11 +38,16 @@ namespace AfterAll.Generation
         private static bool IsStreamingActive() =>
             FindAnyObjectByType<ChunkManager>() != null;
 
-        public void SetupManaged(BackroomsMapConfig config, ChunkCoord coord, Transform parent)
+        public void SetupManaged(
+            BackroomsMapConfig config,
+            ChunkCoord coord,
+            Transform parent,
+            ChunkSpawnProfile spawnProfile = null)
         {
-            _config  = config;
-            _coord   = coord;
-            _managed = true;
+            _config       = config;
+            _spawnProfile = spawnProfile;
+            _coord        = coord;
+            _managed      = true;
 
             transform.SetParent(parent, false);
             name = $"Chunk_{coord.X}_{coord.Z}";
@@ -56,6 +62,8 @@ namespace AfterAll.Generation
                 return;
             }
 
+            ChunkGeometrySpawner.Clear(transform);
+
             float chunkSize = _config.ChunkSizeMetres;
             Vector2 origin  = _managed
                 ? _coord.WorldOrigin(chunkSize)
@@ -69,14 +77,26 @@ namespace AfterAll.Generation
 
             _data = BackroomsMapGenerator.Generate(_config, chunkX, chunkZ, seed);
 
-            Debug.Log($"[Chunk] v3 data generated {(_managed ? _coord.ToString() : "standalone")} " +
-                      $"seed={seed}: { _data.ZoneCount} zones, floor={_data.FloorFraction():P0}. " +
-                      "3D spawn deferred.", this);
+            if (_spawnProfile == null)
+            {
+                Debug.LogWarning(
+                    $"[Chunk] No ChunkSpawnProfile — data only for {(_managed ? _coord.ToString() : "standalone")}.",
+                    this);
+                return;
+            }
+
+            ChunkGeometrySpawner.Spawn(transform, _data, _config, _spawnProfile);
+
+            Debug.Log(
+                $"[Chunk] Generated {(_managed ? _coord.ToString() : "standalone")} seed={seed}: " +
+                $"{_data.ZoneCount} zones, floor={_data.FloorFraction():P0}, lights={_data.Lights.Count}.",
+                this);
         }
 
         [ContextMenu("Despawn")]
         public void Despawn()
         {
+            ChunkGeometrySpawner.Clear(transform);
             _data = null;
         }
 

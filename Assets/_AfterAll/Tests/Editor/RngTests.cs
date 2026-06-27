@@ -44,8 +44,8 @@ namespace AfterAll.Tests.Editor
 
             float parentAfter = parent.Value();
 
-            Assert.AreNotEqual(childVal, parentAfter, 0.0001f);
-            Assert.AreNotEqual(childVal, parentBefore, 0.0001f);
+            Assert.That(System.Math.Abs(childVal - parentAfter), Is.GreaterThan(0.0001f));
+            Assert.That(System.Math.Abs(childVal - parentBefore), Is.GreaterThan(0.0001f));
         }
 
         [Test]

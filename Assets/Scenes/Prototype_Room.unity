@@ -12503,7 +12503,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1938829595}
   - component: {fileID: 1938829596}
-  - component: {fileID: 1938829597}
   m_Layer: 0
   m_Name: ChunkManager
   m_TagString: Untagged
@@ -12539,21 +12538,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Generation.ChunkManager
   _config: {fileID: 11400000, guid: 7a10becbb07a17b439166920f56e0218, type: 2}
+  _spawnProfile: {fileID: 11400000, guid: d5c7a9e1f3b2486c9d0e4f7a2b8c1d6e, type: 2}
   _player: {fileID: 50913681}
   _refreshInterval: 0.25
---- !u!114 &1938829597
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1938829593}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bef10363fc7d0a840820937c93d519a5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.FluorescentLightManager
-  _renderSettings: {fileID: 11400000, guid: a3f5d8e21c7046589b2e4f1a6d0c3b7e, type: 2}
+  _debugLog: 0
 --- !u!4 &1940316832 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2859935505235780288, guid: 0e6a04f9c814ab64a867fb72fbf3730c, type: 3}

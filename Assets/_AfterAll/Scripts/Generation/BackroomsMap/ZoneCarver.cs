@@ -1,3 +1,5 @@
+using AfterAll.Generation;
+
 namespace AfterAll.Generation.BackroomsMap
 {
     public static class ZoneCarver

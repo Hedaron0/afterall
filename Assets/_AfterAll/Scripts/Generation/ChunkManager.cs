@@ -13,12 +13,15 @@ namespace AfterAll.Generation
     public class ChunkManager : MonoBehaviour
     {
         [SerializeField] private BackroomsMapConfig _config;
+        [SerializeField] private ChunkSpawnProfile _spawnProfile;
 
         [Tooltip("Player transform used to decide which chunks to load. Auto-found if empty.")]
         [SerializeField] private Transform _player;
 
         [Tooltip("Re-check player chunk every N seconds (0 = every frame).")]
         [SerializeField] [Min(0f)] private float _refreshInterval = 0.25f;
+
+        [SerializeField] private bool _debugLog;
 
         private readonly Dictionary<ChunkCoord, Chunk> _active = new();
         private readonly Queue<Chunk>                  _pool   = new();
@@ -61,6 +64,14 @@ namespace AfterAll.Generation
 
             Refresh(force: true);
             _initialized = true;
+
+            if (_debugLog)
+            {
+                Debug.Log(
+                    $"[ChunkManager] Streaming on. Player chunk {_lastPlayerChunk}, " +
+                    $"load radius {_config.LoadRadius} (square), chunk {_config.ChunkSizeMetres}m.",
+                    this);
+            }
         }
 
         private void Update()
@@ -110,21 +121,23 @@ namespace AfterAll.Generation
             if (!force && playerChunk == _lastPlayerChunk)
                 return;
 
+            if (_debugLog && playerChunk != _lastPlayerChunk)
+            {
+                Debug.Log(
+                    $"[ChunkManager] Player entered chunk {playerChunk} " +
+                    $"(world {_player.position.x:F0}, {_player.position.z:F0}).",
+                    this);
+            }
+
             _lastPlayerChunk = playerChunk;
 
-            int radius   = _config.LoadRadius;
-            int radiusSq = radius * radius;
-            var needed   = new HashSet<ChunkCoord>();
+            int radius = _config.LoadRadius;
+            var needed = new HashSet<ChunkCoord>();
 
             for (int dz = -radius; dz <= radius; dz++)
             {
                 for (int dx = -radius; dx <= radius; dx++)
-                {
-                    if (dx * dx + dz * dz > radiusSq)
-                        continue;
-
                     needed.Add(new ChunkCoord(playerChunk.X + dx, playerChunk.Z + dz));
-                }
             }
 
             var toRemove = new List<ChunkCoord>();
@@ -136,6 +149,9 @@ namespace AfterAll.Generation
 
             foreach (var coord in toRemove)
             {
+                if (_debugLog)
+                    Debug.Log($"[ChunkManager] Unload chunk {coord}.", this);
+
                 ReleaseChunk(_active[coord]);
                 _active.Remove(coord);
             }
@@ -143,6 +159,10 @@ namespace AfterAll.Generation
             foreach (var coord in needed)
             {
                 if (_active.ContainsKey(coord)) continue;
+
+                if (_debugLog)
+                    Debug.Log($"[ChunkManager] Load chunk {coord}.", this);
+
                 _active[coord] = AcquireChunk(coord);
             }
         }
@@ -155,15 +175,14 @@ namespace AfterAll.Generation
             {
                 chunk = _pool.Dequeue();
                 chunk.gameObject.SetActive(true);
-                chunk.SetupManaged(_config, coord, transform);
             }
             else
             {
                 var go = new GameObject($"Chunk_{coord.X}_{coord.Z}");
                 chunk = go.AddComponent<Chunk>();
-                chunk.SetupManaged(_config, coord, transform);
             }
 
+            chunk.SetupManaged(_config, coord, transform, _spawnProfile);
             chunk.Generate();
             return chunk;
         }
@@ -185,5 +204,27 @@ namespace AfterAll.Generation
                 chunk.enabled = false;
             }
         }
+
+#if UNITY_EDITOR
+        private void OnDrawGizmosSelected()
+        {
+            if (_config == null || _player == null) return;
+
+            float size = _config.ChunkSizeMetres;
+            int radius = _config.LoadRadius;
+            var center = ChunkCoord.FromWorldPosition(_player.position, size);
+
+            Gizmos.color = new Color(0.2f, 0.9f, 1f, 0.35f);
+            for (int dz = -radius; dz <= radius; dz++)
+            {
+                for (int dx = -radius; dx <= radius; dx++)
+                {
+                    var origin = new ChunkCoord(center.X + dx, center.Z + dz).WorldOrigin(size);
+                    var gizmoCenter = new Vector3(origin.x + size * 0.5f, 1f, origin.y + size * 0.5f);
+                    Gizmos.DrawWireCube(gizmoCenter, new Vector3(size, 2f, size));
+                }
+            }
+        }
+#endif
     }
 }

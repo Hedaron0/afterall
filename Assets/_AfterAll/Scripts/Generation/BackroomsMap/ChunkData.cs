@@ -10,11 +10,13 @@ namespace AfterAll.Generation.BackroomsMap
         public int ZoneCount;
 
         public CellType[,] Cells;
-        public List<(int x, int y)> DoorFrames = new();
+        public List<DoorOpeningSpec> DoorOpenings = new();
         public List<ConnectorPoint> ConnectorPoints = new();
         public List<VentSpec> Vents = new();
         public List<(int x, int y)> Lights = new();
         public ExitSpec? Exit;
+        public int AccessibilityCorridors;
+        public int AccessibilityWalled;
 
         public int Width => Cells?.GetLength(1) ?? 0;
         public int Height => Cells?.GetLength(0) ?? 0;

@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b8e4f1a29c3d5470e9f2a1b8c4d6e0f3, type: 3}
+  m_Name: ChunkSpawnProfile
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Generation.BackroomsMap.ChunkSpawnProfile
+  _wallBlockPrefab: {fileID: 3675339352062158223, guid: 70208d0ce80b09d4ab3e9330bbcb34df, type: 3}
+  _floorPrefab: {fileID: 866058625153634479, guid: 90e3242f1db8aa046bb620c7d6ab58ad, type: 3}
+  _ceilingPrefab: {fileID: 6181515553640749467, guid: 814c322dc38e51443a075b11356610a5, type: 3}
+  _lightPanelPrefab: {fileID: 1513273640798747932, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+  _ceilingLightPrefab: {fileID: 939900941032486167, guid: 26cec26132fa9554c939fd7473e4c841, type: 3}
+  _doorPrefab: {fileID: 0, guid: 2830160b7b072354d83813be5521b2a7, type: 3}
+  _roomHeight: 4
+  _floorSlabThickness: 0.2
+  _ceilingSlabThickness: 0.2
+  _lightInsetBelowCeiling: 0.08

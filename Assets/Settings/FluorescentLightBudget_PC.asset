@@ -12,12 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e7a4c2b18f4035249a1d6e5f7b8c9012, type: 3}
   m_Name: FluorescentLightBudget_PC
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.LightRenderSettings
-  bubbleRadius: 11
+  bubbleRadius: 45.8
   bubbleFlickerRadius: 11
   maxBubblePanels: 30
   spotLightMaxDistance: 30
   viewHalfAngle: 75
-  rayCount: 30
+  rayCount: 3
   rayMaxDistance: 55
   wallOcclusionMask:
     serializedVersion: 2
@@ -26,7 +26,7 @@ MonoBehaviour:
   lineOfSightEyeHeight: 1.6
   occlusionEndSlack: 0.35
   floorOcclusionHeight: 0.5
-  anchorStartDistance: 11
+  anchorStartDistance: 80.55
   anchorSpacing: 5.67
   anchorInfluenceRadius: 4.01
   maxPanelsPerAnchor: 14

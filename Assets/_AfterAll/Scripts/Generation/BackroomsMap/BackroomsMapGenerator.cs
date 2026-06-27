@@ -1,8 +1,10 @@
+using AfterAll.Generation;
+using System.Collections.Generic;
+
 namespace AfterAll.Generation.BackroomsMap
 {
     /// <summary>
-    /// Runtime-deterministic single-chunk generator (v3 steps 1–2).
-    /// Vents, doors, exits, BFS lights, and connectors land in later passes.
+    /// Runtime-deterministic chunk generator (v3 steps 1–8 data; geometry via ChunkGeometrySpawner).
     /// </summary>
     public static class BackroomsMapGenerator
     {
@@ -24,8 +26,11 @@ namespace AfterAll.Generation.BackroomsMap
         {
             int seed = seedOverride ?? DeriveChunkSeed(config.WorldSeed, chunkX, chunkZ);
             var rng = new Rng(seed);
-
             int size = config.ChunkSize;
+
+            var connectorPoints = EdgeConnectorPlanner.PlanForChunk(config, chunkX, chunkZ);
+            var doorOpenings = new List<DoorOpeningSpec>();
+
             var cells = new CellType[size, size];
             for (int y = 0; y < size; y++)
             for (int x = 0; x < size; x++)
@@ -37,7 +42,14 @@ namespace AfterAll.Generation.BackroomsMap
             foreach (var spec in specs)
                 ZoneCarver.CarveZone(cells, spec, rng.Derive(3 + spec.CenterX + spec.CenterY * size));
 
-            ZoneConnector.ConnectZones(cells, specs, rng.Derive(4));
+            ZoneConnector.ConnectZones(cells, specs, config.DoorChance, rng.Derive(4), doorOpenings);
+
+            ConnectorForceCarver.Apply(cells, connectorPoints, size);
+
+            var vents = VentGraphPass.Generate(cells, config, rng.Derive(5));
+            var exit = ExitPlacementPass.TryPlace(cells, config, rng.Derive(6));
+            var accessibility = AccessibilityPass.EnsureConnected(cells, connectorPoints, rng.Derive(8));
+            var lights = LightPlacementPass.Place(cells, config, rng.Derive(7));
 
             return new ChunkData
             {
@@ -45,7 +57,14 @@ namespace AfterAll.Generation.BackroomsMap
                 ChunkZ = chunkZ,
                 Seed = seed,
                 ZoneCount = specs.Count,
-                Cells = cells
+                Cells = cells,
+                DoorOpenings = doorOpenings,
+                ConnectorPoints = connectorPoints,
+                Vents = vents,
+                Lights = lights,
+                Exit = exit,
+                AccessibilityCorridors = accessibility.IslandsFixed,
+                AccessibilityWalled = accessibility.CellsWalled
             };
         }
     }

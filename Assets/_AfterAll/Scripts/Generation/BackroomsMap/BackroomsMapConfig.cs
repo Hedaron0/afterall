@@ -13,12 +13,16 @@ namespace AfterAll.Generation.BackroomsMap
         [SerializeField] private int _worldSeed = 42;
 
         [Header("Chunk Grid")]
-        [SerializeField] [Min(8)] private int _chunkSize = 26;
+        [SerializeField] [Min(8)] private int _chunkSize = 32;
         [SerializeField] [Min(0.1f)] private float _cellWorldSize = 2f;
 
         [Header("Zone BSP")]
         [SerializeField] [Range(2, 7)] private int _zoneDepth = 4;
         [SerializeField] [Range(0, 2)] private int _varietyLevel = 1;
+
+        [Header("Vents")]
+        [SerializeField] [Min(0)] private int _ventsPerChunkMin = 4;
+        [SerializeField] [Min(0)] private int _ventsPerChunkMax = 8;
 
         [Header("Later Passes")]
         [SerializeField] [Range(0f, 1f)] private float _doorChance = 0.4f;
@@ -26,7 +30,8 @@ namespace AfterAll.Generation.BackroomsMap
         [SerializeField] [Min(1)] private int _lightRange = 6;
 
         [Header("Streaming")]
-        [SerializeField] [Min(0)] private int _loadRadius = 1;
+        [Tooltip("Square half-extent in chunks (1 = 3×3, 2 = 5×5).")]
+        [SerializeField] [Min(0)] private int _loadRadius = 2;
 
         public int WorldSeed => _worldSeed;
         public int ChunkSize => _chunkSize;
@@ -38,5 +43,7 @@ namespace AfterAll.Generation.BackroomsMap
         public int ExitDensity => _exitDensity;
         public int LightRange => _lightRange;
         public int LoadRadius => _loadRadius;
+        public int VentsPerChunkMin => _ventsPerChunkMin;
+        public int VentsPerChunkMax => Mathf.Max(_ventsPerChunkMin, _ventsPerChunkMax);
     }
 }
