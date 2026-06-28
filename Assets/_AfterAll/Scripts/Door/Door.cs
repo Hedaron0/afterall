@@ -1,6 +1,7 @@
 using System.Collections;
 using AfterAll.Interaction;
 using AfterAll.Inventories;
+using AfterAll.Items;
 using AfterAll.UI;
 using UnityEngine;
 
@@ -14,6 +15,7 @@ namespace AfterAll.Door
         [SerializeField] private Transform _pivot;
         [SerializeField] private Collider _collider;
         [SerializeField] private bool _startsLocked;
+        [SerializeField] private ItemDefinition _requiredKey;
         [SerializeField] private float _openAngle = 90f;
         [SerializeField] private float _swingSpeed = 4f;
         [SerializeField] private AudioClip _unlockClip;
@@ -34,7 +36,10 @@ namespace AfterAll.Door
             {
                 if (!_unlocked)
                 {
-                    return _inventory != null && _inventory.SelectedHas(ItemType.Key)
+                    if (_requiredKey == null)
+                        return "Locked";
+
+                    return _inventory != null && _inventory.SelectedHas(_requiredKey)
                         ? "Unlock door"
                         : "Locked";
                 }
@@ -83,13 +88,19 @@ namespace AfterAll.Door
         {
             if (!_unlocked)
             {
-                if (_inventory == null || !_inventory.SelectedHas(ItemType.Key))
+                if (_requiredKey == null)
                 {
-                    GameFeedbackUI.Show("Need a key in your selected slot.");
+                    GameFeedbackUI.Show("This door is locked.");
                     return;
                 }
 
-                if (!_inventory.TryConsumeSelectedIf(ItemType.Key))
+                if (_inventory == null || !_inventory.SelectedHas(_requiredKey))
+                {
+                    GameFeedbackUI.Show($"Need {_requiredKey.DisplayName} in your selected slot.");
+                    return;
+                }
+
+                if (!_inventory.TryConsumeSelectedIf(_requiredKey))
                     return;
 
                 _unlocked = true;

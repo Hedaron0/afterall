@@ -19,6 +19,8 @@ namespace AfterAll.Generation.BackroomsMap
             {
                 if (covered[x, y])
                     continue;
+                if (!IsLitSurface(cells, x, y))
+                    continue;
 
                 lights.Add((x, y));
                 FloodCover(cells, covered, x, y, w, h, config.LightRange);
@@ -55,12 +57,15 @@ namespace AfterAll.Generation.BackroomsMap
                 return;
             if (covered[x, y])
                 return;
-            if (!cells[y, x].IsWalkable())
+            if (!IsLitSurface(cells, x, y))
                 return;
 
             covered[x, y] = true;
             queue.Enqueue((x, y, depth));
         }
+
+        private static bool IsLitSurface(CellType[,] cells, int x, int y) =>
+            cells[y, x] is CellType.Room or CellType.Floor;
 
         private static List<(int x, int y)> CollectWalkable(CellType[,] cells, int w, int h)
         {
@@ -68,7 +73,7 @@ namespace AfterAll.Generation.BackroomsMap
             for (int y = 0; y < h; y++)
             for (int x = 0; x < w; x++)
             {
-                if (cells[y, x].IsWalkable())
+                if (IsLitSurface(cells, x, y))
                     list.Add((x, y));
             }
 

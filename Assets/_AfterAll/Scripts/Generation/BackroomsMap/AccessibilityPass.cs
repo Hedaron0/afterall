@@ -8,7 +8,7 @@ namespace AfterAll.Generation.BackroomsMap
     /// </summary>
     public static class AccessibilityPass
     {
-        private const int MaxCarveDistance = 12;
+        private const int MaxCarveDistance = 24;
         private const int WallTinyIslandMaxCells = 2;
         private const int MaxFixPasses = 8;
 

@@ -20,7 +20,9 @@ namespace AfterAll.EditorTools
         private Vector2 _scroll;
         private int _previewScale = 3;
         private PreviewMode _previewMode = PreviewMode.Grid3x3;
-        private bool _showLights = true;
+        private bool _showLights = false;
+        private bool _showDoors = false;
+        private bool _showConnectors = false;
         private bool _showChunkLabels = true;
         private int _focusChunkX;
         private int _focusChunkZ;
@@ -178,6 +180,12 @@ namespace AfterAll.EditorTools
             _previewScale = EditorGUILayout.IntSlider("Zoom", _previewScale, 2, 10);
             _showChunkLabels = EditorGUILayout.Toggle("Chunk coordinate labels", _showChunkLabels);
             _showLights = EditorGUILayout.Toggle("Show lights", _showLights);
+
+            if (_config != null && !_config.LayoutOnlyMode)
+            {
+                _showDoors = EditorGUILayout.Toggle("Show doors", _showDoors);
+                _showConnectors = EditorGUILayout.Toggle("Show connectors", _showConnectors);
+            }
             if (EditorGUI.EndChangeCheck())
                 Regenerate();
         }
@@ -279,8 +287,22 @@ namespace AfterAll.EditorTools
             EditorGUILayout.Space(4);
             EditorGUILayout.LabelField("Legend", EditorStyles.boldLabel);
             EditorGUILayout.LabelField(
-                "Brown = door cell | Green = exit | Cyan = connector | Yellow pixel = light | " +
-                "White lines = chunk borders | Yellow chunk border = focus chunk");
+                "Black = void (wall) | Grey = corridor (floor) | Off-white = room | " +
+                "Dark grey = pillar | Yellow = light (room/floor only) | " +
+                "White lines = chunk borders | Yellow border = focus chunk");
+
+            if (_config != null && _config.LayoutOnlyMode)
+            {
+                EditorGUILayout.HelpBox(
+                    "Layout-only mode — no doors, exits, connectors, or lights. " +
+                    "Shaped rooms (L, corner, T) active via Room Shapes settings. Void fill deferred to phase 2.",
+                    MessageType.None);
+            }
+            else
+            {
+                EditorGUILayout.LabelField(
+                    "Brown = door | Magenta = door facing | Green = exit | Cyan = chunk connector");
+            }
         }
 
         private void DrawStats()
@@ -299,11 +321,17 @@ namespace AfterAll.EditorTools
                 $"({_config.ChunkSizeMetres:F0} m per chunk)");
             EditorGUILayout.LabelField($"Zones: {focus.ZoneCount}");
             EditorGUILayout.LabelField($"Floor coverage: {focus.FloorFraction():P1}");
-            EditorGUILayout.LabelField($"Connectors: {focus.ConnectorPoints.Count}");
-            EditorGUILayout.LabelField($"Doors: {focus.DoorOpenings.Count}");
+            if (_config.LayoutOnlyMode)
+                EditorGUILayout.LabelField("Mode: layout-only (no doors / exits / connectors)");
+            else
+            {
+                EditorGUILayout.LabelField($"Connectors: {focus.ConnectorPoints.Count}");
+                EditorGUILayout.LabelField($"Doors: {focus.DoorOpenings.Count}");
+                EditorGUILayout.LabelField(
+                    $"Exit: {(focus.Exit.HasValue ? focus.Exit.Value.Dir.ToString() : "none")}");
+            }
+
             EditorGUILayout.LabelField($"Lights: {focus.Lights.Count}");
-            EditorGUILayout.LabelField(
-                $"Exit: {(focus.Exit.HasValue ? focus.Exit.Value.Dir.ToString() : "none")}");
         }
 
         private void Regenerate()
@@ -348,7 +376,8 @@ namespace AfterAll.EditorTools
                     pixels[idx] = CenterChunkBorderColor;
             }
 
-            MarkDoorFacing(pixels, w, h, grid);
+            if (_showDoors && _config != null && !_config.LayoutOnlyMode)
+                MarkDoorFacing(pixels, w, h, grid);
             tex.SetPixels(pixels);
             tex.Apply();
         }
@@ -370,11 +399,13 @@ namespace AfterAll.EditorTools
 
                 if (_showLights && ContainsLight(chunk.Lights, x, y))
                     pixels[idx] = LightColor;
-                else if (ContainsConnector(chunk.ConnectorPoints, x, y))
+                else if (_showConnectors && _config != null && !_config.LayoutOnlyMode &&
+                         ContainsConnector(chunk.ConnectorPoints, x, y))
                     pixels[idx] = ConnectorColor;
             }
 
-            MarkDoorFacingSingle(pixels, w, h, chunk);
+            if (_showDoors && _config != null && !_config.LayoutOnlyMode)
+                MarkDoorFacingSingle(pixels, w, h, chunk);
             tex.SetPixels(pixels);
             tex.Apply();
         }
@@ -390,7 +421,8 @@ namespace AfterAll.EditorTools
 
             if (_showLights && ContainsLight(chunk.Lights, lx, ly))
                 return LightColor;
-            if (ContainsConnector(chunk.ConnectorPoints, lx, ly))
+            if (_showConnectors && _config != null && !_config.LayoutOnlyMode &&
+                ContainsConnector(chunk.ConnectorPoints, lx, ly))
                 return ConnectorColor;
 
             return ColorForCell(cells[y, x]);

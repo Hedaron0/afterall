@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d2e3f4a5b6c789012345678901bcd234, type: 3}
+  m_Name: FlashlightSettings
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Items.Flashlight.FlashlightSettings
+  _color: {r: 1, g: 0.92, b: 0.78, a: 1}
+  _intensity: 6
+  _range: 24
+  _spotAngle: 42
+  _innerSpotAngle: 22
+  _shadows: 2
+  _shadowStrength: 0.7
+  _autoOnWhenEquipped: 1
+  _flickerAmount: 0.08
+  _flickerSpeed: 12
+  _dropoutChance: 0.002
+  _dropoutDuration: 0.04
+  _toggleOnClip: {fileID: 0}
+  _toggleOffClip: {fileID: 0}
+  _humLoopClip: {fileID: 0}
+  _clickVolume: 0.45
+  _humVolume: 0.12

@@ -12,11 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c8d4e5f6a7b8490192a3b4c5d6e7f801, type: 3}
   m_Name: BackroomsMapConfig
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Generation.BackroomsMap.BackroomsMapConfig
-  _worldSeed: 42
+  _worldSeed: 120
   _chunkSize: 32
   _cellWorldSize: 2
-  _zoneDepth: 5
+  _zoneDepth: 4
   _varietyLevel: 1
+  _chunkOutlineMargin: 12
+  _shapedRoomChance: 0.65
+  _lShapeWeight: 30
+  _cornerCutWeight: 15
+  _tShapeWeight: 10
+  _layoutOnlyMode: 1
   _doorChance: 0.4
   _exitDensity: 3
   _lightRange: 6

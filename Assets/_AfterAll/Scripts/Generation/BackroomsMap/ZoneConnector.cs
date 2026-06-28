@@ -13,6 +13,11 @@ namespace AfterAll.Generation.BackroomsMap
             (-1, 0, CardinalDir.W)
         };
 
+        public static void ConnectPoints(CellType[,] cells, int x0, int y0, int x1, int y1, Rng rng)
+        {
+            CarveLCorridor(cells, x0, y0, x1, y1, rng);
+        }
+
         public static void ConnectZones(
             CellType[,] cells,
             IReadOnlyList<ZoneSpec> zones,

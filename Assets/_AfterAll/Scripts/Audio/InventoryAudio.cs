@@ -6,8 +6,7 @@ namespace AfterAll.Audio
     [RequireComponent(typeof(Inventory))]
     public class InventoryAudio : MonoBehaviour
     {
-        [SerializeField] private AudioClip _keyEquipClip;
-        [SerializeField] private float _keyEquipVolume = 0.35f;
+        [SerializeField] private float _equipVolume = 0.35f;
 
         private Inventory _inventory;
 
@@ -30,13 +29,11 @@ namespace AfterAll.Audio
 
         private void OnSelectionChanged()
         {
-            if (_inventory.SelectedItem != ItemType.Key)
+            var clip = _inventory.SelectedItem?.EquipSound;
+            if (clip == null)
                 return;
 
-            if (_keyEquipClip == null)
-                return;
-
-            AudioSource.PlayClipAtPoint(_keyEquipClip, transform.position, _keyEquipVolume);
+            AudioSource.PlayClipAtPoint(clip, transform.position, _equipVolume);
         }
     }
 }

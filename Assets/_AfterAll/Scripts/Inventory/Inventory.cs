@@ -1,12 +1,15 @@
 using System;
+using AfterAll.Items;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace AfterAll.Inventories
 {
-    public enum ItemType { None, Key }
-
-    public class Inventory : MonoBehaviour
+    /// <summary>
+    /// 3-slot hotbar. Implements IItemReceiver for Hotbar + KeyItem pickups only.
+    /// Ammo / consumables will use separate IItemReceiver components later.
+    /// </summary>
+    public class Inventory : MonoBehaviour, IItemReceiver
     {
         public const int SlotCount = 3;
 
@@ -15,7 +18,7 @@ namespace AfterAll.Inventories
 
         [SerializeField] private InputActionAsset _inputActions;
 
-        private readonly ItemType[] _slots = new ItemType[SlotCount];
+        private readonly ItemDefinition[] _slots = new ItemDefinition[SlotCount];
         private readonly Action<InputAction.CallbackContext>[] _slotCallbacks =
             new Action<InputAction.CallbackContext>[SlotCount];
 
@@ -23,7 +26,21 @@ namespace AfterAll.Inventories
 
         public int SelectedSlot { get; private set; }
 
-        public ItemType SelectedItem => _slots[SelectedSlot];
+        public ItemDefinition SelectedItem => _slots[SelectedSlot];
+
+        public bool HasFreeSlot
+        {
+            get
+            {
+                foreach (ItemDefinition slot in _slots)
+                {
+                    if (slot == null)
+                        return true;
+                }
+
+                return false;
+            }
+        }
 
         private void Awake()
         {
@@ -76,47 +93,67 @@ namespace AfterAll.Inventories
             OnSelectionChanged?.Invoke();
         }
 
-        public bool TryCanAdd()
+        public void SelectSlotContaining(ItemDefinition item)
         {
-            foreach (ItemType slot in _slots)
-                if (slot == ItemType.None) return true;
-            return false;
+            if (item == null)
+                return;
+
+            for (int i = 0; i < SlotCount; i++)
+            {
+                if (_slots[i] != item)
+                    continue;
+
+                SetSelectedSlot(i);
+                return;
+            }
         }
 
-        public bool TryAddItem(ItemType item)
+        public bool TryAddItem(ItemDefinition item, bool selectAddedSlot = false)
         {
             for (int i = 0; i < SlotCount; i++)
             {
-                if (_slots[i] != ItemType.None)
+                if (_slots[i] != null)
                     continue;
 
                 _slots[i] = item;
                 OnInventoryChanged?.Invoke();
+
+                if (selectAddedSlot)
+                    SetSelectedSlot(i);
+
                 return true;
             }
+
             return false;
         }
 
-        public bool HasItem(ItemType item)
+        public bool HasItem(ItemDefinition item)
         {
-            foreach (ItemType slot in _slots)
-                if (slot == item) return true;
+            if (item == null)
+                return false;
+
+            foreach (ItemDefinition slot in _slots)
+            {
+                if (slot == item)
+                    return true;
+            }
+
             return false;
         }
 
-        public bool SelectedHas(ItemType item) => _slots[SelectedSlot] == item;
+        public bool SelectedHas(ItemDefinition item) => _slots[SelectedSlot] == item;
 
         public bool TryConsumeSelected()
         {
-            if (_slots[SelectedSlot] == ItemType.None)
+            if (_slots[SelectedSlot] == null)
                 return false;
 
-            _slots[SelectedSlot] = ItemType.None;
+            _slots[SelectedSlot] = null;
             OnInventoryChanged?.Invoke();
             return true;
         }
 
-        public bool TryConsumeSelectedIf(ItemType item)
+        public bool TryConsumeSelectedIf(ItemDefinition item)
         {
             if (_slots[SelectedSlot] != item)
                 return false;
@@ -124,7 +161,18 @@ namespace AfterAll.Inventories
             return TryConsumeSelected();
         }
 
-        public ItemType GetSlot(int index) => _slots[index];
+        public ItemDefinition GetSlot(int index) => _slots[index];
+
+        bool IItemReceiver.CanReceive(ItemDefinition item) =>
+            item != null && item.UsesHotbar && HasFreeSlot;
+
+        bool IItemReceiver.TryReceive(ItemDefinition item, int amount)
+        {
+            if (amount < 1 || !((IItemReceiver)this).CanReceive(item))
+                return false;
+
+            return TryAddItem(item);
+        }
 
         private void ResolveInputActions()
         {

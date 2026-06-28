@@ -28,7 +28,10 @@ namespace AfterAll.Generation.BackroomsMap
             var rng = new Rng(seed);
             int size = config.ChunkSize;
 
-            var connectorPoints = EdgeConnectorPlanner.PlanForChunk(config, chunkX, chunkZ);
+            bool layoutOnly = config.LayoutOnlyMode;
+            var connectorPoints = layoutOnly
+                ? new List<ConnectorPoint>()
+                : EdgeConnectorPlanner.PlanForChunk(config, chunkX, chunkZ);
             var doorOpenings = new List<DoorOpeningSpec>();
 
             var cells = new CellType[size, size];
@@ -40,15 +43,19 @@ namespace AfterAll.Generation.BackroomsMap
             var specs = ArchetypeAssigner.Assign(zones, config.VarietyLevel, rng.Derive(2));
 
             foreach (var spec in specs)
-                ZoneCarver.CarveZone(cells, spec, rng.Derive(3 + spec.CenterX + spec.CenterY * size));
+                ZoneCarver.CarveZone(cells, spec, config, rng.Derive(3 + spec.CenterX + spec.CenterY * size));
 
-            ZoneConnector.ConnectZones(cells, specs, config.DoorChance, rng.Derive(4), doorOpenings);
+            float doorChance = layoutOnly ? 0f : config.DoorChance;
+            ZoneConnector.ConnectZones(cells, specs, doorChance, rng.Derive(4), doorOpenings);
 
-            ConnectorForceCarver.Apply(cells, connectorPoints, size);
+            if (!layoutOnly)
+                ConnectorForceCarver.Apply(cells, connectorPoints, size);
 
-            var exit = ExitPlacementPass.TryPlace(cells, config, rng.Derive(6));
+            ExitSpec? exit = layoutOnly ? null : ExitPlacementPass.TryPlace(cells, config, rng.Derive(6));
             var accessibility = AccessibilityPass.EnsureConnected(cells, connectorPoints, rng.Derive(8));
-            var lights = LightPlacementPass.Place(cells, config, rng.Derive(7));
+            var lights = layoutOnly
+                ? new List<(int x, int y)>()
+                : LightPlacementPass.Place(cells, config, rng.Derive(7));
 
             return new ChunkData
             {

@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7a1b2c3d4e5f6789012345678abcdef, type: 3}
+  m_Name: Item_Flashlight
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Items.ItemDefinition
+  _displayName: Flashlight
+  _category: 0
+  _icon: {fileID: 0}
+  _heldPrefab: {fileID: 8378822913778105135, guid: ba740899191b18d4aa5e634d69d4db1e, type: 3}
+  _slotColor: {r: 0.75, g: 0.82, b: 0.95, a: 1}
+  _equipSound: {fileID: 8300000, guid: e04219b4bbe9b4b4ca95b1ed35863da1, type: 3}
+  _pickupSound: {fileID: 8300000, guid: 98539e1f67df67940b82a274d8965806, type: 3}
+  _pickupPrompt: Found Flashlight

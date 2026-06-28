@@ -1,7 +1,8 @@
+using AfterAll.Inventories;
+using AfterAll.Items;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using AfterAll.Inventories;
 
 namespace AfterAll.UI
 {
@@ -12,10 +13,10 @@ namespace AfterAll.UI
         [SerializeField] private int _slotIndex;
         [SerializeField] private Image _fillImage;
         [SerializeField] private Image _highlightImage;
+        [SerializeField] private Image _iconImage;
 
         [Header("Colors")]
         [SerializeField] private Color _emptyColor = new Color(0.15f, 0.15f, 0.15f, 0.75f);
-        [SerializeField] private Color _keyColor = new Color(1f, 0.85f, 0.2f, 1f);
         [SerializeField] private Color _selectedTint = new Color(1f, 1f, 1f, 0.35f);
 
         private void Awake()
@@ -32,16 +33,26 @@ namespace AfterAll.UI
             _inventory.SetSelectedSlot(_slotIndex);
         }
 
-        public void Refresh(ItemType item, bool selected)
+        public void Refresh(ItemDefinition item, bool selected)
         {
-            _fillImage.color = item switch
-            {
-                ItemType.Key => _keyColor,
-                _            => _emptyColor,
-            };
+            _fillImage.color = item != null ? item.SlotColor : _emptyColor;
 
             if (_highlightImage != null)
                 _highlightImage.enabled = selected;
+
+            if (_iconImage == null)
+                return;
+
+            if (item != null && item.Icon != null)
+            {
+                _iconImage.enabled = true;
+                _iconImage.sprite = item.Icon;
+            }
+            else
+            {
+                _iconImage.enabled = false;
+                _iconImage.sprite = null;
+            }
         }
     }
 }

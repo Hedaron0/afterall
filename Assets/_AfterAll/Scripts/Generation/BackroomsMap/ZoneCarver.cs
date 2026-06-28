@@ -4,15 +4,15 @@ namespace AfterAll.Generation.BackroomsMap
 {
     public static class ZoneCarver
     {
-        public static void CarveZone(CellType[,] cells, ZoneSpec zone, Rng rng)
+        public static void CarveZone(CellType[,] cells, ZoneSpec zone, BackroomsMapConfig config, Rng rng)
         {
             switch (zone.Archetype)
             {
                 case ZoneArchetype.StandardRoom:
-                    CarveStandardRoom(cells, zone.Rect, rng);
+                    CarveStandardRoom(cells, zone.Rect, config, rng, wallOnly: false);
                     break;
                 case ZoneArchetype.VoidRoom:
-                    CarveVoidRoom(cells, zone.Rect, padding: 1);
+                    CarveVoidRoom(cells, zone.Rect, config, rng, padding: 1, wallOnly: false);
                     break;
                 case ZoneArchetype.PillarHall:
                     CarvePillarHall(cells, zone.Rect, rng);
@@ -24,13 +24,45 @@ namespace AfterAll.Generation.BackroomsMap
                     CarveOrganic(cells, zone.Rect, rng);
                     break;
                 case ZoneArchetype.Corridor:
-                    CarveCorridor(cells, zone.Rect, rng);
+                    CarveCorridor(cells, zone.Rect, rng, wallOnly: false);
                     break;
             }
         }
 
-        private static void CarveStandardRoom(CellType[,] cells, ZoneRect zone, Rng rng)
+        /// <summary>
+        /// Carves inside void pockets — only writes to Wall cells, never overwrites existing walkable geometry.
+        /// </summary>
+        public static void CarveZoneInVoid(CellType[,] cells, ZoneSpec zone, BackroomsMapConfig config, Rng rng)
         {
+            switch (zone.Archetype)
+            {
+                case ZoneArchetype.StandardRoom:
+                    CarveStandardRoom(cells, zone.Rect, config, rng, wallOnly: true);
+                    break;
+                case ZoneArchetype.VoidRoom:
+                    CarveVoidRoom(cells, zone.Rect, config, rng, padding: 1, wallOnly: true);
+                    break;
+                case ZoneArchetype.Corridor:
+                    CarveCorridor(cells, zone.Rect, rng, wallOnly: true);
+                    break;
+            }
+        }
+
+        public static void WriteRoomRect(CellType[,] cells, int x, int y, int w, int h, bool wallOnly) =>
+            CarveRect(cells, x, y, w, h, CellType.Room, wallOnly);
+
+        public static bool InBounds(CellType[,] cells, int x, int y) =>
+            x >= 0 && y >= 0 && x < cells.GetLength(1) && y < cells.GetLength(0);
+
+        private static void CarveStandardRoom(
+            CellType[,] cells, ZoneRect zone, BackroomsMapConfig config, Rng rng, bool wallOnly)
+        {
+            if (config != null && rng.Chance(config.ShapedRoomChance))
+            {
+                if (RoomShapeCarver.TryCarve(cells, zone, config, rng, wallOnly, padding: 1))
+                    return;
+            }
+
             float sizeRatio = 0.5f + rng.Value() * 0.4f;
             int roomW = System.Math.Max(2, (int)(zone.Width * sizeRatio));
             int roomH = System.Math.Max(2, (int)(zone.Height * sizeRatio));
@@ -43,25 +75,35 @@ namespace AfterAll.Generation.BackroomsMap
             if (maxX < minX || maxY < minY)
             {
                 CarveRect(cells, zone.X + 1, zone.Y + 1,
-                    System.Math.Max(2, zone.Width - 2), System.Math.Max(2, zone.Height - 2), CellType.Room);
+                    System.Math.Max(2, zone.Width - 2), System.Math.Max(2, zone.Height - 2),
+                    CellType.Room, wallOnly);
                 return;
             }
 
             int rx = rng.Range(minX, maxX + 1);
             int ry = rng.Range(minY, maxY + 1);
-            CarveRect(cells, rx, ry, roomW, roomH, CellType.Room);
+            CarveRect(cells, rx, ry, roomW, roomH, CellType.Room, wallOnly);
         }
 
-        private static void CarveVoidRoom(CellType[,] cells, ZoneRect zone, int padding)
+        private static void CarveVoidRoom(
+            CellType[,] cells, ZoneRect zone, BackroomsMapConfig config, Rng rng, int padding, bool wallOnly)
         {
+            if (config != null && zone.Width >= 6 && zone.Height >= 6 && rng.Chance(config.ShapedRoomChance))
+            {
+                if (RoomShapeCarver.TryCarve(cells, zone, config, rng, wallOnly, padding))
+                    return;
+            }
+
             CarveRect(cells, zone.X + padding, zone.Y + padding,
                 System.Math.Max(1, zone.Width - padding * 2),
-                System.Math.Max(1, zone.Height - padding * 2), CellType.Room);
+                System.Math.Max(1, zone.Height - padding * 2), CellType.Room, wallOnly);
         }
 
         private static void CarvePillarHall(CellType[,] cells, ZoneRect zone, Rng rng)
         {
-            CarveVoidRoom(cells, zone, padding: 1);
+            CarveRect(cells, zone.X + 1, zone.Y + 1,
+                System.Math.Max(1, zone.Width - 2),
+                System.Math.Max(1, zone.Height - 2), CellType.Room, wallOnly: false);
 
             int spacing = rng.Range(4, 6);
             for (int y = zone.Y + spacing; y < zone.Y + zone.Height - 1; y += spacing)
@@ -139,7 +181,7 @@ namespace AfterAll.Generation.BackroomsMap
             return count;
         }
 
-        private static void CarveCorridor(CellType[,] cells, ZoneRect zone, Rng rng)
+        private static void CarveCorridor(CellType[,] cells, ZoneRect zone, Rng rng, bool wallOnly)
         {
             int cx = zone.CenterX;
             int cy = zone.CenterY;
@@ -154,7 +196,17 @@ namespace AfterAll.Generation.BackroomsMap
                 if (x >= zone.X && x < zone.X + zone.Width &&
                     y >= zone.Y && y < zone.Y + zone.Height &&
                     InBounds(cells, x, y))
-                    cells[y, x] = CellType.Floor;
+                {
+                    if (wallOnly)
+                    {
+                        if (cells[y, x] == CellType.Wall)
+                            cells[y, x] = CellType.Floor;
+                    }
+                    else
+                    {
+                        cells[y, x] = CellType.Floor;
+                    }
+                }
 
                 if (rng.Chance(0.3f))
                     dir = rng.Range(0, 4);
@@ -169,21 +221,19 @@ namespace AfterAll.Generation.BackroomsMap
             }
         }
 
-        private static void CarveRect(CellType[,] cells, int x, int y, int w, int h, CellType type)
+        private static void CarveRect(CellType[,] cells, int x, int y, int w, int h, CellType type, bool wallOnly)
         {
             for (int dy = 0; dy < h; dy++)
             for (int dx = 0; dx < w; dx++)
             {
                 int wx = x + dx;
                 int wy = y + dy;
-                if (InBounds(cells, wx, wy))
-                    cells[wy, wx] = type;
+                if (!InBounds(cells, wx, wy))
+                    continue;
+                if (wallOnly && cells[wy, wx] != CellType.Wall)
+                    continue;
+                cells[wy, wx] = type;
             }
-        }
-
-        private static bool InBounds(CellType[,] cells, int x, int y)
-        {
-            return x >= 0 && y >= 0 && x < cells.GetLength(1) && y < cells.GetLength(0);
         }
     }
 }
