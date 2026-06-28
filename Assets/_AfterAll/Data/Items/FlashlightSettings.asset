@@ -24,8 +24,8 @@ MonoBehaviour:
   _flickerSpeed: 12
   _dropoutChance: 0.002
   _dropoutDuration: 0.04
-  _toggleOnClip: {fileID: 0}
-  _toggleOffClip: {fileID: 0}
+  _toggleOnClip: {fileID: 8300000, guid: f0cf67664dda2934099370758221bba0, type: 3}
+  _toggleOffClip: {fileID: 8300000, guid: fccefdb469404eb42b613d33f98462b3, type: 3}
   _humLoopClip: {fileID: 0}
   _clickVolume: 0.45
   _humVolume: 0.12
