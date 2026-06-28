@@ -48,6 +48,33 @@ namespace AfterAll.Door
             ResolveReferences();
             _unlocked = !_startsLocked;
             _inventory = FindAnyObjectByType<Inventory>();
+            RecacheSwing();
+        }
+
+        /// <summary>
+        /// Called by proc-gen spawner after instantiate. Hinge on left edge of door hole.
+        /// </summary>
+        public void ApplyProcGenLayout(float width, float height, float panelDepth = 0.1f, float floorY = 0f)
+        {
+            ResolveReferences();
+            if (_pivot == null)
+                return;
+
+            Transform model = _pivot.Find("DoorModel");
+            if (model == null)
+                return;
+
+            _pivot.localPosition = new Vector3(-width * 0.5f, floorY, 0f);
+            model.localPosition = new Vector3(width * 0.5f, floorY + height * 0.5f, 0f);
+            model.localScale = new Vector3(width, height, panelDepth);
+            RecacheSwing();
+        }
+
+        private void RecacheSwing()
+        {
+            if (_pivot == null)
+                return;
+
             _closedRotation = _pivot.localRotation;
             _openRotation = _closedRotation * Quaternion.Euler(0f, _openAngle, 0f);
         }

@@ -1,5 +1,6 @@
 using AfterAll.Environment;
 using UnityEngine;
+using DoorBehaviour = AfterAll.Door.Door;
 
 namespace AfterAll.Generation.BackroomsMap
 {
@@ -67,8 +68,12 @@ namespace AfterAll.Generation.BackroomsMap
             }
 
             SpawnLights(root, data, config, profile);
+            SpawnDoorWallSurrounds(root, data, cell, profile);
             SpawnDoors(root, data, cell, profile);
         }
+
+        private static Vector3 DoorAnchorPosition(int gridX, int gridY, float cell, CardinalDir facing, float frameDepth) =>
+            MapGridConvention.DoorFrameWorldPosition(gridX, gridY, cell, facing, frameDepth);
 
         private static void SpawnChunkSlab(Transform root, GameObject prefab, Vector3 localPos, Vector3 localScale)
         {
@@ -160,6 +165,61 @@ namespace AfterAll.Generation.BackroomsMap
                 child.localPosition = Vector3.zero;
         }
 
+        private static void SpawnDoorWallSurrounds(
+            Transform root, ChunkData data, float cell, ChunkSpawnProfile profile)
+        {
+            if (!profile.HasWallPrefab || data.DoorOpenings == null)
+                return;
+
+            float wallBase = profile.WallBaseY;
+            float roomHeight = profile.RoomHeight;
+            float doorWidth = profile.DoorWidth;
+            float doorHeight = profile.DoorHeight;
+            float frameDepth = profile.FrameDepth;
+            float jambWidth = (cell - doorWidth) * 0.5f;
+            float headerHeight = roomHeight - doorHeight;
+
+            foreach (var opening in data.DoorOpenings)
+            {
+                var anchor = new GameObject("DoorSurround").transform;
+                anchor.SetParent(root, false);
+                anchor.localPosition = DoorAnchorPosition(opening.X, opening.Y, cell, opening.Facing, frameDepth);
+                anchor.localRotation = MapGridConvention.RotationFacingCorridor(opening.Facing);
+
+                if (jambWidth > 0.01f)
+                {
+                    float jambCenterX = (cell + doorWidth) * 0.25f;
+                    float jambCenterY = wallBase + doorHeight * 0.5f;
+                    SpawnScaledWallBlock(
+                        anchor, profile.WallBlockPrefab,
+                        new Vector3(-jambCenterX, jambCenterY, 0f),
+                        new Vector3(jambWidth, doorHeight, frameDepth));
+                    SpawnScaledWallBlock(
+                        anchor, profile.WallBlockPrefab,
+                        new Vector3(jambCenterX, jambCenterY, 0f),
+                        new Vector3(jambWidth, doorHeight, frameDepth));
+                }
+
+                if (headerHeight > 0.01f)
+                {
+                    float headerCenterY = wallBase + doorHeight + headerHeight * 0.5f;
+                    SpawnScaledWallBlock(
+                        anchor, profile.WallBlockPrefab,
+                        new Vector3(0f, headerCenterY, 0f),
+                        new Vector3(cell, headerHeight, frameDepth));
+                }
+            }
+        }
+
+        private static void SpawnScaledWallBlock(
+            Transform parent, GameObject prefab, Vector3 localPos, Vector3 localScale)
+        {
+            var instance = Object.Instantiate(prefab, parent);
+            instance.transform.localPosition = localPos;
+            instance.transform.localRotation = Quaternion.identity;
+            instance.transform.localScale = localScale;
+        }
+
         private static void SpawnDoors(Transform root, ChunkData data, float cell, ChunkSpawnProfile profile)
         {
             if (profile.DoorPrefab == null || data.DoorOpenings == null)
@@ -167,35 +227,21 @@ namespace AfterAll.Generation.BackroomsMap
 
             foreach (var opening in data.DoorOpenings)
             {
-                var localPos = CellCenter(opening.X, opening.Y, cell);
-                PlaceDoor(root, profile.DoorPrefab, localPos, YawForFacing(opening.Facing));
+                var anchorPos = DoorAnchorPosition(opening.X, opening.Y, cell, opening.Facing, profile.FrameDepth);
+                var instance = Object.Instantiate(profile.DoorPrefab, root);
+                instance.transform.localPosition = anchorPos;
+                instance.transform.localRotation = MapGridConvention.RotationFacingCorridor(opening.Facing);
+
+                if (instance.TryGetComponent<DoorBehaviour>(out var door))
+                {
+                    float panelDepth = profile.FrameDepth * 0.85f;
+                    door.ApplyProcGenLayout(profile.DoorWidth, profile.DoorHeight, panelDepth, profile.WallBaseY);
+                }
             }
         }
-
-        private static void PlaceDoor(Transform root, GameObject prefab, Vector3 localPos, float yaw)
-        {
-            var instance = Object.Instantiate(prefab, root);
-            instance.transform.localPosition = localPos;
-            instance.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
-
-            foreach (Transform child in instance.transform)
-            {
-                var pos = child.localPosition;
-                child.localPosition = new Vector3(0f, pos.y, 0f);
-            }
-        }
-
-        private static float YawForFacing(CardinalDir facing) => facing switch
-        {
-            CardinalDir.N => 0f,
-            CardinalDir.E => 90f,
-            CardinalDir.S => 180f,
-            CardinalDir.W => 270f,
-            _ => 0f
-        };
 
         private static Vector3 CellCenter(int x, int y, float cell) =>
-            new((x + 0.5f) * cell, 0f, (y + 0.5f) * cell);
+            MapGridConvention.CellCenter(x, y, cell);
 
         private static void SpawnMergedSlabs(
             Transform root,

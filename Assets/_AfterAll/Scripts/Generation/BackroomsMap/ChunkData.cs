@@ -12,7 +12,6 @@ namespace AfterAll.Generation.BackroomsMap
         public CellType[,] Cells;
         public List<DoorOpeningSpec> DoorOpenings = new();
         public List<ConnectorPoint> ConnectorPoints = new();
-        public List<VentSpec> Vents = new();
         public List<(int x, int y)> Lights = new();
         public ExitSpec? Exit;
         public int AccessibilityCorridors;

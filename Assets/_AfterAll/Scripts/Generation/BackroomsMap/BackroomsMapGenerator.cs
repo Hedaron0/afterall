@@ -46,7 +46,6 @@ namespace AfterAll.Generation.BackroomsMap
 
             ConnectorForceCarver.Apply(cells, connectorPoints, size);
 
-            var vents = VentGraphPass.Generate(cells, config, rng.Derive(5));
             var exit = ExitPlacementPass.TryPlace(cells, config, rng.Derive(6));
             var accessibility = AccessibilityPass.EnsureConnected(cells, connectorPoints, rng.Derive(8));
             var lights = LightPlacementPass.Place(cells, config, rng.Derive(7));
@@ -60,7 +59,6 @@ namespace AfterAll.Generation.BackroomsMap
                 Cells = cells,
                 DoorOpenings = doorOpenings,
                 ConnectorPoints = connectorPoints,
-                Vents = vents,
                 Lights = lights,
                 Exit = exit,
                 AccessibilityCorridors = accessibility.IslandsFixed,

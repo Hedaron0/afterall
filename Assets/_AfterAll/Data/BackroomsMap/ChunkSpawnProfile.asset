@@ -17,7 +17,10 @@ MonoBehaviour:
   _ceilingPrefab: {fileID: 6181515553640749467, guid: 814c322dc38e51443a075b11356610a5, type: 3}
   _lightPanelPrefab: {fileID: 1513273640798747932, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
   _ceilingLightPrefab: {fileID: 939900941032486167, guid: 26cec26132fa9554c939fd7473e4c841, type: 3}
-  _doorPrefab: {fileID: 0, guid: 2830160b7b072354d83813be5521b2a7, type: 3}
+  _doorPrefab: {fileID: 6966514909742400749, guid: 2830160b7b072354d83813be5521b2a7, type: 3}
+  _doorWidth: 1
+  _doorHeight: 2.1
+  _frameDepth: 0.15
   _roomHeight: 4
   _floorSlabThickness: 0.2
   _ceilingSlabThickness: 0.2

@@ -32,6 +32,7 @@ namespace AfterAll.Generation
 
         public IReadOnlyDictionary<ChunkCoord, Chunk> ActiveChunks => _active;
         public Transform PlayerTransform => _player;
+        public ChunkCoord PlayerChunk => _lastPlayerChunk;
 
         private void Awake()
         {

@@ -21,5 +21,3 @@ MonoBehaviour:
   _exitDensity: 3
   _lightRange: 6
   _loadRadius: 2
-  _ventsPerChunkMin: 4
-  _ventsPerChunkMax: 8

@@ -14,8 +14,16 @@ namespace AfterAll.Generation.BackroomsMap
         [SerializeField] private GameObject _ceilingLightPrefab;
         [SerializeField] private GameObject _doorPrefab;
 
+        [Header("Door Opening")]
+        [Tooltip("Clear width of the door hole in the wall.")]
+        [SerializeField] [Min(0.5f)] private float _doorWidth = 1f;
+        [Tooltip("Clear height of the door hole (floor to top of opening).")]
+        [SerializeField] [Min(1f)] private float _doorHeight = 2.1f;
+        [Tooltip("Depth of door trim + panel (slightly thicker than the door mesh).")]
+        [SerializeField] [Min(0.05f)] private float _frameDepth = 0.15f;
+
         [Header("Room Dimensions")]
-        [Tooltip("Walkable floor surface (Y=0) up to the underside of the ceiling slab.")]
+        [Tooltip("Walkable floor top surface is Y = 0. Slab sits below that.")]
         [SerializeField] [Min(0.1f)] private float _roomHeight = 4f;
         [SerializeField] [Min(0.01f)] private float _floorSlabThickness = 0.2f;
         [SerializeField] [Min(0.01f)] private float _ceilingSlabThickness = 0.2f;
@@ -28,6 +36,9 @@ namespace AfterAll.Generation.BackroomsMap
         public GameObject LightPanelPrefab => _lightPanelPrefab;
         public GameObject CeilingLightPrefab => _ceilingLightPrefab;
         public GameObject DoorPrefab => _doorPrefab;
+        public float DoorWidth => _doorWidth;
+        public float DoorHeight => _doorHeight;
+        public float FrameDepth => _frameDepth;
 
         public float RoomHeight => _roomHeight;
         public float FloorSlabThickness => _floorSlabThickness;
@@ -35,8 +46,12 @@ namespace AfterAll.Generation.BackroomsMap
         public float LightInsetBelowCeiling => _lightInsetBelowCeiling;
 
         public float LightFixtureY => _roomHeight - _lightInsetBelowCeiling;
-        public float WallCenterY => _roomHeight * 0.5f;
-        public float FloorSlabCenterY => _floorSlabThickness * 0.5f;
+        /// <summary>Walkable floor top — walls and door bottoms align here.</summary>
+        public float FloorTopY => 0f;
+        public float WallBaseY => FloorTopY;
+        public float WallCenterY => WallBaseY + _roomHeight * 0.5f;
+        /// <summary>Floor slab sits entirely below <see cref="FloorTopY"/>.</summary>
+        public float FloorSlabCenterY => FloorTopY - _floorSlabThickness * 0.5f;
         public float CeilingSlabCenterY => _roomHeight + _ceilingSlabThickness * 0.5f;
 
         public bool HasWallPrefab => _wallBlockPrefab != null;
