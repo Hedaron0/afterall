@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using AfterAll.Generation;
 using UnityEngine;
 using UnityEngine.Profiling;
 using UnityEngine.Serialization;
@@ -248,13 +247,6 @@ namespace AfterAll.Environment
 
             _nextTargetSearch = Time.time + 0.5f;
 
-            var chunkManager = FindAnyObjectByType<ChunkManager>();
-            if (chunkManager != null && chunkManager.PlayerTransform != null)
-            {
-                _playerTarget = chunkManager.PlayerTransform;
-                return _playerTarget;
-            }
-
             var movement = FindAnyObjectByType<AfterAll.Player.PlayerMovement>();
             if (movement != null)
             {
@@ -315,10 +307,6 @@ namespace AfterAll.Environment
                 if (pos.HasValue)
                     return pos.Value;
             }
-
-            var chunkManager = FindAnyObjectByType<ChunkManager>();
-            if (chunkManager != null && chunkManager.PlayerTransform != null)
-                return chunkManager.PlayerTransform.position;
 
             return transform.position;
         }
