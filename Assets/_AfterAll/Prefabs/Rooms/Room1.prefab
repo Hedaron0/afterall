@@ -625,6 +625,8 @@ MonoBehaviour:
   _leftScaleAxis: 1
   _rightScaleAxis: 1
   _baselineCached: 1
+  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _frameChance: 0.35
 --- !u!1 &1935277589155004300
 GameObject:
   m_ObjectHideFlags: 0
@@ -798,6 +800,8 @@ MonoBehaviour:
   _leftScaleAxis: 0
   _rightScaleAxis: 0
   _baselineCached: 1
+  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _frameChance: 0.35
 --- !u!1 &2547925042504016806
 GameObject:
   m_ObjectHideFlags: 0
@@ -1197,6 +1201,8 @@ MonoBehaviour:
   _leftScaleAxis: 0
   _rightScaleAxis: 0
   _baselineCached: 1
+  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _frameChance: 0.35
 --- !u!1 &4465034668220779945
 GameObject:
   m_ObjectHideFlags: 0
@@ -1596,6 +1602,8 @@ MonoBehaviour:
   _leftScaleAxis: 1
   _rightScaleAxis: 1
   _baselineCached: 1
+  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _frameChance: 0.35
 --- !u!1 &5404976608512600056
 GameObject:
   m_ObjectHideFlags: 0
@@ -1656,6 +1664,8 @@ MonoBehaviour:
   _leftScaleAxis: 1
   _rightScaleAxis: 1
   _baselineCached: 1
+  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _frameChance: 0.35
 --- !u!1 &5624507154139008724
 GameObject:
   m_ObjectHideFlags: 0
@@ -2213,6 +2223,8 @@ MonoBehaviour:
   _leftScaleAxis: 0
   _rightScaleAxis: 0
   _baselineCached: 1
+  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _frameChance: 0.35
 --- !u!1 &8245705728461059192
 GameObject:
   m_ObjectHideFlags: 0
