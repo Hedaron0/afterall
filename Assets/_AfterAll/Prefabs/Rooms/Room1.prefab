@@ -617,6 +617,8 @@ MonoBehaviour:
   gapOffset: 0
   wallLeft: {fileID: 3356555984424601949}
   wallRight: {fileID: 5354446638973692308}
+  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _frameChance: 0.35
   _wallLengthM: 13.25
   _leftExtentM: 6.625
   _rightExtentM: 6.625
@@ -625,8 +627,6 @@ MonoBehaviour:
   _leftScaleAxis: 1
   _rightScaleAxis: 1
   _baselineCached: 1
-  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
-  _frameChance: 0.35
 --- !u!1 &1935277589155004300
 GameObject:
   m_ObjectHideFlags: 0
@@ -792,16 +792,16 @@ MonoBehaviour:
   gapOffset: 0
   wallLeft: {fileID: 6707493711152144074}
   wallRight: {fileID: 4886136027946230210}
+  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _frameChance: 0.35
   _wallLengthM: 18
   _leftExtentM: 9
   _rightExtentM: 9
-  _axisWorld: {x: -1, y: -0, z: -0}
+  _axisWorld: {x: -1, y: 0, z: 0}
   _seamWorld: {x: -25.629032, y: 1.2999997, z: -162.737}
   _leftScaleAxis: 0
   _rightScaleAxis: 0
   _baselineCached: 1
-  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
-  _frameChance: 0.35
 --- !u!1 &2547925042504016806
 GameObject:
   m_ObjectHideFlags: 0
@@ -1193,6 +1193,8 @@ MonoBehaviour:
   gapOffset: 0
   wallLeft: {fileID: 8469023269912498271}
   wallRight: {fileID: 8329111072287402456}
+  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _frameChance: 0.35
   _wallLengthM: 10.5
   _leftExtentM: 5.25
   _rightExtentM: 5.25
@@ -1201,8 +1203,6 @@ MonoBehaviour:
   _leftScaleAxis: 0
   _rightScaleAxis: 0
   _baselineCached: 1
-  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
-  _frameChance: 0.35
 --- !u!1 &4465034668220779945
 GameObject:
   m_ObjectHideFlags: 0
@@ -1594,6 +1594,8 @@ MonoBehaviour:
   gapOffset: 0
   wallLeft: {fileID: 538989260443975023}
   wallRight: {fileID: 890173690797521062}
+  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _frameChance: 0.35
   _wallLengthM: 7
   _leftExtentM: 3.5
   _rightExtentM: 3.5
@@ -1602,8 +1604,6 @@ MonoBehaviour:
   _leftScaleAxis: 1
   _rightScaleAxis: 1
   _baselineCached: 1
-  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
-  _frameChance: 0.35
 --- !u!1 &5404976608512600056
 GameObject:
   m_ObjectHideFlags: 0
@@ -1656,16 +1656,16 @@ MonoBehaviour:
   gapOffset: 0
   wallLeft: {fileID: 1255608026428320646}
   wallRight: {fileID: 8629647299632280796}
+  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _frameChance: 0.35
   _wallLengthM: 20.5
   _leftExtentM: 10.25
   _rightExtentM: 10.25
-  _axisWorld: {x: -0, y: -0, z: -1}
+  _axisWorld: {x: 0, y: 0, z: -1}
   _seamWorld: {x: -16.504032, y: 1.2999997, z: -152.362}
   _leftScaleAxis: 1
   _rightScaleAxis: 1
   _baselineCached: 1
-  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
-  _frameChance: 0.35
 --- !u!1 &5624507154139008724
 GameObject:
   m_ObjectHideFlags: 0
@@ -2014,6 +2014,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2418406678075532914}
+  - component: {fileID: 9123456789012345678}
   m_Layer: 0
   m_Name: room1
   m_TagString: Untagged
@@ -2030,7 +2031,7 @@ Transform:
   m_GameObject: {fileID: 6930005898840827697}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -23.945713, y: -0.00000025921975, z: -153.17995}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -2050,6 +2051,18 @@ Transform:
   - {fileID: 1578557274653431806}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &9123456789012345678
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6930005898840827697}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c4e9f2a1b8d4635e0f9a2b3c4d5e6f7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomInstance
 --- !u!1 &7080022416841289091
 GameObject:
   m_ObjectHideFlags: 0
@@ -2215,6 +2228,8 @@ MonoBehaviour:
   gapOffset: 0
   wallLeft: {fileID: 4918297411299316029}
   wallRight: {fileID: 2912596886078487878}
+  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _frameChance: 0.35
   _wallLengthM: 7.25
   _leftExtentM: 3.625
   _rightExtentM: 3.625
@@ -2223,8 +2238,6 @@ MonoBehaviour:
   _leftScaleAxis: 0
   _rightScaleAxis: 0
   _baselineCached: 1
-  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
-  _frameChance: 0.35
 --- !u!1 &8245705728461059192
 GameObject:
   m_ObjectHideFlags: 0
