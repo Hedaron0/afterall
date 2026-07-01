@@ -3,7 +3,8 @@ using UnityEngine;
 namespace AfterAll.Environment
 {
     /// <summary>
-    /// Cuts a gap between WallLeft/WallRight and optionally spawns a frame prefab in the opening.
+    /// Cuts a 1.3m gap between WallLeft/WallRight and exposes a Socket for room connection.
+    /// Socket position always comes from live wall transforms — never baked editor world coords.
     /// </summary>
     [ExecuteAlways]
     public class WallGapController : MonoBehaviour
@@ -32,34 +33,26 @@ namespace AfterAll.Environment
 
         private bool? _spawnFrameOverride;
         private GameObject _spawnedFrame;
+        private RoomSocket _socket;
 
-        private void Awake()
+        public float WallLengthMeters => _wallLengthM;
+
+        public bool TryGetSocket(out RoomSocket socket)
         {
-            if (Application.isPlaying)
-                RebuildBaseline();
+            socket = _socket;
+            return hasOpening && _socket != null && _socket.gameObject.activeSelf;
         }
 
-        private void Reset()
+        public static float GetWallCenterGapOffset(WallGapController wall)
         {
-            RebuildBaseline();
-            ApplyGap();
+            if (wall == null)
+                return 0f;
+
+            wall.EnsureBaseline();
+            float effective = Mathf.Min(wall.gapWidth, wall._wallLengthM - 0.05f);
+            return Mathf.Max(0f, (wall._wallLengthM - effective) * 0.5f);
         }
 
-        private void OnEnable()
-        {
-            AutoFindChildren();
-            if (!_baselineCached)
-                RebuildBaseline();
-
-#if UNITY_EDITOR
-            if (!Application.isPlaying)
-                ApplyGap();
-#endif
-        }
-
-        private void Start() => ApplyGap();
-
-        /// <summary>Proc gen: set opening, frame, and gap offset explicitly.</summary>
         public void ConfigureOpening(bool open, bool spawnFrame, float offsetMeters = 0f)
         {
             hasOpening = open;
@@ -69,10 +62,31 @@ namespace AfterAll.Environment
             ApplyGap();
         }
 
-        public void ApplyGapWithOffset(float offsetMeters)
+        public void ApplyGap() => ApplyGapInternal(useRandomOffset: randomizeOffset);
+
+        private void Awake()
         {
-            gapOffset = offsetMeters;
-            ApplyGapInternal(useRandomOffset: false);
+            if (Application.isPlaying)
+                EnsureBaseline();
+        }
+
+        private void Start()
+        {
+            if (Application.isPlaying)
+                ApplyGap();
+        }
+
+        private void OnEnable()
+        {
+            AutoFindChildren();
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                if (!_baselineCached)
+                    RebuildBaseline();
+                ApplyGap();
+            }
+#endif
         }
 
         public void AutoFindChildren()
@@ -96,8 +110,13 @@ namespace AfterAll.Environment
             ApplyGap();
         }
 
-        [ContextMenu("Apply Gap")]
-        public void ApplyGap() => ApplyGapInternal(useRandomOffset: randomizeOffset);
+        private void EnsureBaseline()
+        {
+            if (Application.isPlaying)
+                RebuildBaseline();
+            else if (!_baselineCached)
+                RebuildBaseline();
+        }
 
         private void ApplyGapInternal(bool useRandomOffset)
         {
@@ -107,29 +126,24 @@ namespace AfterAll.Environment
             if (wallLeft == null || wallRight == null)
                 return;
 
-            if (!_baselineCached)
-                RebuildBaseline();
+            EnsureBaseline();
 
             if (_wallLengthM < 0.1f)
                 return;
 
             if (!hasOpening)
             {
+                HideSocket();
                 RestoreClosed();
                 return;
             }
 
-            float effectiveGapWidth = Mathf.Min(gapWidth, _wallLengthM - 0.05f);
-            if (effectiveGapWidth < 0.05f)
+            if (!TryComputeGapMetrics(useRandomOffset, out float d, out float effectiveGapWidth))
             {
+                HideSocket();
                 RestoreClosed();
                 return;
             }
-
-            float maxD = Mathf.Max(0f, _wallLengthM - effectiveGapWidth);
-            float d = useRandomOffset
-                ? Random.Range(0f, maxD)
-                : Mathf.Clamp(gapOffset, 0f, maxD);
 
             float gapLeftT = -_leftExtentM + d;
             float gapRightT = gapLeftT + effectiveGapWidth;
@@ -141,24 +155,90 @@ namespace AfterAll.Environment
                 _rightScaleAxis,
                 _rightExtentM > 0.0001f ? (_wallLengthM - d - effectiveGapWidth) / _rightExtentM : 0f);
 
-            TrySpawnFrame(d, effectiveGapWidth);
+            UpdateSocketFromLiveGap();
+            TrySpawnFrame(effectiveGapWidth);
         }
 
-        private void TrySpawnFrame(float gapOffsetM, float effectiveGapWidth)
+        /// <summary>Gap center = midpoint between split wall pivots (always correct world position).</summary>
+        private void UpdateSocketFromLiveGap()
+        {
+            Vector3 center = (wallLeft.position + wallRight.position) * 0.5f;
+            center.y = GetWallFloorY();
+
+            Vector3 outward = ComputeOutwardForward(center);
+            EnsureSocket();
+            _socket.Bind(this, gapWidth);
+            _socket.AlignAt(center, outward, gapWidth);
+        }
+
+        private void EnsureSocket()
+        {
+            if (_socket != null)
+                return;
+
+            Transform roomRoot = GetComponentInParent<RoomInstance>()?.transform ?? transform.root;
+            Transform existing = roomRoot.Find("Socket_" + name);
+            if (existing != null)
+            {
+                _socket = existing.GetComponent<RoomSocket>();
+                if (_socket != null)
+                    return;
+            }
+
+            var go = new GameObject("Socket_" + name);
+            go.transform.SetParent(roomRoot, false);
+            _socket = go.AddComponent<RoomSocket>();
+        }
+
+        private void HideSocket()
+        {
+            if (_socket != null)
+                _socket.gameObject.SetActive(false);
+        }
+
+        private Vector3 ComputeOutwardForward(Vector3 gapCenter)
+        {
+            RoomInstance room = GetComponentInParent<RoomInstance>();
+            Vector3 origin = room != null ? room.GetApproximateCenter() : transform.position;
+
+            Vector3 outward = gapCenter - origin;
+            outward.y = 0f;
+            return outward.sqrMagnitude > 0.001f ? outward.normalized : transform.forward;
+        }
+
+        private bool TryComputeGapMetrics(bool useRandomOffset, out float gapOffsetM, out float effectiveGapWidth)
+        {
+            gapOffsetM = 0f;
+            effectiveGapWidth = 0f;
+
+            if (_wallLengthM < 0.1f)
+                return false;
+
+            effectiveGapWidth = Mathf.Min(gapWidth, _wallLengthM - 0.05f);
+            if (effectiveGapWidth < 0.05f)
+                return false;
+
+            float maxD = Mathf.Max(0f, _wallLengthM - effectiveGapWidth);
+            gapOffsetM = useRandomOffset
+                ? Random.Range(0f, maxD)
+                : Mathf.Clamp(gapOffset, 0f, maxD);
+
+            return true;
+        }
+
+        private void TrySpawnFrame(float effectiveGapWidth)
         {
             if (_framePrefab == null || !ShouldSpawnFrame())
                 return;
 
-            float centerT = -_leftExtentM + gapOffsetM + effectiveGapWidth * 0.5f;
-            Vector3 center = _seamWorld + _axisWorld * centerT;
-            Vector3 spawnPos = new Vector3(center.x, GetWallFloorY(), center.z);
-            Quaternion spawnRot = Quaternion.LookRotation(GetOpeningForwardWorld(), Vector3.up)
-                * Quaternion.Euler(0f, FrameYawDegrees, 0f);
+            Vector3 center = (wallLeft.position + wallRight.position) * 0.5f;
+            center.y = GetWallFloorY();
+            Vector3 outward = ComputeOutwardForward(center);
+            Quaternion rot = Quaternion.LookRotation(outward, Vector3.up) * Quaternion.Euler(0f, FrameYawDegrees, 0f);
 
             _spawnedFrame = InstantiateFrame();
-            Transform t = _spawnedFrame.transform;
-            t.SetPositionAndRotation(spawnPos, spawnRot);
-            t.SetParent(transform, true);
+            _spawnedFrame.transform.SetPositionAndRotation(center, rot);
+            _spawnedFrame.transform.SetParent(transform, true);
         }
 
         private bool ShouldSpawnFrame()
@@ -175,7 +255,7 @@ namespace AfterAll.Environment
             Renderer rightR = wallRight.GetComponentInChildren<Renderer>();
             return leftR != null && rightR != null
                 ? Mathf.Min(leftR.bounds.min.y, rightR.bounds.min.y)
-                : _seamWorld.y;
+                : transform.position.y;
         }
 
         private GameObject InstantiateFrame()
@@ -200,17 +280,6 @@ namespace AfterAll.Environment
                 Destroy(_spawnedFrame);
 
             _spawnedFrame = null;
-        }
-
-        private Vector3 GetOpeningForwardWorld()
-        {
-            Vector3 forward = Vector3.Cross(_axisWorld, Vector3.up);
-            if (forward.sqrMagnitude < 0.0001f)
-                forward = transform.forward;
-            else
-                forward.Normalize();
-
-            return Vector3.Dot(forward, transform.forward) < 0f ? -forward : forward;
         }
 
         private void RebuildBaseline()
@@ -354,6 +423,17 @@ namespace AfterAll.Environment
                         ApplyGap();
                 };
             }
+        }
+
+        private void OnDrawGizmosSelected()
+        {
+            if (!hasOpening || _socket == null || !_socket.gameObject.activeSelf)
+                return;
+
+            Transform s = _socket.transform;
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawWireSphere(s.position, 0.15f);
+            Gizmos.DrawLine(s.position, s.position + s.forward * 1.5f);
         }
 #endif
     }
