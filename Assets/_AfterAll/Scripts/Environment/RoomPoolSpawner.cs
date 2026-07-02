@@ -74,7 +74,7 @@ namespace AfterAll.Environment
         private readonly Queue<OpeningWorkItem> _retryQueue = new();
         private readonly List<string> _deadOpenings = new();
         private readonly List<string> _policyDeadEnds = new();
-        private readonly HashSet<int> _policyDeadEndRoomsLogged = new();
+        private readonly HashSet<RoomInstance> _policyDeadEndRoomsLogged = new();
         private int _placedRoomCount;
         private Coroutine _buildRoutine;
         private System.Random _rng;
@@ -375,8 +375,7 @@ namespace AfterAll.Environment
             if (room == null)
                 return;
 
-            int roomKey = room.GetInstanceID();
-            if (!_policyDeadEndRoomsLogged.Add(roomKey))
+            if (!_policyDeadEndRoomsLogged.Add(room))
                 return;
 
             string roomName = room.name;

@@ -78,6 +78,7 @@ namespace AfterAll.Environment
                     parentWall,
                     parentSocket,
                     attemptId,
+                    spawnDoor,
                     spawnFrame,
                     out WallGapController childWall))
             {
@@ -193,6 +194,7 @@ namespace AfterAll.Environment
             WallGapController parentWall,
             RoomSocket parentSocket,
             int attemptId,
+            bool spawnDoor,
             bool spawnFrame,
             out WallGapController selectedWall)
         {
