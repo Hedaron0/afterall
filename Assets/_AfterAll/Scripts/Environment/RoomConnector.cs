@@ -26,8 +26,10 @@ namespace AfterAll.Environment
         private int _placementSeed;
         private int _connectionAttemptSerial;
         private ConnectionStats _stats;
+        private GapOffsetPolicy _gapOffsetPolicy = GapOffsetPolicy.Default;
 
         public Transform LevelRoot => _levelRoot != null ? _levelRoot : transform;
+        public GapOffsetPolicy GapOffsetPolicy => _gapOffsetPolicy;
 
         public void ResetStats()
         {
@@ -43,11 +45,20 @@ namespace AfterAll.Environment
             _placementSeed = placementSeed;
         }
 
+        public void ConfigureGapOffset(bool randomGapOffset, float edgeMarginM, float spanFraction)
+        {
+            _gapOffsetPolicy = new GapOffsetPolicy
+            {
+                randomGapOffset = randomGapOffset,
+                edgeMarginM = Mathf.Max(0f, edgeMarginM),
+                spanFraction = Mathf.Clamp(spanFraction, 0f, 1f)
+            };
+        }
+
         public RoomInstance Connect(
             RoomInstance parent,
             WallGapController parentWall,
             GameObject roomPrefab,
-            bool spawnDoor = false,
             bool spawnFrame = false)
         {
             if (parent == null || parentWall == null || roomPrefab == null)
@@ -58,7 +69,7 @@ namespace AfterAll.Environment
 
             int attemptId = _connectionAttemptSerial++;
             System.Random rng = CreatePlacementRng(parentWall, attemptId);
-            float parentOffset = WallGapController.GetRandomGapOffset(parentWall, rng);
+            float parentOffset = GetInitialParentOffset(parentWall, rng);
             parent.OpenWall(parentWall, parentOffset, false);
 
             if (!parentWall.TryGetSocket(out RoomSocket parentSocket))
@@ -78,7 +89,6 @@ namespace AfterAll.Environment
                     parentWall,
                     parentSocket,
                     attemptId,
-                    spawnDoor,
                     spawnFrame,
                     out WallGapController childWall))
             {
@@ -96,6 +106,57 @@ namespace AfterAll.Environment
 
             Debug.Log($"[RoomConnector] {parent.name}/{parentWall.name} -> {child.name}/{childWall.name}");
             return child;
+        }
+
+        /// <summary>
+        /// Post-build only: link an already-placed child room into the graph without instantiating a new prefab.
+        /// </summary>
+        public bool TryLinkExistingRoom(
+            RoomInstance parent,
+            WallGapController parentWall,
+            RoomInstance existingChild,
+            bool spawnFrame = false)
+        {
+            if (parent == null || parentWall == null || existingChild == null)
+                return false;
+
+            if (parent.IsWallConnected(parentWall))
+                return false;
+
+            int attemptId = _connectionAttemptSerial++;
+            System.Random rng = CreatePlacementRng(parentWall, attemptId);
+            float parentOffset = GetInitialParentOffset(parentWall, rng);
+            parent.OpenWall(parentWall, parentOffset, false);
+
+            if (!parentWall.TryGetSocket(out RoomSocket parentSocket))
+            {
+                RollbackParentWall(parentWall);
+                return false;
+            }
+
+            if (!TryPickChildWall(
+                    existingChild,
+                    parent,
+                    parentWall,
+                    parentSocket,
+                    attemptId,
+                    spawnFrame,
+                    out WallGapController childWall))
+            {
+                RollbackParentWall(parentWall);
+                return false;
+            }
+
+            parent.MarkWallConnected(parentWall, existingChild);
+            existingChild.MarkWallConnected(childWall, parent);
+            parentSocket.IsConnected = true;
+            if (childWall.TryGetSocket(out RoomSocket childSocket))
+                childSocket.IsConnected = true;
+
+            Debug.Log(
+                $"[RoomConnector] Linked existing {parent.name}/{parentWall.name} -> " +
+                $"{existingChild.name}/{childWall.name}");
+            return true;
         }
 
         public static bool RoomsOverlapForPlacement(
@@ -194,7 +255,6 @@ namespace AfterAll.Environment
             WallGapController parentWall,
             RoomSocket parentSocket,
             int attemptId,
-            bool spawnDoor,
             bool spawnFrame,
             out WallGapController selectedWall)
         {
@@ -216,9 +276,9 @@ namespace AfterAll.Environment
             RoomInstance[] placedRooms = LevelRoot.GetComponentsInChildren<RoomInstance>();
 
             if (_offsetSearchEnabled)
-                WallGapController.GetOffsetSamples(parentWall, _offsetSamplesPerWall, rng, parentOffsets);
+                PopulateOffsetSamples(parentWall, _offsetSamplesPerWall, rng, parentOffsets);
             else
-                parentOffsets.Add(WallGapController.GetRandomGapOffset(parentWall, rng));
+                parentOffsets.Add(GetInitialParentOffset(parentWall, rng));
 
             foreach (WallGapController wall in childRoom.Walls)
             {
@@ -230,11 +290,11 @@ namespace AfterAll.Environment
                     attemptId ^ childRoom.name.GetHashCode() ^ (wall != null ? wall.name.GetHashCode() : 0));
 
                 if (_offsetSearchEnabled)
-                    WallGapController.GetOffsetSamples(wall, _offsetSamplesPerWall, childRng, childOffsets);
+                    PopulateOffsetSamples(wall, _offsetSamplesPerWall, childRng, childOffsets);
                 else
                 {
                     childOffsets.Clear();
-                    childOffsets.Add(WallGapController.GetRandomGapOffset(wall, childRng));
+                    childOffsets.Add(GetWallOffset(wall, childRng));
                 }
 
                 for (int pi = 0; pi < parentOffsets.Count; pi++)
@@ -311,8 +371,7 @@ namespace AfterAll.Environment
             }
 
             childRoom.SealAllWalls();
-            bool spawnParentFrame = spawnDoor || spawnFrame;
-            parentRoom.OpenWall(parentWall, selectedParentOffset, spawnParentFrame);
+            parentRoom.OpenWall(parentWall, selectedParentOffset, spawnFrame);
             childRoom.OpenWall(selectedWall, selectedChildOffset, false);
             if (!parentWall.TryGetSocket(out RoomSocket selectedParentSocket) || !selectedWall.TryGetSocket(out RoomSocket selectedSocket))
             {
@@ -375,6 +434,34 @@ namespace AfterAll.Environment
                 return 0f;
 
             return (maxX - minX) * (maxZ - minZ);
+        }
+
+        private float GetInitialParentOffset(WallGapController wall, System.Random rng)
+        {
+            return GetWallOffset(wall, rng);
+        }
+
+        private float GetWallOffset(WallGapController wall, System.Random rng)
+        {
+            if (!_gapOffsetPolicy.randomGapOffset)
+                return WallGapController.GetWallCenterGapOffset(wall, _gapOffsetPolicy);
+
+            return WallGapController.GetRandomGapOffset(wall, rng, _gapOffsetPolicy);
+        }
+
+        private void PopulateOffsetSamples(
+            WallGapController wall,
+            int sampleCount,
+            System.Random rng,
+            List<float> output)
+        {
+            if (!_gapOffsetPolicy.randomGapOffset)
+            {
+                WallGapController.GetCenterOffsetSample(wall, output, _gapOffsetPolicy);
+                return;
+            }
+
+            WallGapController.GetOffsetSamples(wall, sampleCount, rng, output, _gapOffsetPolicy);
         }
 
         private static RoomInstance EnsureRoomInstance(GameObject go)

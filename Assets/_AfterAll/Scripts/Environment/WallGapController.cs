@@ -64,7 +64,7 @@ namespace AfterAll.Environment
             float previousOffset = gapOffset;
             bool previousRandomize = randomizeOffset;
 
-            float offset = GetWallCenterGapOffset(this);
+            float offset = GetWallCenterGapOffset(this, GapOffsetPolicy.Default);
             ConfigureOpening(true, false, offset);
 
             if (!TryGetSocket(out RoomSocket socket))
@@ -109,17 +109,34 @@ namespace AfterAll.Environment
             return -1;
         }
 
-        public static float GetWallCenterGapOffset(WallGapController wall)
+        public static float GetWallCenterGapOffset(WallGapController wall, GapOffsetPolicy policy = default)
         {
             if (wall == null)
                 return 0f;
 
+            if (policy.edgeMarginM <= 0f && policy.spanFraction <= 0f)
+                policy = GapOffsetPolicy.Default;
+
             wall.EnsureBaseline();
-            float effective = Mathf.Min(wall.gapWidth, wall._wallLengthM - 0.05f);
-            return Mathf.Max(0f, (wall._wallLengthM - effective) * 0.5f);
+            if (!wall.TryGetGapOffsetRange(policy, out float minOffset, out float maxOffset, out _))
+                return 0f;
+
+            return (minOffset + maxOffset) * 0.5f;
         }
 
-        public bool TryGetGapOffsetRange(out float minOffset, out float maxOffset, out float effectiveGapWidth)
+        public bool TryGetGapOffsetRange(
+            out float minOffset,
+            out float maxOffset,
+            out float effectiveGapWidth)
+        {
+            return TryGetGapOffsetRange(GapOffsetPolicy.Default, out minOffset, out maxOffset, out effectiveGapWidth);
+        }
+
+        public bool TryGetGapOffsetRange(
+            GapOffsetPolicy policy,
+            out float minOffset,
+            out float maxOffset,
+            out float effectiveGapWidth)
         {
             EnsureBaseline();
             minOffset = 0f;
@@ -129,21 +146,40 @@ namespace AfterAll.Environment
             if (_wallLengthM < 0.1f)
                 return false;
 
-            effectiveGapWidth = Mathf.Min(gapWidth, _wallLengthM - 0.05f);
+            float edgeMargin = Mathf.Max(0f, policy.edgeMarginM);
+            float spanFraction = Mathf.Clamp(policy.spanFraction > 0f ? policy.spanFraction : 1f, 0f, 1f);
+            const float safetyM = 0.05f;
+
+            float maxGapForWall = Mathf.Max(0f, _wallLengthM - edgeMargin * 2f - safetyM);
+            effectiveGapWidth = Mathf.Min(gapWidth, maxGapForWall);
             if (effectiveGapWidth < 0.05f)
                 return false;
 
-            maxOffset = Mathf.Max(0f, _wallLengthM - effectiveGapWidth);
+            float usableSpan = Mathf.Max(0f, _wallLengthM - effectiveGapWidth);
+            float clampedSpan = usableSpan * spanFraction;
+            minOffset = edgeMargin + (usableSpan - clampedSpan) * 0.5f;
+            maxOffset = minOffset + clampedSpan;
+
+            if (maxOffset < minOffset)
+            {
+                float center = usableSpan * 0.5f;
+                minOffset = center;
+                maxOffset = center;
+            }
+
             return true;
         }
 
-        public static float GetRandomGapOffset(WallGapController wall, System.Random rng)
+        public static float GetRandomGapOffset(
+            WallGapController wall,
+            System.Random rng,
+            GapOffsetPolicy policy = default)
         {
             if (wall == null || rng == null)
-                return GetWallCenterGapOffset(wall);
+                return GetWallCenterGapOffset(wall, policy);
 
-            if (!wall.TryGetGapOffsetRange(out float minOffset, out float maxOffset, out _))
-                return 0f;
+            if (!wall.TryGetGapOffsetRange(policy, out float minOffset, out float maxOffset, out _))
+                return GetWallCenterGapOffset(wall, policy);
 
             if (Mathf.Abs(maxOffset - minOffset) < 0.0001f)
                 return minOffset;
@@ -151,7 +187,12 @@ namespace AfterAll.Environment
             return minOffset + (float)rng.NextDouble() * (maxOffset - minOffset);
         }
 
-        public static void GetOffsetSamples(WallGapController wall, int sampleCount, System.Random rng, List<float> output)
+        public static void GetOffsetSamples(
+            WallGapController wall,
+            int sampleCount,
+            System.Random rng,
+            List<float> output,
+            GapOffsetPolicy policy = default)
         {
             if (output == null)
                 return;
@@ -160,9 +201,9 @@ namespace AfterAll.Environment
             if (wall == null)
                 return;
 
-            if (!wall.TryGetGapOffsetRange(out float minOffset, out float maxOffset, out _))
+            if (!wall.TryGetGapOffsetRange(policy, out float minOffset, out float maxOffset, out _))
             {
-                output.Add(0f);
+                output.Add(GetWallCenterGapOffset(wall, policy));
                 return;
             }
 
@@ -172,6 +213,9 @@ namespace AfterAll.Environment
                 output.Add((minOffset + maxOffset) * 0.5f);
                 return;
             }
+
+            if (policy.randomGapOffset && rng != null)
+                AddSample(output, GetRandomGapOffset(wall, rng, policy));
 
             float center = (minOffset + maxOffset) * 0.5f;
             float span = maxOffset - minOffset;
@@ -192,6 +236,18 @@ namespace AfterAll.Environment
 
             if (rng != null)
                 Shuffle(output, rng);
+        }
+
+        public static void GetCenterOffsetSample(
+            WallGapController wall,
+            List<float> output,
+            GapOffsetPolicy policy = default)
+        {
+            if (output == null)
+                return;
+
+            output.Clear();
+            output.Add(GetWallCenterGapOffset(wall, policy));
         }
 
         private static void Shuffle(List<float> values, System.Random rng)

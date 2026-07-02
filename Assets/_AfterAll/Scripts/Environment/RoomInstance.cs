@@ -14,6 +14,7 @@ namespace AfterAll.Environment
 
         private WallGapController[] _walls = System.Array.Empty<WallGapController>();
         private readonly HashSet<WallGapController> _connectedWalls = new();
+        private readonly Dictionary<WallGapController, RoomInstance> _wallNeighbors = new();
         private readonly List<RoomInstance> _connectedRooms = new();
 
         public IReadOnlyList<WallGapController> Walls => _walls;
@@ -83,9 +84,35 @@ namespace AfterAll.Environment
                 return;
 
             _connectedWalls.Add(wall);
+            _wallNeighbors[wall] = neighbor;
 
             if (!_connectedRooms.Contains(neighbor))
                 _connectedRooms.Add(neighbor);
+        }
+
+        public void UnlinkNeighbor(RoomInstance neighbor)
+        {
+            if (neighbor == null)
+                return;
+
+            _connectedRooms.Remove(neighbor);
+
+            var wallsToClose = new List<WallGapController>();
+            foreach (KeyValuePair<WallGapController, RoomInstance> entry in _wallNeighbors)
+            {
+                if (entry.Value == neighbor)
+                    wallsToClose.Add(entry.Key);
+            }
+
+            foreach (WallGapController wall in wallsToClose)
+            {
+                _wallNeighbors.Remove(wall);
+                _connectedWalls.Remove(wall);
+                wall.ConfigureOpening(false, false, 0f);
+
+                if (wall.TryGetSocket(out RoomSocket socket))
+                    socket.IsConnected = false;
+            }
         }
 
         public IEnumerable<WallGapController> GetOpenUnconnectedWalls()

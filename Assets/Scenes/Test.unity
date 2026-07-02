@@ -384,6 +384,7 @@ MonoBehaviour:
   _wall: {fileID: 1258765912}
   _width: 1.3
   _direction: 2
+  _wallIndex: -1
   _socketTag: Default
   _sizeClass: M
 --- !u!1 &525249319 stripped
@@ -916,7 +917,7 @@ Transform:
   m_GameObject: {fileID: 1688563658}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 12.958398, y: 1.3000033, z: 38.634186}
+  m_LocalPosition: {x: 10.050841, y: 1.3000033, z: 38.634186}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -937,6 +938,7 @@ MonoBehaviour:
   _wall: {fileID: 747106877}
   _width: 1.3
   _direction: 1
+  _wallIndex: -1
   _socketTag: Default
   _sizeClass: M
 --- !u!1 &2000000001
@@ -1009,20 +1011,35 @@ MonoBehaviour:
   _roomCount: 10
   _forceDoorsOnConnections: 0
   _doorChance: 0.35
-  _extraOpeningChance: 0.5
+  _forceFramesOnConnections: 0
+  _frameChance: 0.35
+  _extraOpeningChance: 0.699
   _minOpeningsPerRoom: 1
   _maxOpeningsPerRoom: 4
+  _maxBranchDepth: 4
+  _deadEndRatio: 0.35
+  _deadEndRatioTolerance: 0.05
+  _deadEndBiasStrength: 0.6
+  _hubMinOpenings: 3
+  _hubMaxOpenings: 4
   _useFixedSeed: 0
   _fixedSeed: 12345
   _randomizeSeedOnPlay: 1
   _lastUsedSeed: 0
   _spawnDelaySeconds: 0.05
   _attemptsPerOpening: 6
+  _maxRetryPasses: 3
+  _maxGlobalConnectAttempts: 150
   _offsetSearchEnabled: 1
   _offsetSamplesPerWall: 5
+  _randomGapOffset: 1
+  _gapEdgeMarginM: 0.15
+  _gapOffsetSpanFraction: 1
   _player: {fileID: 0}
   _playerSpawnHeight: 1
   _repositionPlayerAfterBuild: 1
+  _unreachableRoomPolicy: 2
+  _unreachableRetryAttempts: 1
 --- !u!4 &2000000006
 Transform:
   m_ObjectHideFlags: 0
@@ -1101,6 +1118,7 @@ MonoBehaviour:
   _wall: {fileID: 846058624}
   _width: 1.3
   _direction: 1
+  _wallIndex: -1
   _socketTag: Default
   _sizeClass: M
 --- !u!1 &2091828400 stripped
@@ -1457,11 +1475,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8329111072287402456, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.4417299
+      value: 0.9955503
       objectReference: {fileID: 0}
     - target: {fileID: 8329111072287402456, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.2687663
+      value: 0.23969074
       objectReference: {fileID: 0}
     - target: {fileID: 8329111072287402456, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.y
@@ -1473,11 +1491,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8469023269912498271, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalScale.x
-      value: 1.3106511
+      value: 0.7568307
       objectReference: {fileID: 0}
     - target: {fileID: 8469023269912498271, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.2557663
+      value: 0.22669074
       objectReference: {fileID: 0}
     - target: {fileID: 8469023269912498271, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.y

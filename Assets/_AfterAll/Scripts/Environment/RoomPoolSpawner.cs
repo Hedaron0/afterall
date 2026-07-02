@@ -18,7 +18,6 @@ namespace AfterAll.Environment
         {
             public RoomInstance Room;
             public WallGapController Wall;
-            public bool SpawnDoor;
             public bool SpawnFrame;
             public int TotalAttempts;
         }
@@ -31,11 +30,38 @@ namespace AfterAll.Environment
             OpeningsExhausted
         }
 
+        private enum UnreachableCause
+        {
+            ZeroConnections,
+            IsolatedSubGraph
+        }
+
+        private struct ReachabilityAuditResult
+        {
+            public int totalPlaced;
+            public int reachableCount;
+            public int unreachableCount;
+            public int zeroConnectionCount;
+            public int isolatedSubGraphCount;
+            public int retriedCount;
+            public int salvagedCount;
+            public int destroyedCount;
+            public List<string> actionLines;
+        }
+
+        private struct UnreachableComponent
+        {
+            public List<RoomInstance> rooms;
+            public UnreachableCause cause;
+        }
+
         [SerializeField] private RoomConnector _connector;
         [SerializeField] private GameObject[] _roomPrefabs = System.Array.Empty<GameObject>();
         [SerializeField] private int _roomCount = 5;
         [Header("Connection Rules")]
+        [Tooltip("Reserved for future gameplay doors — does not affect proc-gen gap FrameDoor spawn.")]
         [SerializeField] private bool _forceDoorsOnConnections;
+        [Tooltip("Reserved for future gameplay doors — does not affect proc-gen gap FrameDoor spawn.")]
         [SerializeField, Range(0f, 1f)] private float _doorChance = 0.35f;
         [SerializeField] private bool _forceFramesOnConnections;
         [SerializeField, Range(0f, 1f)] private float _frameChance = 0.35f;
@@ -65,10 +91,20 @@ namespace AfterAll.Environment
         [Header("Offset Search")]
         [SerializeField] private bool _offsetSearchEnabled = true;
         [SerializeField, Min(1)] private int _offsetSamplesPerWall = 5;
+
+        [Header("Gap Offset")]
+        [SerializeField] private bool _randomGapOffset = true;
+        [SerializeField, Min(0f)] private float _gapEdgeMarginM = 0.15f;
+        [SerializeField, Range(0f, 1f)] private float _gapOffsetSpanFraction = 1f;
+
         [Header("Player Spawn")]
         [SerializeField] private Transform _player;
         [SerializeField] private float _playerSpawnHeight = 1.0f;
         [SerializeField] private bool _repositionPlayerAfterBuild = true;
+
+        [Header("Reachability")]
+        [SerializeField] private UnreachableRoomPolicy _unreachableRoomPolicy = UnreachableRoomPolicy.RetryThenDestroy;
+        [SerializeField, Min(1)] private int _unreachableRetryAttempts = 1;
 
         private readonly Queue<OpeningWorkItem> _primaryQueue = new();
         private readonly Queue<OpeningWorkItem> _retryQueue = new();
@@ -78,6 +114,7 @@ namespace AfterAll.Environment
         private int _placedRoomCount;
         private Coroutine _buildRoutine;
         private System.Random _rng;
+        private static bool? _lastLoggedRandomGapOffset;
 
         private int MaxTotalAttemptsPerOpening => _maxRetryPasses * _attemptsPerOpening;
 
@@ -118,14 +155,16 @@ namespace AfterAll.Environment
             _connector.ResetStats();
             InitializeRng();
             _connector.ConfigureOffsetSearch(_offsetSearchEnabled, _offsetSamplesPerWall, _lastUsedSeed);
+            _connector.ConfigureGapOffset(_randomGapOffset, _gapEdgeMarginM, _gapOffsetSpanFraction);
             Debug.Log(
                 $"[RoomPoolSpawner] Seed={_lastUsedSeed}, Rooms={_roomCount}, " +
-                $"DoorChance={_doorChance:F2}, FrameChance={_frameChance:F2}, ExtraOpeningChance={_extraOpeningChance:F2}, " +
+                $"FrameChance={_frameChance:F2}, ExtraOpeningChance={_extraOpeningChance:F2}, " +
                 $"Openings={_minOpeningsPerRoom}-{_maxOpeningsPerRoom}, " +
                 $"AttemptsPerVisit={_attemptsPerOpening}, MaxRetryPasses={_maxRetryPasses}, " +
                 $"MaxAttemptsPerOpening={MaxTotalAttemptsPerOpening}, GlobalBudget={_maxGlobalConnectAttempts}, " +
                 $"MaxBranchDepth={_maxBranchDepth}, DeadEndRatio={_deadEndRatio:F2}, HubOpenings={_hubMinOpenings}-{_hubMaxOpenings}, " +
-                $"OffsetSearch={_offsetSearchEnabled}, Samples={_offsetSamplesPerWall}");
+                $"OffsetSearch={_offsetSearchEnabled}, Samples={_offsetSamplesPerWall}, " +
+                $"GapOffset(Random={_randomGapOffset}, EdgeMargin={_gapEdgeMarginM:F2}m, SpanFraction={_gapOffsetSpanFraction:F2})");
 
             if (_maxBranchDepth < 3 && _roomCount > 6)
             {
@@ -214,18 +253,20 @@ namespace AfterAll.Environment
 
             BuildExitReason exitReason = DetermineExitReason(count, globalBudgetExhausted);
             RoomConnector.ConnectionStats stats = _connector.GetStats();
+            (ReachabilityAuditResult reachability, int finalPlacedCount) = RunReachabilityAudit(startRoom);
             int postBuildOverlaps = ValidatePlacedRoomOverlaps();
             if (_repositionPlayerAfterBuild)
                 PlacePlayerAfterBuild(startRoom);
 
             LogBuildSummary(
-                count,
+                finalPlacedCount,
                 passNumber,
                 globalConnectAttempts,
                 exitReason,
                 stats,
                 validationTotals,
-                postBuildOverlaps);
+                postBuildOverlaps,
+                reachability);
 
             _buildRoutine = null;
         }
@@ -257,12 +298,20 @@ namespace AfterAll.Environment
             BuildExitReason exitReason,
             RoomConnector.ConnectionStats stats,
             RoomInstance.SocketValidationReport validationTotals,
-            int postBuildOverlaps)
+            int postBuildOverlaps,
+            ReachabilityAuditResult reachability)
         {
             var summary = new StringBuilder();
             summary.AppendLine(
                 $"[RoomPoolSpawner] Placed {placedCount}/{_roomCount} rooms. " +
                 $"Seed={_lastUsedSeed}, Passes={passNumber}, GlobalAttempts={globalConnectAttempts}.");
+
+            if (reachability.destroyedCount > 0)
+            {
+                summary.AppendLine(
+                    "[RoomPoolSpawner] Reachability cleanup reduced final room count — " +
+                    "deadEndRatio stats reflect post-cleanup layout.");
+            }
 
             if (placedCount < _roomCount)
             {
@@ -295,6 +344,8 @@ namespace AfterAll.Environment
             }
 
             AppendGraphPolicySummary(summary, placedCount);
+            AppendReachabilitySummary(summary, reachability);
+            AppendGapOffsetSummary(summary, stats);
 
             summary.Append(
                 $"[RoomPoolSpawner] Rejects(NoCompatible={stats.noCompatibleSocket}, Gap={stats.gapMismatch}, " +
@@ -473,6 +524,434 @@ namespace AfterAll.Environment
             return overlapPairs;
         }
 
+        private (ReachabilityAuditResult result, int finalPlacedCount) RunReachabilityAudit(RoomInstance startRoom)
+        {
+            RoomInstance spawnRoot = PickSpawnRoom(startRoom);
+            if (spawnRoot == null)
+            {
+                Debug.LogError("[RoomPoolSpawner] Reachability hard failure: spawn root is null.");
+                int placed = CountPlacedRooms();
+                return (CreateEmptyReachabilityResult(placed), placed);
+            }
+
+            ReachabilityAuditResult initialAudit = AuditReachability(spawnRoot);
+            ReachabilityAuditResult audit = ApplyUnreachablePolicy(startRoom, initialAudit);
+
+            spawnRoot = PickSpawnRoom(startRoom);
+            if (spawnRoot == null)
+            {
+                Debug.LogError(
+                    "[RoomPoolSpawner] Reachability hard failure: spawn root is null after policy pass.");
+                return (audit, audit.totalPlaced);
+            }
+
+            HashSet<RoomInstance> finalReachable = CollectReachableRooms(spawnRoot);
+            if (!finalReachable.Contains(spawnRoot))
+            {
+                Debug.LogError(
+                    $"[RoomPoolSpawner] Reachability hard failure: spawn room '{spawnRoot.name}' " +
+                    "is not in the reachable set after policy pass.");
+            }
+
+            return (audit, audit.totalPlaced);
+        }
+
+        private static ReachabilityAuditResult CreateEmptyReachabilityResult(int placed)
+        {
+            return new ReachabilityAuditResult
+            {
+                totalPlaced = placed,
+                reachableCount = placed,
+                actionLines = new List<string>()
+            };
+        }
+
+        private ReachabilityAuditResult AuditReachability(RoomInstance spawnRoot)
+        {
+            RoomInstance[] allPlaced = _connector.LevelRoot.GetComponentsInChildren<RoomInstance>();
+            HashSet<RoomInstance> reachable = CollectReachableRooms(spawnRoot);
+            var unreachable = new List<RoomInstance>();
+
+            foreach (RoomInstance room in allPlaced)
+            {
+                if (room != null && !reachable.Contains(room))
+                    unreachable.Add(room);
+            }
+
+            var unreachableSet = new HashSet<RoomInstance>(unreachable);
+            List<UnreachableComponent> components = FindUnreachableComponents(unreachable, unreachableSet);
+
+            int zeroConnections = 0;
+            int isolatedSubGraph = 0;
+            foreach (UnreachableComponent component in components)
+            {
+                if (component.cause == UnreachableCause.ZeroConnections)
+                    zeroConnections += component.rooms.Count;
+                else
+                    isolatedSubGraph += component.rooms.Count;
+            }
+
+            return new ReachabilityAuditResult
+            {
+                totalPlaced = allPlaced.Length,
+                reachableCount = reachable.Count,
+                unreachableCount = unreachable.Count,
+                zeroConnectionCount = zeroConnections,
+                isolatedSubGraphCount = isolatedSubGraph,
+                actionLines = new List<string>()
+            };
+        }
+
+        private ReachabilityAuditResult ApplyUnreachablePolicy(
+            RoomInstance startRoom,
+            ReachabilityAuditResult initialAudit)
+        {
+            if (initialAudit.unreachableCount == 0)
+            {
+                initialAudit.actionLines = new List<string>();
+                return initialAudit;
+            }
+
+            if (_unreachableRoomPolicy == UnreachableRoomPolicy.LogOnly)
+                return ApplyLogOnlyPolicy(startRoom, initialAudit);
+
+            int retriedCount = 0;
+            int salvagedCount = 0;
+            int destroyedCount = 0;
+            var actionLines = new List<string>();
+
+            while (true)
+            {
+                RoomInstance spawnRoot = PickSpawnRoom(startRoom);
+                ReachabilityAuditResult current = AuditReachability(spawnRoot);
+                if (current.unreachableCount == 0)
+                    break;
+
+                List<UnreachableComponent> components = GetUnreachableComponents(spawnRoot);
+                if (components.Count == 0)
+                    break;
+
+                UnreachableComponent component = components[0];
+                string componentLabel = FormatComponentLabel(component);
+                string causeLabel = component.cause == UnreachableCause.ZeroConnections
+                    ? "ZeroConnections"
+                    : "IsolatedSubGraph";
+
+                bool salvaged = false;
+                if (_unreachableRoomPolicy == UnreachableRoomPolicy.RetryThenDestroy)
+                {
+                    RoomInstance representative = PickComponentRepresentative(component.rooms);
+                    salvaged = TrySalvageComponent(representative, ref retriedCount, ref salvagedCount);
+                }
+
+                if (salvaged)
+                {
+                    actionLines.Add(
+                        $"- {componentLabel} ({causeLabel}, size={component.rooms.Count}) -> retry succeeded -> salvaged");
+                    continue;
+                }
+
+                if (_unreachableRoomPolicy == UnreachableRoomPolicy.RetryThenDestroy)
+                {
+                    actionLines.Add(
+                        $"- {componentLabel} ({causeLabel}, size={component.rooms.Count}) -> retry failed -> destroyed");
+                }
+                else
+                {
+                    actionLines.Add(
+                        $"- {componentLabel} ({causeLabel}, size={component.rooms.Count}) -> destroyed");
+                }
+
+                destroyedCount += DestroyUnreachableComponent(component.rooms);
+            }
+
+            RoomInstance finalSpawnRoot = PickSpawnRoom(startRoom);
+            ReachabilityAuditResult finalAudit = AuditReachability(finalSpawnRoot);
+            finalAudit.retriedCount = retriedCount;
+            finalAudit.salvagedCount = salvagedCount;
+            finalAudit.destroyedCount = destroyedCount;
+            finalAudit.actionLines = actionLines;
+            return finalAudit;
+        }
+
+        private ReachabilityAuditResult ApplyLogOnlyPolicy(
+            RoomInstance startRoom,
+            ReachabilityAuditResult initialAudit)
+        {
+            var actionLines = new List<string>();
+            List<UnreachableComponent> components = GetUnreachableComponents(PickSpawnRoom(startRoom));
+
+            foreach (UnreachableComponent component in components)
+            {
+                string causeLabel = component.cause == UnreachableCause.ZeroConnections
+                    ? "ZeroConnections"
+                    : "IsolatedSubGraph";
+
+                foreach (RoomInstance room in component.rooms)
+                {
+                    actionLines.Add(
+                        $"- {room.name} ({causeLabel}, size={component.rooms.Count}) -> logged only");
+                    Debug.LogWarning(
+                        $"[RoomPoolSpawner] Unreachable room: {room.name} ({causeLabel}, " +
+                        $"component size={component.rooms.Count}).");
+                }
+            }
+
+            initialAudit.actionLines = actionLines;
+            return initialAudit;
+        }
+
+        private List<UnreachableComponent> GetUnreachableComponents(RoomInstance spawnRoot)
+        {
+            HashSet<RoomInstance> reachable = CollectReachableRooms(spawnRoot);
+            var unreachable = new List<RoomInstance>();
+
+            foreach (RoomInstance room in _connector.LevelRoot.GetComponentsInChildren<RoomInstance>())
+            {
+                if (room != null && !reachable.Contains(room))
+                    unreachable.Add(room);
+            }
+
+            return FindUnreachableComponents(unreachable, new HashSet<RoomInstance>(unreachable));
+        }
+
+        private bool TrySalvageComponent(
+            RoomInstance representative,
+            ref int retriedCount,
+            ref int salvagedCount)
+        {
+            if (representative == null)
+                return false;
+
+            List<(RoomInstance room, WallGapController wall)> candidates = CollectLinkCandidates();
+            Shuffle(candidates);
+
+            int attempts = 0;
+            foreach ((RoomInstance parent, WallGapController wall) in candidates)
+            {
+                if (attempts >= _unreachableRetryAttempts)
+                    break;
+
+                retriedCount++;
+                attempts++;
+
+                if (_connector.TryLinkExistingRoom(parent, wall, representative, ShouldSpawnFrame()))
+                {
+                    salvagedCount++;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private List<(RoomInstance room, WallGapController wall)> CollectLinkCandidates()
+        {
+            var candidates = new List<(RoomInstance, WallGapController)>();
+            RoomInstance spawnRoot = PickSpawnRoom(FindHubRoom());
+            HashSet<RoomInstance> reachable = CollectReachableRooms(spawnRoot);
+
+            foreach (RoomInstance room in reachable)
+            {
+                if (room == null)
+                    continue;
+
+                foreach (WallGapController wall in room.GetClosedWalls())
+                {
+                    if (!room.IsWallConnected(wall))
+                        candidates.Add((room, wall));
+                }
+            }
+
+            return candidates;
+        }
+
+        private int DestroyUnreachableComponent(List<RoomInstance> rooms)
+        {
+            int destroyed = 0;
+            foreach (RoomInstance room in rooms.ToList())
+            {
+                if (room == null)
+                    continue;
+
+                DestroyUnreachableRoom(room);
+                destroyed++;
+            }
+
+            return destroyed;
+        }
+
+        private void DestroyUnreachableRoom(RoomInstance room)
+        {
+            if (room == null)
+                return;
+
+            List<RoomInstance> neighbors = room.ConnectedRooms.ToList();
+            foreach (RoomInstance neighbor in neighbors)
+                neighbor.UnlinkNeighbor(room);
+
+            Destroy(room.gameObject);
+        }
+
+        private static RoomInstance PickComponentRepresentative(List<RoomInstance> rooms)
+        {
+            RoomInstance best = null;
+            int bestConnections = int.MaxValue;
+
+            foreach (RoomInstance room in rooms)
+            {
+                if (room == null)
+                    continue;
+
+                int connections = room.ConnectedRooms.Count;
+                if (connections < bestConnections)
+                {
+                    bestConnections = connections;
+                    best = room;
+                }
+            }
+
+            return best ?? rooms.FirstOrDefault();
+        }
+
+        private static string FormatComponentLabel(UnreachableComponent component)
+        {
+            if (component.rooms == null || component.rooms.Count == 0)
+                return "empty";
+
+            return component.rooms[0].name;
+        }
+
+        private static List<UnreachableComponent> FindUnreachableComponents(
+            List<RoomInstance> unreachable,
+            HashSet<RoomInstance> unreachableSet)
+        {
+            var components = new List<UnreachableComponent>();
+            var visited = new HashSet<RoomInstance>();
+
+            foreach (RoomInstance start in unreachable)
+            {
+                if (start == null || visited.Contains(start))
+                    continue;
+
+                var componentRooms = new List<RoomInstance>();
+                var queue = new Queue<RoomInstance>();
+                queue.Enqueue(start);
+                visited.Add(start);
+
+                while (queue.Count > 0)
+                {
+                    RoomInstance current = queue.Dequeue();
+                    componentRooms.Add(current);
+
+                    foreach (RoomInstance neighbor in current.ConnectedRooms)
+                    {
+                        if (neighbor != null && unreachableSet.Contains(neighbor) && visited.Add(neighbor))
+                            queue.Enqueue(neighbor);
+                    }
+                }
+
+                UnreachableCause cause = ClassifyComponent(componentRooms);
+                components.Add(new UnreachableComponent
+                {
+                    rooms = componentRooms,
+                    cause = cause
+                });
+            }
+
+            return components;
+        }
+
+        private static UnreachableCause ClassifyComponent(List<RoomInstance> rooms)
+        {
+            foreach (RoomInstance room in rooms)
+            {
+                if (room != null && room.ConnectedRooms.Count == 0)
+                    return UnreachableCause.ZeroConnections;
+            }
+
+            return UnreachableCause.IsolatedSubGraph;
+        }
+
+        private static HashSet<RoomInstance> CollectReachableRooms(RoomInstance root)
+        {
+            var reachable = new HashSet<RoomInstance>();
+            if (root == null)
+                return reachable;
+
+            var queue = new Queue<RoomInstance>();
+            queue.Enqueue(root);
+            reachable.Add(root);
+
+            while (queue.Count > 0)
+            {
+                RoomInstance current = queue.Dequeue();
+                foreach (RoomInstance neighbor in current.ConnectedRooms)
+                {
+                    if (neighbor != null && reachable.Add(neighbor))
+                        queue.Enqueue(neighbor);
+                }
+            }
+
+            return reachable;
+        }
+
+        private int CountPlacedRooms()
+        {
+            return _connector.LevelRoot.GetComponentsInChildren<RoomInstance>().Length;
+        }
+
+        private static readonly Dictionary<int, int> CenterOnlyRetryBaselineBySeed = new();
+
+        private void AppendGapOffsetSummary(StringBuilder summary, RoomConnector.ConnectionStats stats)
+        {
+            summary.AppendLine(
+                $"[RoomPoolSpawner] GapOffset: Random={_randomGapOffset}, " +
+                $"EdgeMargin={_gapEdgeMarginM:F2}m, SpanFraction={_gapOffsetSpanFraction:F2}.");
+
+            if (_lastLoggedRandomGapOffset.HasValue &&
+                _lastLoggedRandomGapOffset.Value != _randomGapOffset)
+            {
+                summary.AppendLine(
+                    "[RoomPoolSpawner] GapOffset mode changed — compare OffsetSearch Retried to prior run.");
+            }
+
+            _lastLoggedRandomGapOffset = _randomGapOffset;
+
+            if (!_randomGapOffset)
+            {
+                CenterOnlyRetryBaselineBySeed[_lastUsedSeed] = stats.offsetRetried;
+                return;
+            }
+
+            if (CenterOnlyRetryBaselineBySeed.TryGetValue(_lastUsedSeed, out int centerBaseline) &&
+                centerBaseline > 0 &&
+                stats.offsetRetried > centerBaseline * 1.5f)
+            {
+                Debug.LogWarning(
+                    $"[RoomPoolSpawner] Random gap offset increased OffsetSearch Retried " +
+                    $"({stats.offsetRetried} vs center-only baseline {centerBaseline} on seed {_lastUsedSeed}). " +
+                    "Consider lowering _offsetSamplesPerWall, _gapOffsetSpanFraction, or scheduling a perf pass.");
+            }
+        }
+
+        private void AppendReachabilitySummary(StringBuilder summary, ReachabilityAuditResult reachability)
+        {
+            summary.AppendLine(
+                $"[RoomPoolSpawner] Reachability: Placed={reachability.totalPlaced}, " +
+                $"Reachable={reachability.reachableCount}, Unreachable={reachability.unreachableCount}, " +
+                $"ZeroConnections={reachability.zeroConnectionCount}, " +
+                $"IsolatedSubGraph={reachability.isolatedSubGraphCount}, " +
+                $"Policy={_unreachableRoomPolicy}, Retried={reachability.retriedCount}, " +
+                $"Salvaged={reachability.salvagedCount}, Destroyed={reachability.destroyedCount}.");
+
+            if (reachability.actionLines != null && reachability.actionLines.Count > 0)
+            {
+                foreach (string line in reachability.actionLines)
+                    summary.AppendLine($"  {line}");
+            }
+        }
+
         private static bool AreDirectlyConnected(RoomInstance a, RoomInstance b)
         {
             foreach (RoomInstance neighbor in a.ConnectedRooms)
@@ -549,7 +1028,7 @@ namespace AfterAll.Environment
             for (int i = 0; i < visitLimit; i++)
             {
                 GameObject prefab = _roomPrefabs[NextInt(0, _roomPrefabs.Length)];
-                RoomInstance child = _connector.Connect(item.Room, item.Wall, prefab, item.SpawnDoor, item.SpawnFrame);
+                RoomInstance child = _connector.Connect(item.Room, item.Wall, prefab, item.SpawnFrame);
                 attemptsUsed++;
                 if (child != null)
                     return (child, attemptsUsed);
@@ -610,7 +1089,6 @@ namespace AfterAll.Environment
                     {
                         Room = room,
                         Wall = wall,
-                        SpawnDoor = ShouldSpawnDoor(),
                         SpawnFrame = ShouldSpawnFrame(),
                         TotalAttempts = 0
                     });
@@ -624,16 +1102,10 @@ namespace AfterAll.Environment
                 {
                     Room = room,
                     Wall = closed[0],
-                    SpawnDoor = ShouldSpawnDoor(),
                     SpawnFrame = ShouldSpawnFrame(),
                     TotalAttempts = 0
                 });
             }
-        }
-
-        private bool ShouldSpawnDoor()
-        {
-            return _forceDoorsOnConnections || Chance(_doorChance);
         }
 
         private bool ShouldSpawnFrame()
