@@ -19,6 +19,7 @@ namespace AfterAll.Environment
             public RoomInstance Room;
             public WallGapController Wall;
             public bool SpawnDoor;
+            public bool SpawnFrame;
             public int TotalAttempts;
         }
 
@@ -36,6 +37,8 @@ namespace AfterAll.Environment
         [Header("Connection Rules")]
         [SerializeField] private bool _forceDoorsOnConnections;
         [SerializeField, Range(0f, 1f)] private float _doorChance = 0.35f;
+        [SerializeField] private bool _forceFramesOnConnections;
+        [SerializeField, Range(0f, 1f)] private float _frameChance = 0.35f;
         [SerializeField, Range(0f, 1f)] private float _extraOpeningChance = 0.5f;
         [SerializeField, Min(1)] private int _minOpeningsPerRoom = 1;
         [SerializeField, Min(1)] private int _maxOpeningsPerRoom = 2;
@@ -71,6 +74,7 @@ namespace AfterAll.Environment
         private readonly Queue<OpeningWorkItem> _retryQueue = new();
         private readonly List<string> _deadOpenings = new();
         private readonly List<string> _policyDeadEnds = new();
+        private readonly HashSet<int> _policyDeadEndRoomsLogged = new();
         private int _placedRoomCount;
         private Coroutine _buildRoutine;
         private System.Random _rng;
@@ -97,6 +101,7 @@ namespace AfterAll.Environment
             _retryQueue.Clear();
             _deadOpenings.Clear();
             _policyDeadEnds.Clear();
+            _policyDeadEndRoomsLogged.Clear();
             _placedRoomCount = 0;
 
             if (_connector == null)
@@ -115,12 +120,19 @@ namespace AfterAll.Environment
             _connector.ConfigureOffsetSearch(_offsetSearchEnabled, _offsetSamplesPerWall, _lastUsedSeed);
             Debug.Log(
                 $"[RoomPoolSpawner] Seed={_lastUsedSeed}, Rooms={_roomCount}, " +
-                $"DoorChance={_doorChance:F2}, ExtraOpeningChance={_extraOpeningChance:F2}, " +
+                $"DoorChance={_doorChance:F2}, FrameChance={_frameChance:F2}, ExtraOpeningChance={_extraOpeningChance:F2}, " +
                 $"Openings={_minOpeningsPerRoom}-{_maxOpeningsPerRoom}, " +
                 $"AttemptsPerVisit={_attemptsPerOpening}, MaxRetryPasses={_maxRetryPasses}, " +
                 $"MaxAttemptsPerOpening={MaxTotalAttemptsPerOpening}, GlobalBudget={_maxGlobalConnectAttempts}, " +
                 $"MaxBranchDepth={_maxBranchDepth}, DeadEndRatio={_deadEndRatio:F2}, HubOpenings={_hubMinOpenings}-{_hubMaxOpenings}, " +
                 $"OffsetSearch={_offsetSearchEnabled}, Samples={_offsetSamplesPerWall}");
+
+            if (_maxBranchDepth < 3 && _roomCount > 6)
+            {
+                Debug.LogWarning(
+                    $"[RoomPoolSpawner] maxBranchDepth={_maxBranchDepth} with roomCount={_roomCount} " +
+                    $"and pool size={_roomPrefabs.Length} often under-fills — depth limits frontier before target is reached.");
+            }
 
             GameObject firstPrefab = _roomPrefabs[NextInt(0, _roomPrefabs.Length)];
             GameObject firstGo = SpawnAtOrigin(firstPrefab);
@@ -305,7 +317,7 @@ namespace AfterAll.Environment
                 $"[RoomPoolSpawner] GraphPolicy: DeadEnds={deadEnds}/{placedCount} " +
                 $"({finalRatio:P0}, target {_deadEndRatio:P0}), Junctions={junctions}, " +
                 $"PolicyDeadEnds={_policyDeadEnds.Count}, RetryDeadOpenings={_deadOpenings.Count}, " +
-                $"MaxDepth={_maxBranchDepth}.");
+                $"MaxDepth={_maxBranchDepth}, GrowthPhase={placedCount < _roomCount}.");
 
             RoomInstance hub = FindHubRoom();
             if (hub != null)
@@ -360,7 +372,14 @@ namespace AfterAll.Environment
 
         private void RecordPolicyDeadEnd(RoomInstance room, WallGapController wall, string reason)
         {
-            string roomName = room != null ? room.name : "null";
+            if (room == null)
+                return;
+
+            int roomKey = room.GetInstanceID();
+            if (!_policyDeadEndRoomsLogged.Add(roomKey))
+                return;
+
+            string roomName = room.name;
             string wallName = wall != null ? wall.name : "all";
             _policyDeadEnds.Add($"{roomName}/{wallName} ({reason})");
         }
@@ -370,10 +389,50 @@ namespace AfterAll.Environment
             if (placedCount <= 0)
                 return _extraOpeningChance;
 
-            int deadEnds = CountDeadEnds();
-            float currentRatio = (float)deadEnds / placedCount;
+            int eligibleCount = CountBranchEligibleRooms();
+            if (eligibleCount <= 0)
+                return _extraOpeningChance;
+
+            int deadEnds = CountDeadEndsAmongBranchEligible();
+            float currentRatio = (float)deadEnds / eligibleCount;
             float ratioError = _deadEndRatio - currentRatio;
             return Mathf.Clamp(_extraOpeningChance + ratioError * _deadEndBiasStrength, 0f, 1f);
+        }
+
+        private int CountBranchEligibleRooms()
+        {
+            int count = 0;
+            foreach (RoomInstance room in _connector.LevelRoot.GetComponentsInChildren<RoomInstance>())
+            {
+                if (room != null && room.GraphDepth >= 0 && room.GraphDepth < _maxBranchDepth)
+                    count++;
+            }
+
+            return count;
+        }
+
+        private int CountDeadEndsAmongBranchEligible()
+        {
+            int dead = 0;
+            foreach (RoomInstance room in _connector.LevelRoot.GetComponentsInChildren<RoomInstance>())
+            {
+                if (room == null || room.GraphDepth < 0 || room.GraphDepth >= _maxBranchDepth)
+                    continue;
+
+                if (room.IsDeadEnd())
+                    dead++;
+            }
+
+            return dead;
+        }
+
+        private float GetCurrentDeadEndRatioForPolicy()
+        {
+            int eligibleCount = CountBranchEligibleRooms();
+            if (eligibleCount <= 0)
+                return 0f;
+
+            return (float)CountDeadEndsAmongBranchEligible() / eligibleCount;
         }
 
         private static string FormatDeadOpening(OpeningWorkItem item)
@@ -491,7 +550,7 @@ namespace AfterAll.Environment
             for (int i = 0; i < visitLimit; i++)
             {
                 GameObject prefab = _roomPrefabs[NextInt(0, _roomPrefabs.Length)];
-                RoomInstance child = _connector.Connect(item.Room, item.Wall, prefab, item.SpawnDoor);
+                RoomInstance child = _connector.Connect(item.Room, item.Wall, prefab, item.SpawnDoor, item.SpawnFrame);
                 attemptsUsed++;
                 if (child != null)
                     return (child, attemptsUsed);
@@ -524,8 +583,10 @@ namespace AfterAll.Environment
                 ? Mathf.Clamp(_hubMaxOpenings, minOpenings, closed.Count)
                 : Mathf.Clamp(_maxOpeningsPerRoom, minOpenings, closed.Count);
 
-            float currentRatio = _placedRoomCount > 0 ? (float)CountDeadEnds() / _placedRoomCount : 0f;
-            bool ratioHardCap = _placedRoomCount > 0 &&
+            float currentRatio = GetCurrentDeadEndRatioForPolicy();
+            bool growthPhase = _placedRoomCount < _roomCount;
+            bool ratioHardCap = !growthPhase &&
+                CountBranchEligibleRooms() > 0 &&
                 currentRatio >= _deadEndRatio + _deadEndRatioTolerance;
             if (ratioHardCap)
             {
@@ -551,6 +612,7 @@ namespace AfterAll.Environment
                         Room = room,
                         Wall = wall,
                         SpawnDoor = ShouldSpawnDoor(),
+                        SpawnFrame = ShouldSpawnFrame(),
                         TotalAttempts = 0
                     });
                     queued++;
@@ -564,6 +626,7 @@ namespace AfterAll.Environment
                     Room = room,
                     Wall = closed[0],
                     SpawnDoor = ShouldSpawnDoor(),
+                    SpawnFrame = ShouldSpawnFrame(),
                     TotalAttempts = 0
                 });
             }
@@ -572,6 +635,11 @@ namespace AfterAll.Environment
         private bool ShouldSpawnDoor()
         {
             return _forceDoorsOnConnections || Chance(_doorChance);
+        }
+
+        private bool ShouldSpawnFrame()
+        {
+            return _forceFramesOnConnections || Chance(_frameChance);
         }
 
         private void Shuffle<T>(IList<T> list)

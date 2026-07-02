@@ -47,7 +47,8 @@ namespace AfterAll.Environment
             RoomInstance parent,
             WallGapController parentWall,
             GameObject roomPrefab,
-            bool spawnFrames = false)
+            bool spawnDoor = false,
+            bool spawnFrame = false)
         {
             if (parent == null || parentWall == null || roomPrefab == null)
                 return null;
@@ -58,7 +59,7 @@ namespace AfterAll.Environment
             int attemptId = _connectionAttemptSerial++;
             System.Random rng = CreatePlacementRng(parentWall, attemptId);
             float parentOffset = WallGapController.GetRandomGapOffset(parentWall, rng);
-            parent.OpenWall(parentWall, parentOffset, spawnFrames);
+            parent.OpenWall(parentWall, parentOffset, false);
 
             if (!parentWall.TryGetSocket(out RoomSocket parentSocket))
             {
@@ -71,7 +72,14 @@ namespace AfterAll.Environment
             go.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
 
             RoomInstance child = EnsureRoomInstance(go);
-            if (!TryPickChildWall(child, parent, parentWall, parentSocket, attemptId, out WallGapController childWall))
+            if (!TryPickChildWall(
+                    child,
+                    parent,
+                    parentWall,
+                    parentSocket,
+                    attemptId,
+                    spawnFrame,
+                    out WallGapController childWall))
             {
                 Destroy(go);
                 RollbackParentWall(parentWall);
@@ -185,6 +193,7 @@ namespace AfterAll.Environment
             WallGapController parentWall,
             RoomSocket parentSocket,
             int attemptId,
+            bool spawnFrame,
             out WallGapController selectedWall)
         {
             selectedWall = null;
@@ -300,7 +309,8 @@ namespace AfterAll.Environment
             }
 
             childRoom.SealAllWalls();
-            parentRoom.OpenWall(parentWall, selectedParentOffset, false);
+            bool spawnParentFrame = spawnDoor || spawnFrame;
+            parentRoom.OpenWall(parentWall, selectedParentOffset, spawnParentFrame);
             childRoom.OpenWall(selectedWall, selectedChildOffset, false);
             if (!parentWall.TryGetSocket(out RoomSocket selectedParentSocket) || !selectedWall.TryGetSocket(out RoomSocket selectedSocket))
             {
