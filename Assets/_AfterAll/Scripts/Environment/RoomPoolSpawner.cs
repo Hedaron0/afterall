@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System;
+using System.Text;
 using AfterAll.Player;
 using UnityEngine;
 
@@ -13,6 +14,22 @@ namespace AfterAll.Environment
     /// </summary>
     public class RoomPoolSpawner : MonoBehaviour
     {
+        private struct OpeningWorkItem
+        {
+            public RoomInstance Room;
+            public WallGapController Wall;
+            public bool SpawnDoor;
+            public int TotalAttempts;
+        }
+
+        private enum BuildExitReason
+        {
+            TargetReached,
+            FrontierEmpty,
+            GlobalBudgetExhausted,
+            OpeningsExhausted
+        }
+
         [SerializeField] private RoomConnector _connector;
         [SerializeField] private GameObject[] _roomPrefabs = System.Array.Empty<GameObject>();
         [SerializeField] private int _roomCount = 5;
@@ -32,6 +49,8 @@ namespace AfterAll.Environment
         [Header("Build Pace")]
         [SerializeField, Min(0f)] private float _spawnDelaySeconds = 0.05f;
         [SerializeField, Min(1)] private int _attemptsPerOpening = 6;
+        [SerializeField, Min(1)] private int _maxRetryPasses = 3;
+        [SerializeField, Min(1)] private int _maxGlobalConnectAttempts = 150;
         [Header("Offset Search")]
         [SerializeField] private bool _offsetSearchEnabled = true;
         [SerializeField, Min(1)] private int _offsetSamplesPerWall = 5;
@@ -40,9 +59,13 @@ namespace AfterAll.Environment
         [SerializeField] private float _playerSpawnHeight = 1.0f;
         [SerializeField] private bool _repositionPlayerAfterBuild = true;
 
-        private readonly Queue<(RoomInstance room, WallGapController wall, bool spawnDoor)> _openings = new();
+        private readonly Queue<OpeningWorkItem> _primaryQueue = new();
+        private readonly Queue<OpeningWorkItem> _retryQueue = new();
+        private readonly List<string> _deadOpenings = new();
         private Coroutine _buildRoutine;
         private System.Random _rng;
+
+        private int MaxTotalAttemptsPerOpening => _maxRetryPasses * _attemptsPerOpening;
 
         private void Start()
         {
@@ -60,7 +83,9 @@ namespace AfterAll.Environment
 
         private IEnumerator BuildRoutine()
         {
-            _openings.Clear();
+            _primaryQueue.Clear();
+            _retryQueue.Clear();
+            _deadOpenings.Clear();
 
             if (_connector == null)
                 _connector = GetComponent<RoomConnector>();
@@ -80,6 +105,8 @@ namespace AfterAll.Environment
                 $"[RoomPoolSpawner] Seed={_lastUsedSeed}, Rooms={_roomCount}, " +
                 $"DoorChance={_doorChance:F2}, ExtraOpeningChance={_extraOpeningChance:F2}, " +
                 $"Openings={_minOpeningsPerRoom}-{_maxOpeningsPerRoom}, " +
+                $"AttemptsPerVisit={_attemptsPerOpening}, MaxRetryPasses={_maxRetryPasses}, " +
+                $"MaxAttemptsPerOpening={MaxTotalAttemptsPerOpening}, GlobalBudget={_maxGlobalConnectAttempts}, " +
                 $"OffsetSearch={_offsetSearchEnabled}, Samples={_offsetSamplesPerWall}");
 
             GameObject firstPrefab = _roomPrefabs[NextInt(0, _roomPrefabs.Length)];
@@ -99,45 +126,161 @@ namespace AfterAll.Environment
             QueueOpeningsForRoom(first);
 
             int count = 1;
+            int passNumber = 1;
+            int globalConnectAttempts = 0;
+            bool globalBudgetExhausted = false;
             RoomInstance startRoom = first;
-            while (count < _roomCount && _openings.Count > 0)
+
+            while (count < _roomCount)
             {
-                var (parentRoom, parentWall, spawnDoor) = _openings.Dequeue();
-                if (parentRoom.IsWallConnected(parentWall))
+                if (_primaryQueue.Count == 0)
+                {
+                    if (_retryQueue.Count == 0)
+                        break;
+
+                    PromoteRetryQueueToPrimary();
+                    passNumber++;
+                }
+
+                if (globalConnectAttempts >= _maxGlobalConnectAttempts)
+                {
+                    globalBudgetExhausted = true;
+                    break;
+                }
+
+                OpeningWorkItem item = _primaryQueue.Dequeue();
+                if (item.Room == null || item.Wall == null || item.Room.IsWallConnected(item.Wall))
                     continue;
 
-                RoomInstance child = TryConnectWithRetries(parentRoom, parentWall, spawnDoor);
-                if (child == null)
+                (RoomInstance child, int attemptsUsed) = TryConnectWithRetries(item);
+                globalConnectAttempts += attemptsUsed;
+                item.TotalAttempts += attemptsUsed;
+
+                if (child != null)
                 {
+                    count++;
+                    RoomInstance.SocketValidationReport childValidation = child.ValidateSocketContracts(logWarnings: true);
+                    validationTotals.missingContractCount += childValidation.missingContractCount;
+                    validationTotals.duplicateDirectionCount += childValidation.duplicateDirectionCount;
+                    QueueOpeningsForRoom(child);
+
                     if (_spawnDelaySeconds > 0f)
                         yield return new WaitForSeconds(_spawnDelaySeconds);
                     else
                         yield return null;
+
                     continue;
                 }
 
-                count++;
-                RoomInstance.SocketValidationReport childValidation = child.ValidateSocketContracts(logWarnings: true);
-                validationTotals.missingContractCount += childValidation.missingContractCount;
-                validationTotals.duplicateDirectionCount += childValidation.duplicateDirectionCount;
-                QueueOpeningsForRoom(child);
+                if (item.TotalAttempts >= MaxTotalAttemptsPerOpening)
+                    _deadOpenings.Add(FormatDeadOpening(item));
+                else
+                    _retryQueue.Enqueue(item);
 
                 if (_spawnDelaySeconds > 0f)
                     yield return new WaitForSeconds(_spawnDelaySeconds);
+                else
+                    yield return null;
             }
 
+            BuildExitReason exitReason = DetermineExitReason(count, globalBudgetExhausted);
             RoomConnector.ConnectionStats stats = _connector.GetStats();
             int postBuildOverlaps = ValidatePlacedRoomOverlaps();
             if (_repositionPlayerAfterBuild)
                 PlacePlayerAfterBuild(startRoom);
-            Debug.Log(
-                $"[RoomPoolSpawner] Placed {count} rooms. " +
-                $"Rejects(NoCompatible={stats.noCompatibleSocket}, Gap={stats.gapMismatch}, Overlap={stats.overlapRejected}), " +
-                $"OffsetSearch(Retried={stats.offsetRetried}, SolvedOverlap={stats.offsetSolvedOverlap}, Exhausted={stats.offsetSearchExhausted}), " +
-                $"FallbackUsed={stats.fallbackUsed}, " +
-                $"Contracts(Missing={validationTotals.missingContractCount}, DuplicateDir={validationTotals.duplicateDirectionCount}), " +
-                $"PostBuildOverlaps={postBuildOverlaps}.");
+
+            LogBuildSummary(
+                count,
+                passNumber,
+                globalConnectAttempts,
+                exitReason,
+                stats,
+                validationTotals,
+                postBuildOverlaps);
+
             _buildRoutine = null;
+        }
+
+        private void PromoteRetryQueueToPrimary()
+        {
+            while (_retryQueue.Count > 0)
+                _primaryQueue.Enqueue(_retryQueue.Dequeue());
+        }
+
+        private BuildExitReason DetermineExitReason(int placedCount, bool globalBudgetExhausted)
+        {
+            if (placedCount >= _roomCount)
+                return BuildExitReason.TargetReached;
+
+            if (globalBudgetExhausted)
+                return BuildExitReason.GlobalBudgetExhausted;
+
+            if (_deadOpenings.Count > 0)
+                return BuildExitReason.OpeningsExhausted;
+
+            return BuildExitReason.FrontierEmpty;
+        }
+
+        private void LogBuildSummary(
+            int placedCount,
+            int passNumber,
+            int globalConnectAttempts,
+            BuildExitReason exitReason,
+            RoomConnector.ConnectionStats stats,
+            RoomInstance.SocketValidationReport validationTotals,
+            int postBuildOverlaps)
+        {
+            var summary = new StringBuilder();
+            summary.AppendLine(
+                $"[RoomPoolSpawner] Placed {placedCount}/{_roomCount} rooms. " +
+                $"Seed={_lastUsedSeed}, Passes={passNumber}, GlobalAttempts={globalConnectAttempts}.");
+
+            if (placedCount < _roomCount)
+            {
+                summary.AppendLine($"[RoomPoolSpawner] Build stopped early: {exitReason}.");
+                switch (exitReason)
+                {
+                    case BuildExitReason.FrontierEmpty:
+                        summary.AppendLine(
+                            "[RoomPoolSpawner] Primary and retry queues are empty — no viable openings left.");
+                        break;
+                    case BuildExitReason.GlobalBudgetExhausted:
+                        summary.AppendLine(
+                            $"[RoomPoolSpawner] Global connect attempt budget exhausted " +
+                            $"(limit={_maxGlobalConnectAttempts}).");
+                        break;
+                    case BuildExitReason.OpeningsExhausted:
+                        summary.AppendLine(
+                            $"[RoomPoolSpawner] {_deadOpenings.Count} opening(s) exceeded max attempts " +
+                            $"(limit={MaxTotalAttemptsPerOpening}):");
+                        foreach (string dead in _deadOpenings)
+                            summary.AppendLine($"  - {dead}");
+                        break;
+                }
+
+                if (_deadOpenings.Count > 0 && exitReason != BuildExitReason.OpeningsExhausted)
+                {
+                    summary.AppendLine(
+                        $"[RoomPoolSpawner] Also had {_deadOpenings.Count} opening(s) marked dead before exit.");
+                }
+            }
+
+            summary.Append(
+                $"[RoomPoolSpawner] Rejects(NoCompatible={stats.noCompatibleSocket}, Gap={stats.gapMismatch}, " +
+                $"Overlap={stats.overlapRejected}), " +
+                $"OffsetSearch(Retried={stats.offsetRetried}, SolvedOverlap={stats.offsetSolvedOverlap}, " +
+                $"Exhausted={stats.offsetSearchExhausted}), FallbackUsed={stats.fallbackUsed}, " +
+                $"Contracts(Missing={validationTotals.missingContractCount}, " +
+                $"DuplicateDir={validationTotals.duplicateDirectionCount}), PostBuildOverlaps={postBuildOverlaps}.");
+
+            Debug.Log(summary.ToString());
+        }
+
+        private static string FormatDeadOpening(OpeningWorkItem item)
+        {
+            string roomName = item.Room != null ? item.Room.name : "null";
+            string wallName = item.Wall != null ? item.Wall.name : "null";
+            return $"{roomName}/{wallName} ({item.TotalAttempts} attempts)";
         }
 
         private int ValidatePlacedRoomOverlaps()
@@ -238,17 +381,23 @@ namespace AfterAll.Environment
                 $"(connections={spawnRoom.ConnectedRooms.Count}) at {spawnPosition}");
         }
 
-        private RoomInstance TryConnectWithRetries(RoomInstance parentRoom, WallGapController parentWall, bool spawnDoor)
+        private (RoomInstance child, int attemptsUsed) TryConnectWithRetries(OpeningWorkItem item)
         {
-            for (int attempt = 0; attempt < _attemptsPerOpening; attempt++)
+            int maxTotal = MaxTotalAttemptsPerOpening;
+            int remainingBudget = maxTotal - item.TotalAttempts;
+            int visitLimit = Mathf.Min(_attemptsPerOpening, remainingBudget);
+            int attemptsUsed = 0;
+
+            for (int i = 0; i < visitLimit; i++)
             {
                 GameObject prefab = _roomPrefabs[NextInt(0, _roomPrefabs.Length)];
-                RoomInstance child = _connector.Connect(parentRoom, parentWall, prefab, spawnDoor);
+                RoomInstance child = _connector.Connect(item.Room, item.Wall, prefab, item.SpawnDoor);
+                attemptsUsed++;
                 if (child != null)
-                    return child;
+                    return (child, attemptsUsed);
             }
 
-            return null;
+            return (null, attemptsUsed);
         }
 
         private void QueueOpeningsForRoom(RoomInstance room)
@@ -273,13 +422,27 @@ namespace AfterAll.Environment
 
                 if (required || Chance(_extraOpeningChance))
                 {
-                    _openings.Enqueue((room, wall, ShouldSpawnDoor()));
+                    _primaryQueue.Enqueue(new OpeningWorkItem
+                    {
+                        Room = room,
+                        Wall = wall,
+                        SpawnDoor = ShouldSpawnDoor(),
+                        TotalAttempts = 0
+                    });
                     queued++;
                 }
             }
 
             if (queued == 0)
-                _openings.Enqueue((room, closed[0], ShouldSpawnDoor()));
+            {
+                _primaryQueue.Enqueue(new OpeningWorkItem
+                {
+                    Room = room,
+                    Wall = closed[0],
+                    SpawnDoor = ShouldSpawnDoor(),
+                    TotalAttempts = 0
+                });
+            }
         }
 
         private bool ShouldSpawnDoor()
