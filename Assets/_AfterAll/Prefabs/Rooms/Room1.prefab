@@ -617,7 +617,7 @@ MonoBehaviour:
   gapOffset: 0
   wallLeft: {fileID: 3356555984424601949}
   wallRight: {fileID: 5354446638973692308}
-  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
   _frameChance: 0.35
   _wallLengthM: 13.25
   _leftExtentM: 6.625
@@ -792,7 +792,7 @@ MonoBehaviour:
   gapOffset: 0
   wallLeft: {fileID: 6707493711152144074}
   wallRight: {fileID: 4886136027946230210}
-  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
   _frameChance: 0.35
   _wallLengthM: 18
   _leftExtentM: 9
@@ -1193,7 +1193,7 @@ MonoBehaviour:
   gapOffset: 0
   wallLeft: {fileID: 8469023269912498271}
   wallRight: {fileID: 8329111072287402456}
-  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
   _frameChance: 0.35
   _wallLengthM: 10.5
   _leftExtentM: 5.25
@@ -1594,7 +1594,7 @@ MonoBehaviour:
   gapOffset: 0
   wallLeft: {fileID: 538989260443975023}
   wallRight: {fileID: 890173690797521062}
-  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
   _frameChance: 0.35
   _wallLengthM: 7
   _leftExtentM: 3.5
@@ -1656,7 +1656,7 @@ MonoBehaviour:
   gapOffset: 0
   wallLeft: {fileID: 1255608026428320646}
   wallRight: {fileID: 8629647299632280796}
-  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
   _frameChance: 0.35
   _wallLengthM: 20.5
   _leftExtentM: 10.25
@@ -2228,7 +2228,7 @@ MonoBehaviour:
   gapOffset: 0
   wallLeft: {fileID: 4918297411299316029}
   wallRight: {fileID: 2912596886078487878}
-  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
   _frameChance: 0.35
   _wallLengthM: 7.25
   _leftExtentM: 3.625

@@ -1,0 +1,93 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &7331837230362836560
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8455951425484428993}
+  - component: {fileID: 218690533091966958}
+  - component: {fileID: 3303275726683623328}
+  m_Layer: 0
+  m_Name: Global Volume
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8455951425484428993
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7331837230362836560}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &218690533091966958
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7331837230362836560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_IsGlobal: 1
+  priority: 0
+  blendDistance: 0
+  weight: 1
+  sharedProfile: {fileID: 11400000, guid: 10fc4df2da32a41aaa32d77bc913491c, type: 2}
+--- !u!114 &3303275726683623328
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7331837230362836560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 136e96cc4fb64954f8e3f26c82b29e3a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Player.FoundFootageVolume
+  _active: 1
+  _masterIntensity: 1
+  _grainEnabled: 1
+  _grainType: 2
+  _grainIntensity: 0.38
+  _grainLuminance: 0.75
+  _chromaticEnabled: 1
+  _chromaticBase: 0.14
+  _chromaticPulseAmplitude: 0.05
+  _chromaticPulseHz: 0.3
+  _lensDistortionEnabled: 1
+  _lensDistortionBase: -0.08
+  _lensDistortionPulse: 0.02
+  _lensDistortionPulseHz: 0.15
+  _colorGradingEnabled: 1
+  _saturation: -22
+  _hueShift: 6
+  _postExposure: -0.12
+  _panicEnabled: 1
+  _panicChromaticAdd: 0.25
+  _panicLensAdd: 0.12
+  _panicGrainAdd: 0.15
+  _panicSmoothing: 4
+  _staticBurstsEnabled: 1
+  _burstIntervalMin: 5
+  _burstIntervalMax: 20
+  _burstChromaticStrength: 0.4
+  _burstLensStrength: 0.15
+  _burstDuration: 0.12

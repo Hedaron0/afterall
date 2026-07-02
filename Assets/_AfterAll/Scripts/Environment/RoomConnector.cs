@@ -30,82 +30,75 @@ namespace AfterAll.Environment
                 return null;
             }
 
-            if (!TryPickChildWall(roomPrefab, parent, parentSocket, out string childWallName))
-            {
-                Debug.LogError($"[RoomConnector] No wall on {roomPrefab.name} fits {parentWall.name}.");
-                return null;
-            }
-
             GameObject go = Instantiate(roomPrefab, LevelRoot);
             go.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
 
             RoomInstance child = EnsureRoomInstance(go);
-            WallGapController childWall = child.GetWall(childWallName);
-            child.SealAllWalls();
-            child.OpenWall(childWall, spawnFrames);
-
-            if (!childWall.TryGetSocket(out RoomSocket childSocket))
+            if (!TryPickChildWall(child, parent, parentSocket, out WallGapController childWall))
             {
                 Destroy(go);
-                Debug.LogError($"[RoomConnector] Child {childWallName} has no socket.");
-                return null;
-            }
-
-            RoomSocket.SnapRoom(child, childSocket, parentSocket);
-
-            float gap = Vector3.Distance(childSocket.transform.position, parentSocket.transform.position);
-            if (gap > 0.1f)
-            {
-                Destroy(go);
-                Debug.LogError($"[RoomConnector] Snap failed — gap {gap:F2}m on {childWallName}.");
+                Debug.LogError($"[RoomConnector] No wall on {roomPrefab.name} fits {parentWall.name}.");
                 return null;
             }
 
             parent.MarkWallConnected(parentWall, child);
             child.MarkWallConnected(childWall, parent);
             parentSocket.IsConnected = true;
-            childSocket.IsConnected = true;
+            if (childWall.TryGetSocket(out RoomSocket childSocket))
+                childSocket.IsConnected = true;
 
-            Debug.Log($"[RoomConnector] {parent.name}/{parentWall.name} -> {child.name}/{childWallName}");
+            Debug.Log($"[RoomConnector] {parent.name}/{parentWall.name} -> {child.name}/{childWall.name}");
             return child;
         }
 
         private bool TryPickChildWall(
-            GameObject prefab,
+            RoomInstance childRoom,
             RoomInstance parentRoom,
             RoomSocket parentSocket,
-            out string wallName)
+            out WallGapController selectedWall)
         {
-            wallName = null;
+            selectedWall = null;
             float best = float.MinValue;
 
-            GameObject probe = Instantiate(prefab, LevelRoot);
-            probe.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
-            RoomInstance probeRoom = EnsureRoomInstance(probe);
-
-            foreach (WallGapController wall in probeRoom.Walls)
+            foreach (WallGapController wall in childRoom.Walls)
             {
-                probeRoom.SealAllWalls();
-                probeRoom.OpenWall(wall, false);
+                childRoom.SealAllWalls();
+                childRoom.OpenWall(wall, false);
 
                 if (!wall.TryGetSocket(out RoomSocket probeSocket))
                     continue;
 
-                RoomSocket.SnapRoom(probeRoom, probeSocket, parentSocket);
+                RoomSocket.SnapRoom(childRoom, probeSocket, parentSocket);
+
+                float gap = Vector3.Distance(probeSocket.transform.position, parentSocket.transform.position);
+                if (gap > 0.1f)
+                    continue;
 
                 float score = RoomSocket.FaceScore(probeSocket, parentSocket);
-                if (BoundsOverlap(probeRoom, parentRoom))
+                if (OverlapsAnyPlacedRoom(childRoom, parentRoom))
                     score -= 5f;
 
                 if (score > best)
                 {
                     best = score;
-                    wallName = wall.name;
+                    selectedWall = wall;
                 }
             }
 
-            Destroy(probe);
-            return wallName != null;
+            if (selectedWall == null)
+                return false;
+
+            childRoom.SealAllWalls();
+            childRoom.OpenWall(selectedWall, false);
+            if (!selectedWall.TryGetSocket(out RoomSocket selectedSocket))
+                return false;
+
+            RoomSocket.SnapRoom(childRoom, selectedSocket, parentSocket);
+            float finalGap = Vector3.Distance(selectedSocket.transform.position, parentSocket.transform.position);
+            if (finalGap > 0.1f || OverlapsAnyPlacedRoom(childRoom, parentRoom))
+                return false;
+
+            return true;
         }
 
         private static bool BoundsOverlap(RoomInstance a, RoomInstance b)
@@ -115,6 +108,20 @@ namespace AfterAll.Environment
             ba.Expand(-0.3f);
             bb.Expand(-0.3f);
             return ba.Intersects(bb);
+        }
+
+        private bool OverlapsAnyPlacedRoom(RoomInstance candidate, RoomInstance connectedParent)
+        {
+            foreach (RoomInstance existing in LevelRoot.GetComponentsInChildren<RoomInstance>())
+            {
+                if (existing == null || existing == candidate || existing == connectedParent)
+                    continue;
+
+                if (BoundsOverlap(candidate, existing))
+                    return true;
+            }
+
+            return false;
         }
 
         private static RoomInstance EnsureRoomInstance(GameObject go)

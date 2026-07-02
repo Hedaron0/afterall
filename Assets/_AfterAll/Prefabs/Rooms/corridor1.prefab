@@ -391,7 +391,7 @@ MonoBehaviour:
   gapOffset: 0
   wallLeft: {fileID: 2933856986388185128}
   wallRight: {fileID: 2998166858387792295}
-  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
   _frameChance: 0.35
   _wallLengthM: 5.5
   _leftExtentM: 2.75
@@ -1018,7 +1018,7 @@ MonoBehaviour:
   gapOffset: 0
   wallLeft: {fileID: 8040605211766285807}
   wallRight: {fileID: 4054005016654628714}
-  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
   _frameChance: 0.35
   _wallLengthM: 3
   _leftExtentM: 1.5
@@ -1812,7 +1812,7 @@ MonoBehaviour:
   gapOffset: 0
   wallLeft: {fileID: 4301770686637693399}
   wallRight: {fileID: 9020895684094813473}
-  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
   _frameChance: 0.35
   _wallLengthM: 5.5
   _leftExtentM: 2.75
@@ -1874,7 +1874,7 @@ MonoBehaviour:
   gapOffset: 0
   wallLeft: {fileID: 3119529560204455695}
   wallRight: {fileID: 534534749659798128}
-  _framePrefab: {fileID: 4850743809578545793, guid: 958ef169f67be5e458b377f4508390d8, type: 3}
+  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
   _frameChance: 0.35
   _wallLengthM: 3
   _leftExtentM: 1.5

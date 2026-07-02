@@ -126,6 +126,9 @@ namespace AfterAll.Environment
             if (wallLeft == null || wallRight == null)
                 return;
 
+            EnsureWallPieceCollision(wallLeft);
+            EnsureWallPieceCollision(wallRight);
+
             EnsureBaseline();
 
             if (_wallLengthM < 0.1f)
@@ -201,9 +204,28 @@ namespace AfterAll.Environment
             RoomInstance room = GetComponentInParent<RoomInstance>();
             Vector3 origin = room != null ? room.GetApproximateCenter() : transform.position;
 
+            // Prefer geometric wall normal for stable direction on irregular room shapes.
+            if (_baselineCached)
+            {
+                Vector3 wallNormal = Vector3.Cross(Vector3.up, _axisWorld).normalized;
+                if (wallNormal.sqrMagnitude > 0.001f)
+                {
+                    Vector3 toGap = gapCenter - origin;
+                    toGap.y = 0f;
+                    if (toGap.sqrMagnitude > 0.001f && Vector3.Dot(wallNormal, toGap) < 0f)
+                        wallNormal = -wallNormal;
+
+                    return wallNormal;
+                }
+            }
+
             Vector3 outward = gapCenter - origin;
             outward.y = 0f;
-            return outward.sqrMagnitude > 0.001f ? outward.normalized : transform.forward;
+            if (outward.sqrMagnitude > 0.001f)
+                return outward.normalized;
+
+            Vector3 fallback = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
+            return fallback.sqrMagnitude > 0.001f ? fallback : Vector3.forward;
         }
 
         private bool TryComputeGapMetrics(bool useRandomOffset, out float gapOffsetM, out float effectiveGapWidth)
@@ -233,8 +255,12 @@ namespace AfterAll.Environment
 
             Vector3 center = (wallLeft.position + wallRight.position) * 0.5f;
             center.y = GetWallFloorY();
-            Vector3 outward = ComputeOutwardForward(center);
-            Quaternion rot = Quaternion.LookRotation(outward, Vector3.up) * Quaternion.Euler(0f, FrameYawDegrees, 0f);
+            Vector3 forward = _socket != null ? _socket.transform.forward : ComputeOutwardForward(center);
+            forward = Vector3.ProjectOnPlane(forward, Vector3.up).normalized;
+            if (forward.sqrMagnitude < 0.0001f)
+                forward = Vector3.forward;
+
+            Quaternion rot = Quaternion.LookRotation(forward, Vector3.up) * Quaternion.Euler(0f, FrameYawDegrees, 0f);
 
             _spawnedFrame = InstantiateFrame();
             _spawnedFrame.transform.SetPositionAndRotation(center, rot);
@@ -295,13 +321,81 @@ namespace AfterAll.Environment
             {
                 wallLeft.localPosition = Vector3.zero;
                 wallLeft.localScale = Vector3.one;
+                EnsureWallPieceCollision(wallLeft);
             }
 
             if (wallRight != null)
             {
                 wallRight.localPosition = Vector3.zero;
                 wallRight.localScale = Vector3.one;
+                EnsureWallPieceCollision(wallRight);
             }
+        }
+
+        private void EnsureWallPieceCollision(Transform piece)
+        {
+            Collider[] colliders = piece.GetComponentsInChildren<Collider>(true);
+            if (colliders.Length > 0)
+            {
+                foreach (Collider col in colliders)
+                {
+                    col.enabled = true;
+                    col.isTrigger = false;
+                }
+
+                return;
+            }
+
+            Renderer[] renderers = piece.GetComponentsInChildren<Renderer>(true);
+            if (renderers.Length == 0)
+                return;
+
+            BoxCollider box = piece.GetComponent<BoxCollider>();
+            if (box == null)
+                box = piece.gameObject.AddComponent<BoxCollider>();
+
+            Bounds localBounds = BuildLocalBounds(piece, renderers);
+            box.center = localBounds.center;
+            box.size = localBounds.size;
+            box.isTrigger = false;
+            box.enabled = true;
+        }
+
+        private static Bounds BuildLocalBounds(Transform root, Renderer[] renderers)
+        {
+            bool hasPoint = false;
+            Vector3 min = Vector3.zero;
+            Vector3 max = Vector3.zero;
+
+            foreach (Renderer renderer in renderers)
+            {
+                Bounds bounds = renderer.bounds;
+                Vector3 ext = bounds.extents;
+
+                for (int x = -1; x <= 1; x += 2)
+                for (int y = -1; y <= 1; y += 2)
+                for (int z = -1; z <= 1; z += 2)
+                {
+                    Vector3 world = bounds.center + Vector3.Scale(ext, new Vector3(x, y, z));
+                    Vector3 local = root.InverseTransformPoint(world);
+
+                    if (!hasPoint)
+                    {
+                        min = local;
+                        max = local;
+                        hasPoint = true;
+                    }
+                    else
+                    {
+                        min = Vector3.Min(min, local);
+                        max = Vector3.Max(max, local);
+                    }
+                }
+            }
+
+            Vector3 size = hasPoint ? Vector3.Max(max - min, Vector3.one * 0.01f) : Vector3.one;
+            Vector3 center = hasPoint ? (min + max) * 0.5f : Vector3.zero;
+            return new Bounds(center, size);
         }
 
         private bool CacheFromClosedMesh()
