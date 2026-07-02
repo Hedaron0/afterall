@@ -19,8 +19,22 @@ namespace AfterAll.Environment
         public IReadOnlyList<WallGapController> Walls => _walls;
         public IReadOnlyCollection<WallGapController> ConnectedWalls => _connectedWalls;
         public IReadOnlyList<RoomInstance> ConnectedRooms => _connectedRooms;
+        public bool IsHub { get; private set; }
+        public int GraphDepth { get; private set; } = -1;
 
         private void Awake() => CacheWalls();
+
+        public void MarkAsHub()
+        {
+            IsHub = true;
+            GraphDepth = 0;
+        }
+
+        public void SetGraphDepth(int depth) => GraphDepth = depth;
+
+        public bool IsDeadEnd() => _connectedRooms.Count <= 1;
+
+        public bool IsJunction() => _connectedRooms.Count >= 2;
 
         public void CacheWalls()
         {

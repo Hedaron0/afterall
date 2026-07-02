@@ -40,6 +40,14 @@ namespace AfterAll.Environment
         [SerializeField, Min(1)] private int _minOpeningsPerRoom = 1;
         [SerializeField, Min(1)] private int _maxOpeningsPerRoom = 2;
 
+        [Header("Graph Policy")]
+        [SerializeField, Min(1)] private int _maxBranchDepth = 4;
+        [SerializeField, Range(0f, 1f)] private float _deadEndRatio = 0.35f;
+        [SerializeField, Range(0f, 0.25f)] private float _deadEndRatioTolerance = 0.05f;
+        [SerializeField, Range(0f, 1f)] private float _deadEndBiasStrength = 0.6f;
+        [SerializeField, Min(1)] private int _hubMinOpenings = 3;
+        [SerializeField, Min(1)] private int _hubMaxOpenings = 4;
+
         [Header("Seed")]
         [SerializeField] private bool _useFixedSeed;
         [SerializeField] private int _fixedSeed = 12345;
@@ -62,6 +70,8 @@ namespace AfterAll.Environment
         private readonly Queue<OpeningWorkItem> _primaryQueue = new();
         private readonly Queue<OpeningWorkItem> _retryQueue = new();
         private readonly List<string> _deadOpenings = new();
+        private readonly List<string> _policyDeadEnds = new();
+        private int _placedRoomCount;
         private Coroutine _buildRoutine;
         private System.Random _rng;
 
@@ -86,6 +96,8 @@ namespace AfterAll.Environment
             _primaryQueue.Clear();
             _retryQueue.Clear();
             _deadOpenings.Clear();
+            _policyDeadEnds.Clear();
+            _placedRoomCount = 0;
 
             if (_connector == null)
                 _connector = GetComponent<RoomConnector>();
@@ -107,6 +119,7 @@ namespace AfterAll.Environment
                 $"Openings={_minOpeningsPerRoom}-{_maxOpeningsPerRoom}, " +
                 $"AttemptsPerVisit={_attemptsPerOpening}, MaxRetryPasses={_maxRetryPasses}, " +
                 $"MaxAttemptsPerOpening={MaxTotalAttemptsPerOpening}, GlobalBudget={_maxGlobalConnectAttempts}, " +
+                $"MaxBranchDepth={_maxBranchDepth}, DeadEndRatio={_deadEndRatio:F2}, HubOpenings={_hubMinOpenings}-{_hubMaxOpenings}, " +
                 $"OffsetSearch={_offsetSearchEnabled}, Samples={_offsetSamplesPerWall}");
 
             GameObject firstPrefab = _roomPrefabs[NextInt(0, _roomPrefabs.Length)];
@@ -123,9 +136,11 @@ namespace AfterAll.Environment
                 yield break;
             }
 
+            first.MarkAsHub();
             QueueOpeningsForRoom(first);
 
             int count = 1;
+            _placedRoomCount = count;
             int passNumber = 1;
             int globalConnectAttempts = 0;
             bool globalBudgetExhausted = false;
@@ -159,6 +174,8 @@ namespace AfterAll.Environment
                 if (child != null)
                 {
                     count++;
+                    _placedRoomCount = count;
+                    child.SetGraphDepth(item.Room.GraphDepth + 1);
                     RoomInstance.SocketValidationReport childValidation = child.ValidateSocketContracts(logWarnings: true);
                     validationTotals.missingContractCount += childValidation.missingContractCount;
                     validationTotals.duplicateDirectionCount += childValidation.duplicateDirectionCount;
@@ -242,7 +259,7 @@ namespace AfterAll.Environment
                 {
                     case BuildExitReason.FrontierEmpty:
                         summary.AppendLine(
-                            "[RoomPoolSpawner] Primary and retry queues are empty — no viable openings left.");
+                            "[RoomPoolSpawner] Spatial: primary and retry queues are empty — no viable openings left.");
                         break;
                     case BuildExitReason.GlobalBudgetExhausted:
                         summary.AppendLine(
@@ -251,7 +268,7 @@ namespace AfterAll.Environment
                         break;
                     case BuildExitReason.OpeningsExhausted:
                         summary.AppendLine(
-                            $"[RoomPoolSpawner] {_deadOpenings.Count} opening(s) exceeded max attempts " +
+                            $"[RoomPoolSpawner] Retry: {_deadOpenings.Count} opening(s) exceeded max attempts " +
                             $"(limit={MaxTotalAttemptsPerOpening}):");
                         foreach (string dead in _deadOpenings)
                             summary.AppendLine($"  - {dead}");
@@ -261,9 +278,11 @@ namespace AfterAll.Environment
                 if (_deadOpenings.Count > 0 && exitReason != BuildExitReason.OpeningsExhausted)
                 {
                     summary.AppendLine(
-                        $"[RoomPoolSpawner] Also had {_deadOpenings.Count} opening(s) marked dead before exit.");
+                        $"[RoomPoolSpawner] Also had {_deadOpenings.Count} retry-dead opening(s) before exit.");
                 }
             }
+
+            AppendGraphPolicySummary(summary, placedCount);
 
             summary.Append(
                 $"[RoomPoolSpawner] Rejects(NoCompatible={stats.noCompatibleSocket}, Gap={stats.gapMismatch}, " +
@@ -274,6 +293,87 @@ namespace AfterAll.Environment
                 $"DuplicateDir={validationTotals.duplicateDirectionCount}), PostBuildOverlaps={postBuildOverlaps}.");
 
             Debug.Log(summary.ToString());
+        }
+
+        private void AppendGraphPolicySummary(StringBuilder summary, int placedCount)
+        {
+            int deadEnds = CountDeadEnds();
+            int junctions = CountJunctions();
+            float finalRatio = placedCount > 0 ? (float)deadEnds / placedCount : 0f;
+
+            summary.AppendLine(
+                $"[RoomPoolSpawner] GraphPolicy: DeadEnds={deadEnds}/{placedCount} " +
+                $"({finalRatio:P0}, target {_deadEndRatio:P0}), Junctions={junctions}, " +
+                $"PolicyDeadEnds={_policyDeadEnds.Count}, RetryDeadOpenings={_deadOpenings.Count}, " +
+                $"MaxDepth={_maxBranchDepth}.");
+
+            RoomInstance hub = FindHubRoom();
+            if (hub != null)
+            {
+                summary.AppendLine(
+                    $"[RoomPoolSpawner] Hub={hub.name}, depth={hub.GraphDepth}, " +
+                    $"connections={hub.ConnectedRooms.Count}.");
+            }
+
+            if (_policyDeadEnds.Count > 0)
+            {
+                summary.AppendLine($"[RoomPoolSpawner] Policy dead-ends ({_policyDeadEnds.Count}):");
+                foreach (string entry in _policyDeadEnds)
+                    summary.AppendLine($"  - {entry}");
+            }
+        }
+
+        private RoomInstance FindHubRoom()
+        {
+            foreach (RoomInstance room in _connector.LevelRoot.GetComponentsInChildren<RoomInstance>())
+            {
+                if (room != null && room.IsHub)
+                    return room;
+            }
+
+            return null;
+        }
+
+        private int CountDeadEnds()
+        {
+            int dead = 0;
+            foreach (RoomInstance room in _connector.LevelRoot.GetComponentsInChildren<RoomInstance>())
+            {
+                if (room != null && room.IsDeadEnd())
+                    dead++;
+            }
+
+            return dead;
+        }
+
+        private int CountJunctions()
+        {
+            int junctions = 0;
+            foreach (RoomInstance room in _connector.LevelRoot.GetComponentsInChildren<RoomInstance>())
+            {
+                if (room != null && room.IsJunction())
+                    junctions++;
+            }
+
+            return junctions;
+        }
+
+        private void RecordPolicyDeadEnd(RoomInstance room, WallGapController wall, string reason)
+        {
+            string roomName = room != null ? room.name : "null";
+            string wallName = wall != null ? wall.name : "all";
+            _policyDeadEnds.Add($"{roomName}/{wallName} ({reason})");
+        }
+
+        private float ComputeEffectiveExtraChance(int placedCount)
+        {
+            if (placedCount <= 0)
+                return _extraOpeningChance;
+
+            int deadEnds = CountDeadEnds();
+            float currentRatio = (float)deadEnds / placedCount;
+            float ratioError = _deadEndRatio - currentRatio;
+            return Mathf.Clamp(_extraOpeningChance + ratioError * _deadEndBiasStrength, 0f, 1f);
         }
 
         private static string FormatDeadOpening(OpeningWorkItem item)
@@ -402,14 +502,38 @@ namespace AfterAll.Environment
 
         private void QueueOpeningsForRoom(RoomInstance room)
         {
+            if (room == null)
+                return;
+
+            if (room.GraphDepth >= 0 && room.GraphDepth >= _maxBranchDepth)
+            {
+                RecordPolicyDeadEnd(room, null, "depth cap");
+                return;
+            }
+
             List<WallGapController> closed = room.GetClosedWalls().ToList();
             if (closed.Count == 0)
                 return;
 
             Shuffle(closed);
 
-            int minOpenings = Mathf.Clamp(_minOpeningsPerRoom, 1, closed.Count);
-            int maxOpenings = Mathf.Clamp(_maxOpeningsPerRoom, minOpenings, closed.Count);
+            int minOpenings = room.IsHub
+                ? Mathf.Clamp(_hubMinOpenings, 1, closed.Count)
+                : Mathf.Clamp(_minOpeningsPerRoom, 1, closed.Count);
+            int maxOpenings = room.IsHub
+                ? Mathf.Clamp(_hubMaxOpenings, minOpenings, closed.Count)
+                : Mathf.Clamp(_maxOpeningsPerRoom, minOpenings, closed.Count);
+
+            float currentRatio = _placedRoomCount > 0 ? (float)CountDeadEnds() / _placedRoomCount : 0f;
+            bool ratioHardCap = _placedRoomCount > 0 &&
+                currentRatio >= _deadEndRatio + _deadEndRatioTolerance;
+            if (ratioHardCap)
+            {
+                maxOpenings = minOpenings;
+                RecordPolicyDeadEnd(room, null, "ratio hard-cap");
+            }
+
+            float effectiveExtraChance = ComputeEffectiveExtraChance(_placedRoomCount);
             int targetOpenings = NextInt(minOpenings, maxOpenings + 1);
             int queued = 0;
 
@@ -420,7 +544,7 @@ namespace AfterAll.Environment
                 if (!required && reachedTarget)
                     break;
 
-                if (required || Chance(_extraOpeningChance))
+                if (required || Chance(effectiveExtraChance))
                 {
                     _primaryQueue.Enqueue(new OpeningWorkItem
                     {
