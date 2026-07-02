@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 namespace AfterAll.Environment
 {
@@ -39,8 +40,73 @@ namespace AfterAll.Environment
 
         public bool TryGetSocket(out RoomSocket socket)
         {
+            ResolveSocketReference();
             socket = _socket;
             return hasOpening && _socket != null && _socket.gameObject.activeSelf;
+        }
+
+        /// <summary>
+        /// Returns a persisted socket child (if baked on prefab), even when the wall is closed.
+        /// </summary>
+        public bool TryGetBakedSocket(out RoomSocket socket)
+        {
+            ResolveSocketReference();
+            socket = _socket;
+            return socket != null;
+        }
+
+        /// <summary>
+        /// Editor/prefab pass: open wall briefly, create or update socket + contract, then restore wall state.
+        /// </summary>
+        public bool BakeSocketContract()
+        {
+            bool wasOpen = hasOpening;
+            float previousOffset = gapOffset;
+            bool previousRandomize = randomizeOffset;
+
+            float offset = GetWallCenterGapOffset(this);
+            ConfigureOpening(true, false, offset);
+
+            if (!TryGetSocket(out RoomSocket socket))
+            {
+                if (!wasOpen)
+                    ConfigureOpening(false, false, 0f);
+                return false;
+            }
+
+            socket.SetContract(
+                RoomSocket.DirectionFromForward(socket.transform.forward),
+                name,
+                socket.SizeClass);
+            socket.SetWallIndex(GetWallIndexInRoom());
+
+            if (wasOpen)
+            {
+                ConfigureOpening(true, false, previousOffset);
+                randomizeOffset = previousRandomize;
+            }
+            else
+            {
+                ConfigureOpening(false, false, 0f);
+            }
+
+            return socket.HasValidContract;
+        }
+
+        private int GetWallIndexInRoom()
+        {
+            RoomInstance room = GetComponentInParent<RoomInstance>();
+            if (room == null)
+                return -1;
+
+            IReadOnlyList<WallGapController> walls = room.Walls;
+            for (int i = 0; i < walls.Count; i++)
+            {
+                if (walls[i] == this)
+                    return i;
+            }
+
+            return -1;
         }
 
         public static float GetWallCenterGapOffset(WallGapController wall)
@@ -51,6 +117,101 @@ namespace AfterAll.Environment
             wall.EnsureBaseline();
             float effective = Mathf.Min(wall.gapWidth, wall._wallLengthM - 0.05f);
             return Mathf.Max(0f, (wall._wallLengthM - effective) * 0.5f);
+        }
+
+        public bool TryGetGapOffsetRange(out float minOffset, out float maxOffset, out float effectiveGapWidth)
+        {
+            EnsureBaseline();
+            minOffset = 0f;
+            maxOffset = 0f;
+            effectiveGapWidth = 0f;
+
+            if (_wallLengthM < 0.1f)
+                return false;
+
+            effectiveGapWidth = Mathf.Min(gapWidth, _wallLengthM - 0.05f);
+            if (effectiveGapWidth < 0.05f)
+                return false;
+
+            maxOffset = Mathf.Max(0f, _wallLengthM - effectiveGapWidth);
+            return true;
+        }
+
+        public static float GetRandomGapOffset(WallGapController wall, System.Random rng)
+        {
+            if (wall == null || rng == null)
+                return GetWallCenterGapOffset(wall);
+
+            if (!wall.TryGetGapOffsetRange(out float minOffset, out float maxOffset, out _))
+                return 0f;
+
+            if (Mathf.Abs(maxOffset - minOffset) < 0.0001f)
+                return minOffset;
+
+            return minOffset + (float)rng.NextDouble() * (maxOffset - minOffset);
+        }
+
+        public static void GetOffsetSamples(WallGapController wall, int sampleCount, System.Random rng, List<float> output)
+        {
+            if (output == null)
+                return;
+
+            output.Clear();
+            if (wall == null)
+                return;
+
+            if (!wall.TryGetGapOffsetRange(out float minOffset, out float maxOffset, out _))
+            {
+                output.Add(0f);
+                return;
+            }
+
+            sampleCount = Mathf.Max(1, sampleCount);
+            if (sampleCount == 1 || Mathf.Abs(maxOffset - minOffset) < 0.0001f)
+            {
+                output.Add((minOffset + maxOffset) * 0.5f);
+                return;
+            }
+
+            float center = (minOffset + maxOffset) * 0.5f;
+            float span = maxOffset - minOffset;
+            AddSample(output, center);
+            AddSample(output, minOffset + span * 0.25f);
+            AddSample(output, minOffset + span * 0.75f);
+            AddSample(output, minOffset + span * 0.1f);
+            AddSample(output, minOffset + span * 0.9f);
+
+            for (int i = 0; output.Count < sampleCount && i < sampleCount * 3; i++)
+            {
+                float t = sampleCount > 1 ? i / (float)(sampleCount - 1) : 0f;
+                AddSample(output, Mathf.Lerp(minOffset, maxOffset, t));
+            }
+
+            while (output.Count > sampleCount)
+                output.RemoveAt(output.Count - 1);
+
+            if (rng != null)
+                Shuffle(output, rng);
+        }
+
+        private static void Shuffle(List<float> values, System.Random rng)
+        {
+            for (int i = values.Count - 1; i > 0; i--)
+            {
+                int j = rng.Next(i + 1);
+                (values[i], values[j]) = (values[j], values[i]);
+            }
+        }
+
+        private static void AddSample(List<float> samples, float candidate)
+        {
+            foreach (float existing in samples)
+            {
+                if (Mathf.Abs(existing - candidate) < 0.001f)
+                    return;
+            }
+
+            samples.Add(candidate);
         }
 
         public void ConfigureOpening(bool open, bool spawnFrame, float offsetMeters = 0f)
@@ -174,8 +335,20 @@ namespace AfterAll.Environment
             _socket.AlignAt(center, outward, gapWidth);
         }
 
+        private void ResolveSocketReference()
+        {
+            if (_socket != null)
+                return;
+
+            Transform roomRoot = GetComponentInParent<RoomInstance>()?.transform ?? transform.root;
+            Transform existing = roomRoot.Find("Socket_" + name);
+            if (existing != null)
+                _socket = existing.GetComponent<RoomSocket>();
+        }
+
         private void EnsureSocket()
         {
+            ResolveSocketReference();
             if (_socket != null)
                 return;
 

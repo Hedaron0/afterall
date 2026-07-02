@@ -500,7 +500,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.WallGapController
   gapWidth: 1.3
   hasOpening: 0
-  randomizeOffset: 1
+  randomizeOffset: 0
   gapOffset: 0
   wallLeft: {fileID: 7977774272592801672}
   wallRight: {fileID: 4629332405807645490}
@@ -510,7 +510,7 @@ MonoBehaviour:
   _leftExtentM: 17.25
   _rightExtentM: 17.25
   _axisWorld: {x: 1, y: 0, z: 0}
-  _seamWorld: {x: -40.80893, y: -0.6666668, z: -267.35593}
+  _seamWorld: {x: 0, y: -0.6666667, z: 6.875}
   _leftScaleAxis: 0
   _rightScaleAxis: 0
   _baselineCached: 1
@@ -562,7 +562,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.WallGapController
   gapWidth: 1.3
   hasOpening: 0
-  randomizeOffset: 1
+  randomizeOffset: 0
   gapOffset: 0
   wallLeft: {fileID: 5903716674201136377}
   wallRight: {fileID: 6665320551676605849}
@@ -572,7 +572,7 @@ MonoBehaviour:
   _leftExtentM: 17.25
   _rightExtentM: 17.25
   _axisWorld: {x: -1, y: 0, z: 0}
-  _seamWorld: {x: -40.80893, y: -0.6666668, z: -281.10593}
+  _seamWorld: {x: 0, y: -0.6666667, z: -6.875}
   _leftScaleAxis: 0
   _rightScaleAxis: 0
   _baselineCached: 1
@@ -588,7 +588,7 @@ GameObject:
   - component: {fileID: 6818641889053212426}
   - component: {fileID: 8977641424658609104}
   - component: {fileID: 4473653595136643545}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Cube.017
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -684,7 +684,7 @@ MeshCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 5
   m_Convex: 0
   m_CookingOptions: 30
@@ -701,7 +701,7 @@ GameObject:
   - component: {fileID: 5289662615828179454}
   - component: {fileID: 6126755996260533735}
   - component: {fileID: 1314767948915957787}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Cube.016
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -797,7 +797,7 @@ MeshCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 5
   m_Convex: 0
   m_CookingOptions: 30
@@ -927,7 +927,7 @@ GameObject:
   - component: {fileID: 8051690161750736666}
   - component: {fileID: 9160784301826759323}
   - component: {fileID: 6570657108296260995}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Cube.015
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1023,7 +1023,7 @@ MeshCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 5
   m_Convex: 0
   m_CookingOptions: 30
@@ -1040,7 +1040,7 @@ GameObject:
   - component: {fileID: 2247030182010706015}
   - component: {fileID: 4131099452613933308}
   - component: {fileID: 7738626969793141673}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Cube.018
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1136,7 +1136,7 @@ MeshCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 5
   m_Convex: 0
   m_CookingOptions: 30
@@ -1302,20 +1302,120 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.WallGapController
   gapWidth: 1.3
   hasOpening: 0
-  randomizeOffset: 1
+  randomizeOffset: 0
   gapOffset: 0
   wallLeft: {fileID: 966148648111564677}
   wallRight: {fileID: 6517587887768745928}
   _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
   _frameChance: 0.35
-  _wallLengthM: 13.5
-  _leftExtentM: 6.75
-  _rightExtentM: 6.75
+  _wallLengthM: 13.499998
+  _leftExtentM: 6.7499995
+  _rightExtentM: 6.7499986
   _axisWorld: {x: 0, y: 0, z: 1}
-  _seamWorld: {x: -58.18393, y: -0.6666668, z: -274.23093}
+  _seamWorld: {x: -17.375, y: -0.6666667, z: 0}
   _leftScaleAxis: 1
   _rightScaleAxis: 1
   _baselineCached: 1
+--- !u!1 &7659996880311580235
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3639617547745085334}
+  - component: {fileID: 5720364374969206430}
+  m_Layer: 0
+  m_Name: Socket_4Wall1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &3639617547745085334
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7659996880311580235}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0.7071067, z: -0, w: 0.7071068}
+  m_LocalPosition: {x: -17.375, y: -0.66666746, z: -0.0000005662441}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2310454134200700387}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5720364374969206430
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7659996880311580235}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1c2d3e4f5a6478990abcdef12345678, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomSocket
+  _wall: {fileID: 6253667579794768824}
+  _width: 1.3
+  _direction: 4
+  _wallIndex: 0
+  _socketTag: 4Wall1
+  _sizeClass: M
+--- !u!1 &7726322777763373406
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2810606175290835061}
+  - component: {fileID: 8750158187364336224}
+  m_Layer: 0
+  m_Name: Socket_4Wall3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &2810606175290835061
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7726322777763373406}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: 0.7071067, z: -0, w: 0.7071068}
+  m_LocalPosition: {x: 17.375, y: -0.66666746, z: -0.00000035762787}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2310454134200700387}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8750158187364336224
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7726322777763373406}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1c2d3e4f5a6478990abcdef12345678, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomSocket
+  _wall: {fileID: 143690450161803141}
+  _width: 1.3
+  _direction: 2
+  _wallIndex: 2
+  _socketTag: 4Wall3
+  _sizeClass: M
 --- !u!1 &7827010586341815419
 GameObject:
   m_ObjectHideFlags: 0
@@ -1477,17 +1577,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.WallGapController
   gapWidth: 1.3
   hasOpening: 0
-  randomizeOffset: 1
+  randomizeOffset: 0
   gapOffset: 0
   wallLeft: {fileID: 9173578318826102331}
   wallRight: {fileID: 1561428788596698671}
   _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
   _frameChance: 0.35
-  _wallLengthM: 13.5
-  _leftExtentM: 6.75
-  _rightExtentM: 6.75
+  _wallLengthM: 13.499998
+  _leftExtentM: 6.7499986
+  _rightExtentM: 6.7499995
   _axisWorld: {x: 0, y: 0, z: -1}
-  _seamWorld: {x: -23.43393, y: -0.6666668, z: -274.23093}
+  _seamWorld: {x: 17.375, y: -0.6666667, z: 0}
   _leftScaleAxis: 1
   _rightScaleAxis: 1
   _baselineCached: 1
@@ -1531,6 +1631,10 @@ Transform:
   - {fileID: 1466453569383644173}
   - {fileID: 280359556217738584}
   - {fileID: 7721580980780031576}
+  - {fileID: 3639617547745085334}
+  - {fileID: 1256695327533005627}
+  - {fileID: 2810606175290835061}
+  - {fileID: 8892306157426662552}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &3673024685342281395
@@ -1658,6 +1762,56 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: -1922059226379166788, guid: ac8301938b00ed243b67cd4ad01468a5, type: 3}
+--- !u!1 &8918470734212373380
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8892306157426662552}
+  - component: {fileID: 7987552687892980925}
+  m_Layer: 0
+  m_Name: Socket_4Wall4
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &8892306157426662552
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8918470734212373380}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0.00000035762787, y: -0.66666675, z: 6.875}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2310454134200700387}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7987552687892980925
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8918470734212373380}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1c2d3e4f5a6478990abcdef12345678, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomSocket
+  _wall: {fileID: 2700891552269891905}
+  _width: 1.3
+  _direction: 1
+  _wallIndex: 3
+  _socketTag: 4Wall4
+  _sizeClass: M
 --- !u!1 &9008628919774826991
 GameObject:
   m_ObjectHideFlags: 0
@@ -1771,6 +1925,56 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 1139462058694848630, guid: ac8301938b00ed243b67cd4ad01468a5, type: 3}
+--- !u!1 &9031384665621215179
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1256695327533005627}
+  - component: {fileID: 3358763763765358255}
+  m_Layer: 0
+  m_Name: Socket_4Wall2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &1256695327533005627
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9031384665621215179}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: 1, z: -0, w: 0.00000004371139}
+  m_LocalPosition: {x: -0.00000035762787, y: -0.66666675, z: -6.875}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2310454134200700387}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3358763763765358255
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9031384665621215179}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1c2d3e4f5a6478990abcdef12345678, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomSocket
+  _wall: {fileID: 2561996785667540360}
+  _width: 1.3
+  _direction: 3
+  _wallIndex: 1
+  _socketTag: 4Wall2
+  _sizeClass: M
 --- !u!1 &9111606149737083712
 GameObject:
   m_ObjectHideFlags: 0

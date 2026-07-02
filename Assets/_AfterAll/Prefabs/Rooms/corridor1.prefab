@@ -387,17 +387,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.WallGapController
   gapWidth: 1.3
   hasOpening: 0
-  randomizeOffset: 1
+  randomizeOffset: 0
   gapOffset: 0
   wallLeft: {fileID: 2933856986388185128}
   wallRight: {fileID: 2998166858387792295}
   _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
   _frameChance: 0.35
-  _wallLengthM: 5.5
-  _leftExtentM: 2.75
-  _rightExtentM: 2.75
+  _wallLengthM: 5.500001
+  _leftExtentM: 2.7500002
+  _rightExtentM: 2.7500007
   _axisWorld: {x: 0, y: 0, z: -1}
-  _seamWorld: {x: -23.677015, y: 0.2500003, z: -130.19006}
+  _seamWorld: {x: 1.6250002, y: 0.125, z: 0}
   _leftScaleAxis: 1
   _rightScaleAxis: 1
   _baselineCached: 1
@@ -752,7 +752,7 @@ GameObject:
   - component: {fileID: 7798317305977817132}
   - component: {fileID: 3671386112248435664}
   - component: {fileID: 4089377546479934378}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Cube.008
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -848,7 +848,7 @@ MeshCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 5
   m_Convex: 0
   m_CookingOptions: 30
@@ -865,7 +865,7 @@ GameObject:
   - component: {fileID: 8856549082615683162}
   - component: {fileID: 1725739128496344268}
   - component: {fileID: 3284133392732259403}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Cube.006
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -961,7 +961,7 @@ MeshCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 5
   m_Convex: 0
   m_CookingOptions: 30
@@ -1014,20 +1014,70 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.WallGapController
   gapWidth: 1.3
   hasOpening: 0
-  randomizeOffset: 1
+  randomizeOffset: 0
   gapOffset: 0
   wallLeft: {fileID: 8040605211766285807}
   wallRight: {fileID: 4054005016654628714}
   _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
   _frameChance: 0.35
-  _wallLengthM: 3
-  _leftExtentM: 1.5
-  _rightExtentM: 1.5
+  _wallLengthM: 3.000001
+  _leftExtentM: 1.5000007
+  _rightExtentM: 1.5000002
   _axisWorld: {x: 1, y: 0, z: 0}
-  _seamWorld: {x: -25.302015, y: 0.2500003, z: -127.31506}
+  _seamWorld: {x: 0, y: 0.125, z: 2.8750005}
   _leftScaleAxis: 0
   _rightScaleAxis: 0
   _baselineCached: 1
+--- !u!1 &3614231756945415336
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4994540229006048829}
+  - component: {fileID: 3940789389921200880}
+  m_Layer: 0
+  m_Name: Socket_2Wall2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &4994540229006048829
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3614231756945415336}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0.7071067, z: -0, w: 0.7071068}
+  m_LocalPosition: {x: -1.6250002, y: 0.12499964, z: -0.00000035762787}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5275456990195266088}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3940789389921200880
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3614231756945415336}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1c2d3e4f5a6478990abcdef12345678, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomSocket
+  _wall: {fileID: 7282891692090833614}
+  _width: 1.3
+  _direction: 4
+  _wallIndex: 1
+  _socketTag: 2Wall2
+  _sizeClass: M
 --- !u!1 &3718834286208489979
 GameObject:
   m_ObjectHideFlags: 0
@@ -1040,7 +1090,7 @@ GameObject:
   - component: {fileID: 1353784693568737378}
   - component: {fileID: 1669330129921880819}
   - component: {fileID: 4660694264161599818}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Cube.004
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1136,11 +1186,61 @@ MeshCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 5
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: -5053925668127403250, guid: 0344da30c9a775649828efdb61b2ef5e, type: 3}
+--- !u!1 &3982858572329513508
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6142716046599096021}
+  - component: {fileID: 8204059822370304060}
+  m_Layer: 0
+  m_Name: Socket_2Wall4
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &6142716046599096021
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3982858572329513508}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: 1, z: -0, w: -0.00000004371139}
+  m_LocalPosition: {x: -0.00000023841858, y: 0.125, z: -2.8750005}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5275456990195266088}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8204059822370304060
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3982858572329513508}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1c2d3e4f5a6478990abcdef12345678, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomSocket
+  _wall: {fileID: 7850498325654333258}
+  _width: 1.3
+  _direction: 3
+  _wallIndex: 3
+  _socketTag: 2Wall4
+  _sizeClass: M
 --- !u!1 &3995239897177420161
 GameObject:
   m_ObjectHideFlags: 0
@@ -1480,6 +1580,56 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 2377085037560736318, guid: 0344da30c9a775649828efdb61b2ef5e, type: 3}
+--- !u!1 &6509147174471039223
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7408367791050964537}
+  - component: {fileID: 4916006461613880164}
+  m_Layer: 0
+  m_Name: Socket_2Wall1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &7408367791050964537
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6509147174471039223}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -0.00000023841858, y: 0.125, z: 2.8750005}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5275456990195266088}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4916006461613880164
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6509147174471039223}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1c2d3e4f5a6478990abcdef12345678, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomSocket
+  _wall: {fileID: 1105624306952926343}
+  _width: 1.3
+  _direction: 1
+  _wallIndex: 0
+  _socketTag: 2Wall1
+  _sizeClass: M
 --- !u!1 &7231281885431018689
 GameObject:
   m_ObjectHideFlags: 0
@@ -1593,6 +1743,56 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 9078221611175147160, guid: 0344da30c9a775649828efdb61b2ef5e, type: 3}
+--- !u!1 &7830223902952221913
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8268824161750827329}
+  - component: {fileID: 8041207093198322097}
+  m_Layer: 0
+  m_Name: Socket_2Wall3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &8268824161750827329
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7830223902952221913}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: 0.7071067, z: -0, w: 0.7071068}
+  m_LocalPosition: {x: 1.6250002, y: 0.12499964, z: -0.00000011920929}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5275456990195266088}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8041207093198322097
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7830223902952221913}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1c2d3e4f5a6478990abcdef12345678, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomSocket
+  _wall: {fileID: 8622065801278625217}
+  _width: 1.3
+  _direction: 2
+  _wallIndex: 2
+  _socketTag: 2Wall3
+  _sizeClass: M
 --- !u!1 &8143149017555639844
 GameObject:
   m_ObjectHideFlags: 0
@@ -1605,7 +1805,7 @@ GameObject:
   - component: {fileID: 4185640552050610239}
   - component: {fileID: 6621674983656926159}
   - component: {fileID: 821479425174479316}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Cube.002
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1701,7 +1901,7 @@ MeshCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 5
   m_Convex: 0
   m_CookingOptions: 30
@@ -1746,6 +1946,10 @@ Transform:
   - {fileID: 4073424325126847634}
   - {fileID: 5166938801200261403}
   - {fileID: 2385466516660962588}
+  - {fileID: 7408367791050964537}
+  - {fileID: 4994540229006048829}
+  - {fileID: 8268824161750827329}
+  - {fileID: 6142716046599096021}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &9123456789012345679
@@ -1808,17 +2012,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.WallGapController
   gapWidth: 1.3
   hasOpening: 0
-  randomizeOffset: 1
+  randomizeOffset: 0
   gapOffset: 0
   wallLeft: {fileID: 4301770686637693399}
   wallRight: {fileID: 9020895684094813473}
   _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
   _frameChance: 0.35
-  _wallLengthM: 5.5
-  _leftExtentM: 2.75
-  _rightExtentM: 2.75
+  _wallLengthM: 5.500001
+  _leftExtentM: 2.7500007
+  _rightExtentM: 2.7500002
   _axisWorld: {x: 0, y: 0, z: 1}
-  _seamWorld: {x: -26.927015, y: 0.2500003, z: -130.19006}
+  _seamWorld: {x: -1.6250002, y: 0.125, z: 0}
   _leftScaleAxis: 1
   _rightScaleAxis: 1
   _baselineCached: 1
@@ -1870,17 +2074,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.WallGapController
   gapWidth: 1.3
   hasOpening: 0
-  randomizeOffset: 1
+  randomizeOffset: 0
   gapOffset: 0
   wallLeft: {fileID: 3119529560204455695}
   wallRight: {fileID: 534534749659798128}
   _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
   _frameChance: 0.35
-  _wallLengthM: 3
-  _leftExtentM: 1.5
-  _rightExtentM: 1.5
+  _wallLengthM: 3.000001
+  _leftExtentM: 1.5000007
+  _rightExtentM: 1.5000002
   _axisWorld: {x: 1, y: 0, z: 0}
-  _seamWorld: {x: -25.302015, y: 0.2500003, z: -133.06506}
+  _seamWorld: {x: 0, y: 0.125, z: -2.8750005}
   _leftScaleAxis: 0
   _rightScaleAxis: 0
   _baselineCached: 1
