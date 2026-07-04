@@ -3,7 +3,7 @@ using UnityEngine;
 namespace AfterAll.Environment
 {
     /// <summary>
-    /// Spawns decorative props on a floor grid after room placement. Skips cells near sockets.
+    /// Legacy floor-grid prop scatter. Prefer <see cref="RoomSpawnPoint"/> markers on room prefabs.
     /// </summary>
     public class RoomPropSpawner : MonoBehaviour
     {
@@ -12,24 +12,39 @@ namespace AfterAll.Environment
         [SerializeField, Range(0f, 1f)] private float _density = 0.15f;
         [SerializeField] private float _socketClearance = 2f;
         [SerializeField] private int _randomSeed;
+        [SerializeField] private bool _spawnOnStart;
+
+        public bool HasPropPrefabs => _propPrefabs.Length > 0;
 
         private void Start()
         {
-            if (_propPrefabs.Length == 0)
-                return;
-
-            Renderer floor = FindFloorRenderer();
-            if (floor == null)
+            if (!_spawnOnStart)
                 return;
 
             System.Random rng = _randomSeed != 0
                 ? new System.Random(_randomSeed ^ transform.position.GetHashCode())
                 : new System.Random();
 
+            SpawnProps(rng);
+        }
+
+        /// <summary>
+        /// Called by RoomPoolSpawner after generation + reachability pass. Returns spawned prop count.
+        /// </summary>
+        public int SpawnProps(System.Random rng)
+        {
+            if (_propPrefabs.Length == 0 || rng == null)
+                return 0;
+
+            Renderer floor = FindFloorRenderer();
+            if (floor == null)
+                return 0;
+
             Bounds bounds = floor.bounds;
             int gridX = Mathf.Max(1, Mathf.FloorToInt(bounds.size.x / _cellSize));
             int gridZ = Mathf.Max(1, Mathf.FloorToInt(bounds.size.z / _cellSize));
             var occupied = new bool[gridX, gridZ];
+            int spawned = 0;
 
             for (int x = 1; x < gridX - 1; x++)
             for (int z = 1; z < gridZ - 1; z++)
@@ -52,7 +67,10 @@ namespace AfterAll.Environment
                 float yaw = rng.Next(0, 4) * 90f;
                 Instantiate(_propPrefabs[prefabIndex], position, Quaternion.Euler(0f, yaw, 0f), transform);
                 occupied[x, z] = true;
+                spawned++;
             }
+
+            return spawned;
         }
 
         private Renderer FindFloorRenderer()
