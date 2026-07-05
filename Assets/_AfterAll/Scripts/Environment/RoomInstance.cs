@@ -23,6 +23,10 @@ namespace AfterAll.Environment
         public bool IsHub { get; private set; }
         public int GraphDepth { get; private set; } = -1;
 
+        [SerializeField] private RoomContentProfile _contentProfile;
+
+        public RoomContentProfile ContentProfile => _contentProfile;
+
         private void Awake() => CacheWalls();
 
         public void MarkAsHub()
@@ -77,6 +81,27 @@ namespace AfterAll.Environment
         }
 
         public bool IsWallConnected(WallGapController wall) => _connectedWalls.Contains(wall);
+
+        /// <summary>
+        /// True when the wall at <paramref name="wallIndex"/> has a runtime gap opening.
+        /// Used by WallDecor markers to skip walls opened for room connections.
+        /// </summary>
+        public bool IsWallOpen(int wallIndex)
+        {
+            if (wallIndex < 0)
+                return false;
+
+            foreach (WallGapController wall in _walls)
+            {
+                if (wall == null || !wall.TryGetBakedSocket(out RoomSocket socket))
+                    continue;
+
+                if (socket.WallIndex == wallIndex)
+                    return wall.hasOpening;
+            }
+
+            return false;
+        }
 
         public void MarkWallConnected(WallGapController wall, RoomInstance neighbor)
         {

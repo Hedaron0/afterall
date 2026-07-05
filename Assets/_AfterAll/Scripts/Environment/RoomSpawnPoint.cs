@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using UnityEngine;
 
 namespace AfterAll.Environment
@@ -12,21 +13,31 @@ namespace AfterAll.Environment
     }
 
     /// <summary>
-    /// Marker placed on empty GameObjects (or invisible editor cubes) inside room prefabs.
+    /// Marker placed on empty GameObjects inside room prefabs.
     /// RoomPoolSpawner calls <see cref="SpawnForRoom"/> after generation + reachability pass.
-    /// Harun authors marker layout in prefabs; runtime picks a random subset per seed.
+    /// See vault: AfterAll — Room Content Spawn Architecture Plan.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("AfterAll/Environment/Room Spawn Point")]
     public class RoomSpawnPoint : MonoBehaviour
     {
+        private struct SpawnCandidate
+        {
+            public RoomSpawnPoint marker;
+            public GameObject prefab;
+            public Quaternion rotation;
+            public RoomSpawnCategory category;
+        }
+
         [SerializeField] private RoomSpawnCategory _category = RoomSpawnCategory.Prop;
         [SerializeField] private GameObject[] _prefabOptions = System.Array.Empty<GameObject>();
         [SerializeField, Range(0f, 1f)] private float _spawnChance = 0.5f;
-        [SerializeField] private bool _randomYaw = true;
+        [SerializeField] private bool _useRandomYaw = true;
         [SerializeField] private bool _alignToMarkerRotation = true;
         [Tooltip("Optional. Only one marker with the same non-empty group id will spawn per room.")]
         [SerializeField] private string _groupId;
+        [Tooltip("WallDecor: explicit wall index. -1 = resolve from parent WallGapController or Wall0X name.")]
+        [SerializeField] private int _wallIndex = -1;
         [Tooltip("Disable renderers/colliders on this marker object after a successful spawn.")]
         [SerializeField] private bool _hideMarkerAfterSpawn = true;
 
@@ -47,48 +58,159 @@ namespace AfterAll.Environment
             if (markers.Length == 0)
                 return 0;
 
+            RoomContentProfile profile = room.ContentProfile;
             var usedGroups = new HashSet<string>();
-            int spawned = 0;
+            var propCandidates = new List<SpawnCandidate>();
+            var pillarCandidates = new List<SpawnCandidate>();
+            var lightCandidates = new List<SpawnCandidate>();
+            var wallDecorCandidates = new List<SpawnCandidate>();
 
             foreach (RoomSpawnPoint marker in markers)
             {
-                if (marker == null || !marker.isActiveAndEnabled)
+                if (marker == null || !marker.isActiveAndEnabled || !marker.HasPrefabs)
                     continue;
 
-                if (marker.TrySpawn(rng, room.transform, usedGroups))
+                if (!string.IsNullOrWhiteSpace(marker._groupId) && usedGroups.Contains(marker._groupId))
+                    continue;
+
+                double chanceRoll = rng.NextDouble();
+
+                if (marker._category == RoomSpawnCategory.WallDecor)
+                {
+                    int wallIndex = marker.ResolveWallIndex(room);
+                    if (wallIndex >= 0 && room.IsWallOpen(wallIndex))
+                        continue;
+                }
+
+                float effectiveChance = marker.GetEffectiveSpawnChance(profile);
+                if (chanceRoll > effectiveChance)
+                    continue;
+
+                GameObject prefab = marker._prefabOptions[rng.Next(0, marker._prefabOptions.Length)];
+                if (prefab == null)
+                    continue;
+
+                SpawnCandidate candidate = new()
+                {
+                    marker = marker,
+                    prefab = prefab,
+                    rotation = marker.BuildRotation(rng),
+                    category = marker._category
+                };
+
+                switch (marker._category)
+                {
+                    case RoomSpawnCategory.Prop:
+                        propCandidates.Add(candidate);
+                        break;
+                    case RoomSpawnCategory.Pillar:
+                        pillarCandidates.Add(candidate);
+                        break;
+                    case RoomSpawnCategory.CeilingLight:
+                        lightCandidates.Add(candidate);
+                        break;
+                    case RoomSpawnCategory.WallDecor:
+                        wallDecorCandidates.Add(candidate);
+                        break;
+                }
+            }
+
+            TrimCandidates(propCandidates, profile?.MaxProps ?? -1, profile?.HasPropCap == true, room.name, RoomSpawnCategory.Prop);
+            TrimCandidates(pillarCandidates, profile?.MaxPillars ?? -1, profile?.HasPillarCap == true, room.name, RoomSpawnCategory.Pillar);
+            TrimCandidates(lightCandidates, profile?.MaxCeilingLights ?? -1, profile?.HasCeilingLightCap == true, room.name, RoomSpawnCategory.CeilingLight);
+
+            int spawned = 0;
+            spawned += CommitCandidates(propCandidates, room.transform, usedGroups);
+            spawned += CommitCandidates(pillarCandidates, room.transform, usedGroups);
+            spawned += CommitCandidates(lightCandidates, room.transform, usedGroups);
+            spawned += CommitCandidates(wallDecorCandidates, room.transform, usedGroups);
+
+            return spawned;
+        }
+
+        private static void TrimCandidates(
+            List<SpawnCandidate> candidates,
+            int maxCount,
+            bool hasCap,
+            string roomName,
+            RoomSpawnCategory category)
+        {
+            if (!hasCap || candidates.Count <= maxCount)
+                return;
+
+            int removed = candidates.Count - maxCount;
+            candidates.RemoveRange(maxCount, removed);
+            Debug.LogWarning(
+                $"[RoomSpawnPoint] {roomName}: trimmed {removed} {category} marker(s) to cap {maxCount}. " +
+                "Add more markers or raise RoomContentProfile cap if this room looks sparse.");
+        }
+
+        private static int CommitCandidates(
+            List<SpawnCandidate> candidates,
+            Transform roomRoot,
+            HashSet<string> usedGroups)
+        {
+            int spawned = 0;
+            foreach (SpawnCandidate candidate in candidates)
+            {
+                if (candidate.marker == null || candidate.prefab == null)
+                    continue;
+
+                if (candidate.marker.CommitSpawn(candidate.prefab, candidate.rotation, roomRoot, usedGroups))
                     spawned++;
             }
 
             return spawned;
         }
 
-        /// <summary>
-        /// Rolls spawn chance, picks a prefab, instantiates at marker transform.
-        /// </summary>
-        public bool TrySpawn(System.Random rng, Transform roomRoot, HashSet<string> usedGroups)
+        private float GetEffectiveSpawnChance(RoomContentProfile profile)
         {
-            if (rng == null || roomRoot == null || !HasPrefabs)
-                return false;
-
-            if (!string.IsNullOrWhiteSpace(_groupId))
+            if (_category == RoomSpawnCategory.Pillar &&
+                profile != null &&
+                profile.HasPillarChanceOverride)
             {
-                if (usedGroups.Contains(_groupId))
-                    return false;
+                return profile.PillarSpawnChanceOverride;
             }
 
-            if (rng.NextDouble() > _spawnChance)
+            return _spawnChance;
+        }
+
+        private Quaternion BuildRotation(System.Random rng)
+        {
+            if (_useRandomYaw && _category is RoomSpawnCategory.Prop or RoomSpawnCategory.Pillar)
+                return Quaternion.Euler(0f, rng.Next(0, 4) * 90f, 0f);
+
+            return _alignToMarkerRotation ? transform.rotation : Quaternion.identity;
+        }
+
+        private int ResolveWallIndex(RoomInstance room)
+        {
+            if (_wallIndex >= 0)
+                return _wallIndex;
+
+            WallGapController wall = GetComponentInParent<WallGapController>();
+            if (wall != null && wall.TryGetBakedSocket(out RoomSocket socket))
+                return socket.WallIndex;
+
+            return TryParseWallIndexFromName(transform.parent != null ? transform.parent.name : name);
+        }
+
+        private static int TryParseWallIndexFromName(string objectName)
+        {
+            if (string.IsNullOrWhiteSpace(objectName))
+                return -1;
+
+            Match match = Regex.Match(objectName, @"Wall(\d+)", RegexOptions.IgnoreCase);
+            if (!match.Success || !int.TryParse(match.Groups[1].Value, out int wallNumber))
+                return -1;
+
+            return wallNumber - 1;
+        }
+
+        private bool CommitSpawn(GameObject prefab, Quaternion rotation, Transform roomRoot, HashSet<string> usedGroups)
+        {
+            if (!string.IsNullOrWhiteSpace(_groupId) && usedGroups.Contains(_groupId))
                 return false;
-
-            GameObject prefab = _prefabOptions[rng.Next(0, _prefabOptions.Length)];
-            if (prefab == null)
-                return false;
-
-            Quaternion rotation = _alignToMarkerRotation
-                ? transform.rotation
-                : Quaternion.identity;
-
-            if (_randomYaw && _category is RoomSpawnCategory.Prop or RoomSpawnCategory.Pillar)
-                rotation = Quaternion.Euler(0f, rng.Next(0, 4) * 90f, 0f);
 
             GameObject instance = Instantiate(prefab, transform.position, rotation, roomRoot);
             instance.name = $"{prefab.name}_{_category}";
