@@ -106,6 +106,10 @@ namespace AfterAll.Environment
         [SerializeField] private UnreachableRoomPolicy _unreachableRoomPolicy = UnreachableRoomPolicy.RetryThenDestroy;
         [SerializeField, Min(1)] private int _unreachableRetryAttempts = 1;
 
+        [Header("Props")]
+        [Tooltip("Runs RoomSpawnPoint markers on each placed room after reachability cleanup. Place markers on room prefabs first.")]
+        [SerializeField] private bool _spawnPropsAfterBuild;
+
         private readonly Queue<OpeningWorkItem> _primaryQueue = new();
         private readonly Queue<OpeningWorkItem> _retryQueue = new();
         private readonly List<string> _deadOpenings = new();
@@ -254,6 +258,7 @@ namespace AfterAll.Environment
             BuildExitReason exitReason = DetermineExitReason(count, globalBudgetExhausted);
             RoomConnector.ConnectionStats stats = _connector.GetStats();
             (ReachabilityAuditResult reachability, int finalPlacedCount) = RunReachabilityAudit(startRoom);
+            int propsSpawned = SpawnPropsAfterBuild();
             int postBuildOverlaps = ValidatePlacedRoomOverlaps();
             if (_repositionPlayerAfterBuild)
                 PlacePlayerAfterBuild(startRoom);
@@ -266,7 +271,8 @@ namespace AfterAll.Environment
                 stats,
                 validationTotals,
                 postBuildOverlaps,
-                reachability);
+                reachability,
+                propsSpawned);
 
             _buildRoutine = null;
         }
@@ -291,6 +297,38 @@ namespace AfterAll.Environment
             return BuildExitReason.FrontierEmpty;
         }
 
+        private int SpawnPropsAfterBuild()
+        {
+            if (!_spawnPropsAfterBuild || _connector == null)
+                return 0;
+
+            RoomInstance[] rooms = _connector.LevelRoot.GetComponentsInChildren<RoomInstance>();
+            int totalSpawned = 0;
+            int roomsWithMarkers = 0;
+
+            foreach (RoomInstance room in rooms)
+            {
+                if (room == null)
+                    continue;
+
+                RoomSpawnPoint[] markers = room.GetComponentsInChildren<RoomSpawnPoint>(true);
+                if (markers.Length == 0)
+                    continue;
+
+                roomsWithMarkers++;
+                totalSpawned += RoomSpawnPoint.SpawnForRoom(room, _rng);
+            }
+
+            if (_spawnPropsAfterBuild && roomsWithMarkers == 0)
+            {
+                Debug.LogWarning(
+                    "[RoomPoolSpawner] spawnPropsAfterBuild is enabled but no placed room has " +
+                    "RoomSpawnPoint markers.");
+            }
+
+            return totalSpawned;
+        }
+
         private void LogBuildSummary(
             int placedCount,
             int passNumber,
@@ -299,7 +337,8 @@ namespace AfterAll.Environment
             RoomConnector.ConnectionStats stats,
             RoomInstance.SocketValidationReport validationTotals,
             int postBuildOverlaps,
-            ReachabilityAuditResult reachability)
+            ReachabilityAuditResult reachability,
+            int propsSpawned)
         {
             var summary = new StringBuilder();
             summary.AppendLine(
@@ -346,6 +385,12 @@ namespace AfterAll.Environment
             AppendGraphPolicySummary(summary, placedCount);
             AppendReachabilitySummary(summary, reachability);
             AppendGapOffsetSummary(summary, stats);
+
+            if (_spawnPropsAfterBuild)
+            {
+                summary.AppendLine(
+                    $"[RoomPoolSpawner] SpawnPoints: Spawned={propsSpawned}, Enabled={_spawnPropsAfterBuild}.");
+            }
 
             summary.Append(
                 $"[RoomPoolSpawner] Rejects(NoCompatible={stats.noCompatibleSocket}, Gap={stats.gapMismatch}, " +
