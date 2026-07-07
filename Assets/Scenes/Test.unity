@@ -2665,7 +2665,7 @@ Transform:
   m_GameObject: {fileID: 1688563658}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 10.331197, y: 1.3000033, z: 38.634186}
+  m_LocalPosition: {x: 12.622661, y: 1.3000033, z: 38.634186}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2750,6 +2750,7 @@ GameObject:
   - component: {fileID: 2000000002}
   - component: {fileID: 2000000003}
   - component: {fileID: 2000000005}
+  - component: {fileID: 2000000008}
   m_Layer: 0
   m_Name: RoomLevelGen
   m_TagString: Untagged
@@ -2807,7 +2808,7 @@ MonoBehaviour:
   - {fileID: 7115592511602587281, guid: bbf220602f73c0c4b8f231133550e6bd, type: 3}
   - {fileID: 282913196119312983, guid: 30b02d360b31ad24e97ecbf001ce8a0c, type: 3}
   - {fileID: 5154039689004106256, guid: 0d01d46f78254d144b7652e9254bf96e, type: 3}
-  _roomCount: 10
+  _roomCount: 112
   _forceDoorsOnConnections: 0
   _doorChance: 0.35
   _forceFramesOnConnections: 0
@@ -2815,7 +2816,7 @@ MonoBehaviour:
   _extraOpeningChance: 0.699
   _minOpeningsPerRoom: 1
   _maxOpeningsPerRoom: 4
-  _maxBranchDepth: 4
+  _maxBranchDepth: 15
   _deadEndRatio: 0.35
   _deadEndRatioTolerance: 0.05
   _deadEndBiasStrength: 0.6
@@ -2839,6 +2840,7 @@ MonoBehaviour:
   _repositionPlayerAfterBuild: 1
   _unreachableRoomPolicy: 2
   _unreachableRetryAttempts: 1
+  _contentManager: {fileID: 2000000008}
 --- !u!4 &2000000006
 Transform:
   m_ObjectHideFlags: 0
@@ -2870,6 +2872,21 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!114 &2000000008
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2000000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fde1381ca949af74fad71672bd34240a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomContentManager
+  _connector: {fileID: 2000000003}
+  _settings: {fileID: 11400000, guid: 0e4ee2efcd878c5419a1fe95bfda498d, type: 2}
+  _activateAfterBuild: 1
 --- !u!1 &2069282035
 GameObject:
   m_ObjectHideFlags: 0
@@ -3575,11 +3592,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8329111072287402456, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.94214916
+      value: 0.50568014
       objectReference: {fileID: 0}
     - target: {fileID: 8329111072287402456, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.24249429
+      value: 0.26540893
       objectReference: {fileID: 0}
     - target: {fileID: 8329111072287402456, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.y
@@ -3591,11 +3608,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8469023269912498271, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.8102318
+      value: 1.2467009
       objectReference: {fileID: 0}
     - target: {fileID: 8469023269912498271, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.2294943
+      value: 0.25240892
       objectReference: {fileID: 0}
     - target: {fileID: 8469023269912498271, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.y

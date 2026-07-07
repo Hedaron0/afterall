@@ -23,10 +23,6 @@ namespace AfterAll.Environment
         public bool IsHub { get; private set; }
         public int GraphDepth { get; private set; } = -1;
 
-        [SerializeField] private RoomContentProfile _contentProfile;
-
-        public RoomContentProfile ContentProfile => _contentProfile;
-
         private void Awake() => CacheWalls();
 
         public void MarkAsHub()

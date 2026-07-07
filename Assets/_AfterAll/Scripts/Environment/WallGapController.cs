@@ -170,6 +170,60 @@ namespace AfterAll.Environment
             return true;
         }
 
+        public bool TryGetOpeningCorridorBounds(
+            float offsetMeters,
+            out Bounds corridor,
+            float inwardDepth = 1.5f,
+            float corridorHeight = 3f)
+        {
+            corridor = default;
+            AutoFindChildren();
+
+            // Do not call EnsureBaseline() here — in play mode it rebuilds via RestoreClosed()
+            // without re-applying the gap, which seals every wall after content activation.
+            if (!_baselineCached)
+                RebuildBaseline();
+
+            if (wallLeft == null || wallRight == null || _wallLengthM < 0.1f)
+                return false;
+
+            float effectiveGapWidth = Mathf.Min(gapWidth, _wallLengthM - 0.05f);
+            if (effectiveGapWidth < 0.05f)
+                return false;
+
+            float maxD = Mathf.Max(0f, _wallLengthM - effectiveGapWidth);
+            float d = Mathf.Clamp(offsetMeters, 0f, maxD);
+
+            float gapLeftT = -_leftExtentM + d;
+            float gapRightT = gapLeftT + effectiveGapWidth;
+            float floorY = GetWallFloorY();
+
+            Vector3 leftEdge = _seamWorld + _axisWorld * gapLeftT;
+            Vector3 rightEdge = _seamWorld + _axisWorld * gapRightT;
+            leftEdge.y = floorY;
+            rightEdge.y = floorY;
+
+            Vector3 gapCenter = (leftEdge + rightEdge) * 0.5f;
+            Vector3 inward = -ComputeOutwardForward(gapCenter);
+            inward.y = 0f;
+            if (inward.sqrMagnitude < 0.0001f)
+                inward = -Vector3.Cross(Vector3.up, _axisWorld);
+            inward.Normalize();
+
+            Vector3 innerLeft = leftEdge + inward * inwardDepth;
+            Vector3 innerRight = rightEdge + inward * inwardDepth;
+
+            corridor = new Bounds(gapCenter, Vector3.zero);
+            Vector3[] points = { leftEdge, rightEdge, innerLeft, innerRight };
+            foreach (Vector3 point in points)
+            {
+                corridor.Encapsulate(point);
+                corridor.Encapsulate(point + Vector3.up * corridorHeight);
+            }
+
+            return corridor.size.sqrMagnitude > 0.0001f;
+        }
+
         public static float GetRandomGapOffset(
             WallGapController wall,
             System.Random rng,
