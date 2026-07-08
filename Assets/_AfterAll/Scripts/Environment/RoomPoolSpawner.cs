@@ -88,6 +88,8 @@ namespace AfterAll.Environment
         [SerializeField, Min(1)] private int _attemptsPerOpening = 6;
         [SerializeField, Min(1)] private int _maxRetryPasses = 3;
         [SerializeField, Min(1)] private int _maxGlobalConnectAttempts = 150;
+        [Tooltip("When on, budget is at least roomCount × attemptsPerOpening so large maps (e.g. 112) do not stall at the inspector floor.")]
+        [SerializeField] private bool _scaleGlobalBudgetWithRoomCount = true;
         [Header("Offset Search")]
         [SerializeField] private bool _offsetSearchEnabled = true;
         [SerializeField, Min(1)] private int _offsetSamplesPerWall = 5;
@@ -119,6 +121,11 @@ namespace AfterAll.Environment
         private static bool? _lastLoggedRandomGapOffset;
 
         private int MaxTotalAttemptsPerOpening => _maxRetryPasses * _attemptsPerOpening;
+
+        private int EffectiveGlobalConnectBudget =>
+            _scaleGlobalBudgetWithRoomCount
+                ? Mathf.Max(_maxGlobalConnectAttempts, _roomCount * _attemptsPerOpening)
+                : _maxGlobalConnectAttempts;
 
         private void Awake()
         {
@@ -169,7 +176,7 @@ namespace AfterAll.Environment
                 $"FrameChance={_frameChance:F2}, ExtraOpeningChance={_extraOpeningChance:F2}, " +
                 $"Openings={_minOpeningsPerRoom}-{_maxOpeningsPerRoom}, " +
                 $"AttemptsPerVisit={_attemptsPerOpening}, MaxRetryPasses={_maxRetryPasses}, " +
-                $"MaxAttemptsPerOpening={MaxTotalAttemptsPerOpening}, GlobalBudget={_maxGlobalConnectAttempts}, " +
+                $"MaxAttemptsPerOpening={MaxTotalAttemptsPerOpening}, GlobalBudget={EffectiveGlobalConnectBudget}, " +
                 $"MaxBranchDepth={_maxBranchDepth}, DeadEndRatio={_deadEndRatio:F2}, HubOpenings={_hubMinOpenings}-{_hubMaxOpenings}, " +
                 $"OffsetSearch={_offsetSearchEnabled}, Samples={_offsetSamplesPerWall}, " +
                 $"GapOffset(Random={_randomGapOffset}, EdgeMargin={_gapEdgeMarginM:F2}m, SpanFraction={_gapOffsetSpanFraction:F2})");
@@ -216,7 +223,7 @@ namespace AfterAll.Environment
                     passNumber++;
                 }
 
-                if (globalConnectAttempts >= _maxGlobalConnectAttempts)
+                if (globalConnectAttempts >= EffectiveGlobalConnectBudget)
                 {
                     globalBudgetExhausted = true;
                     break;
@@ -335,7 +342,7 @@ namespace AfterAll.Environment
                     case BuildExitReason.GlobalBudgetExhausted:
                         summary.AppendLine(
                             $"[RoomPoolSpawner] Global connect attempt budget exhausted " +
-                            $"(limit={_maxGlobalConnectAttempts}).");
+                            $"(limit={EffectiveGlobalConnectBudget}).");
                         break;
                     case BuildExitReason.OpeningsExhausted:
                         summary.AppendLine(
