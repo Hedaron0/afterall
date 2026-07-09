@@ -2665,7 +2665,7 @@ Transform:
   m_GameObject: {fileID: 1688563658}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 12.622661, y: 1.3000033, z: 38.634186}
+  m_LocalPosition: {x: 6.313863, y: 1.3000033, z: 38.634186}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2808,7 +2808,7 @@ MonoBehaviour:
   - {fileID: 7115592511602587281, guid: bbf220602f73c0c4b8f231133550e6bd, type: 3}
   - {fileID: 282913196119312983, guid: 30b02d360b31ad24e97ecbf001ce8a0c, type: 3}
   - {fileID: 5154039689004106256, guid: 0d01d46f78254d144b7652e9254bf96e, type: 3}
-  _roomCount: 112
+  _roomCount: 30
   _forceDoorsOnConnections: 0
   _doorChance: 0.35
   _forceFramesOnConnections: 0
@@ -2816,7 +2816,7 @@ MonoBehaviour:
   _extraOpeningChance: 0.699
   _minOpeningsPerRoom: 1
   _maxOpeningsPerRoom: 4
-  _maxBranchDepth: 15
+  _maxBranchDepth: 8
   _deadEndRatio: 0.35
   _deadEndRatioTolerance: 0.05
   _deadEndBiasStrength: 0.6
@@ -2830,6 +2830,7 @@ MonoBehaviour:
   _attemptsPerOpening: 6
   _maxRetryPasses: 3
   _maxGlobalConnectAttempts: 150
+  _scaleGlobalBudgetWithRoomCount: 1
   _offsetSearchEnabled: 1
   _offsetSamplesPerWall: 5
   _randomGapOffset: 1
@@ -3592,11 +3593,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8329111072287402456, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.50568014
+      value: 1.7073557
       objectReference: {fileID: 0}
     - target: {fileID: 8329111072287402456, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.26540893
+      value: 0.20232095
       objectReference: {fileID: 0}
     - target: {fileID: 8329111072287402456, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.y
@@ -3608,11 +3609,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8469023269912498271, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalScale.x
-      value: 1.2467009
+      value: 0.04502528
       objectReference: {fileID: 0}
     - target: {fileID: 8469023269912498271, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.25240892
+      value: 0.18932094
       objectReference: {fileID: 0}
     - target: {fileID: 8469023269912498271, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.y
