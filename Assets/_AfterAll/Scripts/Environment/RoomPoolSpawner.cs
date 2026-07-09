@@ -14,12 +14,39 @@ namespace AfterAll.Environment
     /// </summary>
     public class RoomPoolSpawner : MonoBehaviour
     {
+        private enum FrontierPriority
+        {
+            Normal = 0,
+            /// <summary>Future: far corridor / exit spine — bypass compact scoring when implemented.</summary>
+            ForceFringe = 1
+        }
+
         private struct OpeningWorkItem
         {
             public RoomInstance Room;
             public WallGapController Wall;
             public bool SpawnFrame;
             public int TotalAttempts;
+            public FrontierPriority Priority;
+            public HashSet<WallGapController> TriedWalls;
+        }
+
+        private struct WeightedPickStats
+        {
+            public int totalPicks;
+        }
+
+        private struct WallFailoverStats
+        {
+            public int switches;
+            public int exhausted;
+        }
+
+        private struct CompactGrowthStats
+        {
+            public int pickCount;
+            public float neighborScoreSum;
+            public int picksWithNeighborAtLeastTwo;
         }
 
         private enum BuildExitReason
@@ -56,7 +83,8 @@ namespace AfterAll.Environment
         }
 
         [SerializeField] private RoomConnector _connector;
-        [SerializeField] private GameObject[] _roomPrefabs = System.Array.Empty<GameObject>();
+        [SerializeField] private RoomPrefabEntry[] _roomPrefabEntries = Array.Empty<RoomPrefabEntry>();
+        [SerializeField, HideInInspector] private GameObject[] _roomPrefabs = Array.Empty<GameObject>();
         [SerializeField] private int _roomCount = 5;
         [Header("Connection Rules")]
         [Tooltip("Reserved for future gameplay doors — does not affect proc-gen gap FrameDoor spawn.")]
@@ -86,6 +114,7 @@ namespace AfterAll.Environment
         [Header("Build Pace")]
         [SerializeField, Min(0f)] private float _spawnDelaySeconds = 0.05f;
         [SerializeField, Min(1)] private int _attemptsPerOpening = 6;
+        [SerializeField, Min(1)] private int _maxAttemptsPerWall = 3;
         [SerializeField, Min(1)] private int _maxRetryPasses = 3;
         [SerializeField, Min(1)] private int _maxGlobalConnectAttempts = 150;
         [Tooltip("When on, budget is at least roomCount × attemptsPerOpening so large maps (e.g. 112) do not stall at the inspector floor.")]
@@ -108,6 +137,13 @@ namespace AfterAll.Environment
         [SerializeField] private UnreachableRoomPolicy _unreachableRoomPolicy = UnreachableRoomPolicy.RetryThenDestroy;
         [SerializeField, Min(1)] private int _unreachableRetryAttempts = 1;
 
+        [Header("Compact Growth")]
+        [SerializeField] private bool _useCompactGrowth = true;
+        [SerializeField, Min(0f)] private float _compactNeighborWeight = 1f;
+        [SerializeField, Min(0f)] private float _compactCentroidWeight = 0.25f;
+        [SerializeField, Min(1f)] private float _occupancyCellSize = 6f;
+        [SerializeField, Min(1f)] private float _compactSpawnEstimateM = 5f;
+
         [SerializeField] private RoomContentManager _contentManager;
 
         private readonly Queue<OpeningWorkItem> _primaryQueue = new();
@@ -119,6 +155,12 @@ namespace AfterAll.Environment
         private Coroutine _buildRoutine;
         private System.Random _rng;
         private static bool? _lastLoggedRandomGapOffset;
+        private readonly RoomLayoutOccupancy _layoutOccupancy = new();
+        private CompactGrowthStats _compactGrowthStats;
+        private WeightedPickStats _weightedPickStats;
+        private WallFailoverStats _wallFailoverStats;
+        private RoomPrefabEntry[] _activePrefabEntries = Array.Empty<RoomPrefabEntry>();
+        private int _activePrefabTotalWeight;
 
         private int MaxTotalAttemptsPerOpening => _maxRetryPasses * _attemptsPerOpening;
 
@@ -132,6 +174,13 @@ namespace AfterAll.Environment
             if (_contentManager == null)
                 _contentManager = GetComponent<RoomContentManager>();
         }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            MigrateLegacyPrefabPool();
+        }
+#endif
 
         private void Start()
         {
@@ -155,13 +204,16 @@ namespace AfterAll.Environment
             _policyDeadEnds.Clear();
             _policyDeadEndRoomsLogged.Clear();
             _placedRoomCount = 0;
+            _compactGrowthStats = default;
+            _weightedPickStats = default;
+            _wallFailoverStats = default;
 
             if (_connector == null)
                 _connector = GetComponent<RoomConnector>();
 
-            if (_connector == null || _roomPrefabs.Length == 0)
+            if (_connector == null || !TryPreparePrefabPool())
             {
-                Debug.LogError("[RoomPoolSpawner] Need RoomConnector + room prefabs.");
+                Debug.LogError("[RoomPoolSpawner] Need RoomConnector + at least one valid weighted room prefab entry.");
                 _buildRoutine = null;
                 yield break;
             }
@@ -175,20 +227,26 @@ namespace AfterAll.Environment
                 $"[RoomPoolSpawner] Seed={_lastUsedSeed}, Rooms={_roomCount}, " +
                 $"FrameChance={_frameChance:F2}, ExtraOpeningChance={_extraOpeningChance:F2}, " +
                 $"Openings={_minOpeningsPerRoom}-{_maxOpeningsPerRoom}, " +
-                $"AttemptsPerVisit={_attemptsPerOpening}, MaxRetryPasses={_maxRetryPasses}, " +
+                $"AttemptsPerVisit={_attemptsPerOpening}, MaxAttemptsPerWall={_maxAttemptsPerWall}, MaxRetryPasses={_maxRetryPasses}, " +
                 $"MaxAttemptsPerOpening={MaxTotalAttemptsPerOpening}, GlobalBudget={EffectiveGlobalConnectBudget}, " +
                 $"MaxBranchDepth={_maxBranchDepth}, DeadEndRatio={_deadEndRatio:F2}, HubOpenings={_hubMinOpenings}-{_hubMaxOpenings}, " +
                 $"OffsetSearch={_offsetSearchEnabled}, Samples={_offsetSamplesPerWall}, " +
-                $"GapOffset(Random={_randomGapOffset}, EdgeMargin={_gapEdgeMarginM:F2}m, SpanFraction={_gapOffsetSpanFraction:F2})");
+                $"GapOffset(Random={_randomGapOffset}, EdgeMargin={_gapEdgeMarginM:F2}m, SpanFraction={_gapOffsetSpanFraction:F2}), " +
+                $"CompactGrowth={_useCompactGrowth}, NeighborWeight={_compactNeighborWeight:F2}, " +
+                $"CentroidWeight={_compactCentroidWeight:F2}, CellSize={_occupancyCellSize:F1}m, " +
+                $"SpawnEstimate={_compactSpawnEstimateM:F1}m");
+
+            _layoutOccupancy.Clear();
+            _layoutOccupancy.Configure(_occupancyCellSize);
 
             if (_maxBranchDepth < 3 && _roomCount > 6)
             {
                 Debug.LogWarning(
                     $"[RoomPoolSpawner] maxBranchDepth={_maxBranchDepth} with roomCount={_roomCount} " +
-                    $"and pool size={_roomPrefabs.Length} often under-fills — depth limits frontier before target is reached.");
+                    $"and pool size={_activePrefabEntries.Length} often under-fills — depth limits frontier before target is reached.");
             }
 
-            GameObject firstPrefab = _roomPrefabs[NextInt(0, _roomPrefabs.Length)];
+            GameObject firstPrefab = PickWeightedRoomPrefab().Prefab;
             GameObject firstGo = SpawnAtOrigin(firstPrefab);
             RoomInstance first = GetRoom(firstGo);
             first.SealAllWalls();
@@ -203,6 +261,7 @@ namespace AfterAll.Environment
             }
 
             first.MarkAsHub();
+            _layoutOccupancy.Register(first);
             QueueOpeningsForRoom(first);
 
             int count = 1;
@@ -229,11 +288,14 @@ namespace AfterAll.Environment
                     break;
                 }
 
-                OpeningWorkItem item = _primaryQueue.Dequeue();
+                if (!TryDequeueNextFrontierItem(out OpeningWorkItem item))
+                    continue;
+
                 if (item.Room == null || item.Wall == null || item.Room.IsWallConnected(item.Wall))
                     continue;
 
-                (RoomInstance child, int attemptsUsed) = TryConnectWithRetries(item);
+                (RoomInstance child, int attemptsUsed, OpeningWorkItem updatedItem) = TryConnectWithRetries(item);
+                item = updatedItem;
                 globalConnectAttempts += attemptsUsed;
                 item.TotalAttempts += attemptsUsed;
 
@@ -245,6 +307,7 @@ namespace AfterAll.Environment
                     RoomInstance.SocketValidationReport childValidation = child.ValidateSocketContracts(logWarnings: true);
                     validationTotals.missingContractCount += childValidation.missingContractCount;
                     validationTotals.duplicateDirectionCount += childValidation.duplicateDirectionCount;
+                    _layoutOccupancy.Register(child);
                     QueueOpeningsForRoom(child);
 
                     if (_spawnDelaySeconds > 0f)
@@ -361,6 +424,8 @@ namespace AfterAll.Environment
             }
 
             AppendGraphPolicySummary(summary, placedCount);
+            AppendCompactGrowthSummary(summary);
+            AppendWeightedAndFailoverSummary(summary);
             AppendReachabilitySummary(summary, reachability);
             AppendGapOffsetSummary(summary, stats);
 
@@ -1035,23 +1100,304 @@ namespace AfterAll.Environment
                 $"(connections={spawnRoom.ConnectedRooms.Count}) at {spawnPosition}");
         }
 
-        private (RoomInstance child, int attemptsUsed) TryConnectWithRetries(OpeningWorkItem item)
+        private bool TryDequeueNextFrontierItem(out OpeningWorkItem item)
         {
-            int maxTotal = MaxTotalAttemptsPerOpening;
-            int remainingBudget = maxTotal - item.TotalAttempts;
-            int visitLimit = Mathf.Min(_attemptsPerOpening, remainingBudget);
-            int attemptsUsed = 0;
+            item = default;
 
-            for (int i = 0; i < visitLimit; i++)
+            if (_primaryQueue.Count == 0)
+                return false;
+
+            if (!_useCompactGrowth)
             {
-                GameObject prefab = _roomPrefabs[NextInt(0, _roomPrefabs.Length)];
-                RoomInstance child = _connector.Connect(item.Room, item.Wall, prefab, item.SpawnFrame);
-                attemptsUsed++;
-                if (child != null)
-                    return (child, attemptsUsed);
+                while (_primaryQueue.Count > 0)
+                {
+                    item = _primaryQueue.Dequeue();
+                    if (item.Room != null && item.Wall != null && !item.Room.IsWallConnected(item.Wall))
+                        return true;
+                }
+
+                return false;
             }
 
-            return (null, attemptsUsed);
+            return TryPickBestFrontierItem(out item);
+        }
+
+        private bool TryPickBestFrontierItem(out OpeningWorkItem bestItem)
+        {
+            bestItem = default;
+            var candidates = new List<OpeningWorkItem>(_primaryQueue.Count);
+
+            while (_primaryQueue.Count > 0)
+            {
+                OpeningWorkItem candidate = _primaryQueue.Dequeue();
+                if (candidate.Room == null || candidate.Wall == null || candidate.Room.IsWallConnected(candidate.Wall))
+                    continue;
+
+                candidates.Add(candidate);
+            }
+
+            if (candidates.Count == 0)
+                return false;
+
+            float bestScore = float.MinValue;
+            int bestIndex = 0;
+
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                float score = ScoreFrontier(candidates[i]);
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestIndex = i;
+                    continue;
+                }
+
+                if (Mathf.Approximately(score, bestScore) && ShouldPreferFrontierCandidate(candidates[i], candidates[bestIndex]))
+                    bestIndex = i;
+            }
+
+            bestItem = candidates[bestIndex];
+            RecordCompactGrowthPick(bestItem);
+
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                if (i == bestIndex)
+                    continue;
+
+                _primaryQueue.Enqueue(candidates[i]);
+            }
+
+            return true;
+        }
+
+        private float ScoreFrontier(OpeningWorkItem item)
+        {
+            if (item.Priority == FrontierPriority.ForceFringe)
+                return float.MinValue;
+
+            if (!TryEstimateSpawnPosition(item.Wall, out Vector3 estimatePos))
+                return 0f;
+
+            int neighborOccupancy = _layoutOccupancy.GetNeighborOccupancy(estimatePos);
+            float centroidPull = _layoutOccupancy.GetNormalizedCentroidPull(estimatePos);
+
+            return _compactNeighborWeight * neighborOccupancy +
+                   _compactCentroidWeight * centroidPull;
+        }
+
+        private bool TryEstimateSpawnPosition(WallGapController wall, out Vector3 estimatePos)
+        {
+            estimatePos = default;
+            if (wall == null || !wall.TryGetBakedSocket(out RoomSocket socket) || socket == null)
+                return false;
+
+            estimatePos = socket.transform.position + socket.transform.forward * _compactSpawnEstimateM;
+            return true;
+        }
+
+        private bool ShouldPreferFrontierCandidate(OpeningWorkItem candidate, OpeningWorkItem incumbent)
+        {
+            if (_rng == null)
+                InitializeRng();
+
+            int candidateKey = GetFrontierTieBreakKey(candidate);
+            int incumbentKey = GetFrontierTieBreakKey(incumbent);
+            if (candidateKey == incumbentKey)
+                return false;
+
+            int roll = _rng.Next(2);
+            return roll == 0 ? candidateKey < incumbentKey : candidateKey > incumbentKey;
+        }
+
+        private static int GetFrontierTieBreakKey(OpeningWorkItem item)
+        {
+            int roomKey = item.Room != null ? item.Room.name.GetHashCode() : 0;
+            int wallKey = item.Wall != null ? item.Wall.name.GetHashCode() : 0;
+            unchecked
+            {
+                return (roomKey * 397) ^ wallKey;
+            }
+        }
+
+        private void RecordCompactGrowthPick(OpeningWorkItem item)
+        {
+            if (!TryEstimateSpawnPosition(item.Wall, out Vector3 estimatePos))
+                return;
+
+            int neighborOccupancy = _layoutOccupancy.GetNeighborOccupancy(estimatePos);
+            _compactGrowthStats.pickCount++;
+            _compactGrowthStats.neighborScoreSum += neighborOccupancy;
+            if (neighborOccupancy >= 2)
+                _compactGrowthStats.picksWithNeighborAtLeastTwo++;
+        }
+
+        private void AppendCompactGrowthSummary(StringBuilder summary)
+        {
+            if (!_useCompactGrowth)
+            {
+                summary.AppendLine("[RoomPoolSpawner] CompactGrowth: off (FIFO frontier).");
+                return;
+            }
+
+            float avgNeighbor = _compactGrowthStats.pickCount > 0
+                ? _compactGrowthStats.neighborScoreSum / _compactGrowthStats.pickCount
+                : 0f;
+
+            summary.AppendLine(
+                $"[RoomPoolSpawner] CompactGrowth: on, Picks={_compactGrowthStats.pickCount}, " +
+                $"AvgNeighborScore={avgNeighbor:F2}, PicksWithNeighbor>=2={_compactGrowthStats.picksWithNeighborAtLeastTwo}.");
+        }
+
+        private (RoomInstance child, int attemptsUsed, OpeningWorkItem updatedItem) TryConnectWithRetries(OpeningWorkItem item)
+        {
+            int maxTotal = MaxTotalAttemptsPerOpening;
+            int attemptsUsed = 0;
+            HashSet<WallGapController> triedWalls = item.TriedWalls ?? new HashSet<WallGapController>();
+            WallGapController currentWall = item.Wall;
+
+            while (item.TotalAttempts + attemptsUsed < maxTotal)
+            {
+                if (item.Room == null || currentWall == null || item.Room.IsWallConnected(currentWall))
+                    break;
+
+                int wallAttempts = 0;
+                while (wallAttempts < _maxAttemptsPerWall && item.TotalAttempts + attemptsUsed < maxTotal)
+                {
+                    RoomPrefabEntry entry = PickWeightedRoomPrefab();
+                    RoomInstance child = _connector.Connect(item.Room, currentWall, entry.Prefab, item.SpawnFrame);
+                    attemptsUsed++;
+                    wallAttempts++;
+
+                    if (child != null)
+                    {
+                        item.Wall = currentWall;
+                        item.TriedWalls = triedWalls;
+                        return (child, attemptsUsed, item);
+                    }
+                }
+
+                triedWalls.Add(currentWall);
+                WallGapController alternativeWall = PickAlternativeWall(item.Room, triedWalls);
+                if (alternativeWall == null)
+                {
+                    _wallFailoverStats.exhausted++;
+                    break;
+                }
+
+                _wallFailoverStats.switches++;
+                currentWall = alternativeWall;
+                item.Wall = currentWall;
+            }
+
+            item.TriedWalls = triedWalls;
+            return (null, attemptsUsed, item);
+        }
+
+        private WallGapController PickAlternativeWall(RoomInstance room, HashSet<WallGapController> triedWalls)
+        {
+            if (room == null)
+                return null;
+
+            var candidates = new List<WallGapController>();
+            foreach (WallGapController wall in room.GetClosedWalls())
+            {
+                if (wall == null || room.IsWallConnected(wall) || triedWalls.Contains(wall))
+                    continue;
+
+                candidates.Add(wall);
+            }
+
+            if (candidates.Count == 0)
+                return null;
+
+            Shuffle(candidates);
+            return candidates[0];
+        }
+
+        private bool TryPreparePrefabPool()
+        {
+            MigrateLegacyPrefabPool();
+            BuildActivePrefabPool();
+            return _activePrefabEntries.Length > 0 && _activePrefabTotalWeight > 0;
+        }
+
+        private void MigrateLegacyPrefabPool()
+        {
+            if (_roomPrefabEntries != null && _roomPrefabEntries.Length > 0)
+                return;
+
+            if (_roomPrefabs == null || _roomPrefabs.Length == 0)
+                return;
+
+            var migrated = new List<RoomPrefabEntry>(_roomPrefabs.Length);
+            foreach (GameObject prefab in _roomPrefabs)
+            {
+                if (prefab == null)
+                    continue;
+
+                migrated.Add(new RoomPrefabEntry(prefab, 10));
+            }
+
+            _roomPrefabEntries = migrated.ToArray();
+        }
+
+        private void BuildActivePrefabPool()
+        {
+            if (_roomPrefabEntries == null || _roomPrefabEntries.Length == 0)
+            {
+                _activePrefabEntries = Array.Empty<RoomPrefabEntry>();
+                _activePrefabTotalWeight = 0;
+                return;
+            }
+
+            var valid = new List<RoomPrefabEntry>(_roomPrefabEntries.Length);
+            int totalWeight = 0;
+            foreach (RoomPrefabEntry entry in _roomPrefabEntries)
+            {
+                if (entry == null || !entry.IsValid)
+                    continue;
+
+                valid.Add(entry);
+                totalWeight += entry.Weight;
+            }
+
+            _activePrefabEntries = valid.ToArray();
+            _activePrefabTotalWeight = totalWeight;
+
+            if (_activePrefabEntries.Length == 0)
+                Debug.LogWarning("[RoomPoolSpawner] No valid weighted room prefab entries (null prefab or weight <= 0).");
+        }
+
+        private RoomPrefabEntry PickWeightedRoomPrefab()
+        {
+            if (_activePrefabEntries.Length == 0)
+                throw new InvalidOperationException("[RoomPoolSpawner] Weighted prefab pool is empty.");
+
+            int roll = NextInt(0, _activePrefabTotalWeight);
+            int cumulative = 0;
+            for (int i = 0; i < _activePrefabEntries.Length; i++)
+            {
+                RoomPrefabEntry entry = _activePrefabEntries[i];
+                cumulative += entry.Weight;
+                if (roll < cumulative)
+                {
+                    _weightedPickStats.totalPicks++;
+                    return entry;
+                }
+            }
+
+            RoomPrefabEntry fallback = _activePrefabEntries[_activePrefabEntries.Length - 1];
+            _weightedPickStats.totalPicks++;
+            return fallback;
+        }
+
+        private void AppendWeightedAndFailoverSummary(StringBuilder summary)
+        {
+            summary.AppendLine(
+                $"[RoomPoolSpawner] Weights=on, PoolEntries={_activePrefabEntries.Length}, " +
+                $"TotalWeight={_activePrefabTotalWeight}, WeightedPicks={_weightedPickStats.totalPicks}, " +
+                $"WallFailover(max={_maxAttemptsPerWall}, switches={_wallFailoverStats.switches}, " +
+                $"exhausted={_wallFailoverStats.exhausted}).");
         }
 
         private void QueueOpeningsForRoom(RoomInstance room)
@@ -1107,7 +1453,8 @@ namespace AfterAll.Environment
                         Room = room,
                         Wall = wall,
                         SpawnFrame = ShouldSpawnFrame(),
-                        TotalAttempts = 0
+                        TotalAttempts = 0,
+                        Priority = FrontierPriority.Normal
                     });
                     queued++;
                 }
@@ -1120,7 +1467,8 @@ namespace AfterAll.Environment
                     Room = room,
                     Wall = closed[0],
                     SpawnFrame = ShouldSpawnFrame(),
-                    TotalAttempts = 0
+                    TotalAttempts = 0,
+                    Priority = FrontierPriority.Normal
                 });
             }
         }

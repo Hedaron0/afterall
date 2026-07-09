@@ -2665,7 +2665,7 @@ Transform:
   m_GameObject: {fileID: 1688563658}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 6.313863, y: 1.3000033, z: 38.634186}
+  m_LocalPosition: {x: 15.133934, y: 1.3000033, z: 38.634186}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2802,20 +2802,34 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomPoolSpawner
   _connector: {fileID: 2000000003}
+  _roomPrefabEntries:
+  - _prefab: {fileID: 6930005898840827697, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
+    _weight: 8
+  - _prefab: {fileID: 8799603885322253748, guid: 77cfb0221d4fc6942b58e50b83874426, type: 3}
+    _weight: 11
+  - _prefab: {fileID: 7115592511602587281, guid: bbf220602f73c0c4b8f231133550e6bd, type: 3}
+    _weight: 8
+  - _prefab: {fileID: 282913196119312983, guid: 30b02d360b31ad24e97ecbf001ce8a0c, type: 3}
+    _weight: 6
+  - _prefab: {fileID: 5154039689004106256, guid: 0d01d46f78254d144b7652e9254bf96e, type: 3}
+    _weight: 11
+  - _prefab: {fileID: 3659607563418797165, guid: 661db5d6aea0493449dd7f418acf7e8d, type: 3}
+    _weight: 3
   _roomPrefabs:
   - {fileID: 6930005898840827697, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
   - {fileID: 8799603885322253748, guid: 77cfb0221d4fc6942b58e50b83874426, type: 3}
   - {fileID: 7115592511602587281, guid: bbf220602f73c0c4b8f231133550e6bd, type: 3}
   - {fileID: 282913196119312983, guid: 30b02d360b31ad24e97ecbf001ce8a0c, type: 3}
   - {fileID: 5154039689004106256, guid: 0d01d46f78254d144b7652e9254bf96e, type: 3}
-  _roomCount: 30
+  - {fileID: 3659607563418797165, guid: 661db5d6aea0493449dd7f418acf7e8d, type: 3}
+  _roomCount: 40
   _forceDoorsOnConnections: 0
   _doorChance: 0.35
   _forceFramesOnConnections: 0
   _frameChance: 0.35
   _extraOpeningChance: 0.699
   _minOpeningsPerRoom: 1
-  _maxOpeningsPerRoom: 4
+  _maxOpeningsPerRoom: 10
   _maxBranchDepth: 8
   _deadEndRatio: 0.35
   _deadEndRatioTolerance: 0.05
@@ -2828,6 +2842,7 @@ MonoBehaviour:
   _lastUsedSeed: 0
   _spawnDelaySeconds: 0.05
   _attemptsPerOpening: 6
+  _maxAttemptsPerWall: 3
   _maxRetryPasses: 3
   _maxGlobalConnectAttempts: 150
   _scaleGlobalBudgetWithRoomCount: 1
@@ -2841,6 +2856,11 @@ MonoBehaviour:
   _repositionPlayerAfterBuild: 1
   _unreachableRoomPolicy: 2
   _unreachableRetryAttempts: 1
+  _useCompactGrowth: 1
+  _compactNeighborWeight: 1
+  _compactCentroidWeight: 0.25
+  _occupancyCellSize: 6
+  _compactSpawnEstimateM: 5
   _contentManager: {fileID: 2000000008}
 --- !u!4 &2000000006
 Transform:
@@ -3593,11 +3613,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8329111072287402456, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalScale.x
-      value: 1.7073557
+      value: 0.027342161
       objectReference: {fileID: 0}
     - target: {fileID: 8329111072287402456, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.20232095
+      value: 0.29052165
       objectReference: {fileID: 0}
     - target: {fileID: 8329111072287402456, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.y
@@ -3609,11 +3629,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8469023269912498271, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.04502528
+      value: 1.7250388
       objectReference: {fileID: 0}
     - target: {fileID: 8469023269912498271, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.18932094
+      value: 0.27752167
       objectReference: {fileID: 0}
     - target: {fileID: 8469023269912498271, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.y
