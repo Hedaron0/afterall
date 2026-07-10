@@ -464,6 +464,48 @@ namespace AfterAll.Environment
             WallGapController.GetOffsetSamples(wall, sampleCount, rng, output, _gapOffsetPolicy);
         }
 
+        /// <summary>
+        /// Applies a planned connection: opens both walls at fixed offsets, snaps child to parent socket, marks graph.
+        /// Child must already be instantiated; pose should match the plan (snap corrects small drift).
+        /// </summary>
+        public bool ApplyPlannedConnection(
+            RoomInstance parent,
+            WallGapController parentWall,
+            RoomInstance child,
+            WallGapController childWall,
+            float parentOffsetMeters,
+            float childOffsetMeters,
+            bool spawnFrame = false)
+        {
+            if (parent == null || parentWall == null || child == null || childWall == null)
+                return false;
+
+            if (parent.IsWallConnected(parentWall) || child.IsWallConnected(childWall))
+                return false;
+
+            parent.OpenWall(parentWall, parentOffsetMeters, false);
+            child.OpenWall(childWall, childOffsetMeters, spawnFrame);
+
+            if (!parentWall.TryGetSocket(out RoomSocket parentSocket) || !childWall.TryGetSocket(out RoomSocket childSocket))
+            {
+                parentWall.ConfigureOpening(false, false, 0f);
+                childWall.ConfigureOpening(false, false, 0f);
+                return false;
+            }
+
+            RoomSocket.SnapRoom(child, childSocket, parentSocket);
+
+            parent.MarkWallConnected(parentWall, child);
+            child.MarkWallConnected(childWall, parent);
+            parentSocket.IsConnected = true;
+            childSocket.IsConnected = true;
+
+            Debug.Log(
+                $"[RoomConnector] Planned {parent.name}/{parentWall.name} -> {child.name}/{childWall.name} " +
+                $"(offsets {parentOffsetMeters:F2}/{childOffsetMeters:F2})");
+            return true;
+        }
+
         private static RoomInstance EnsureRoomInstance(GameObject go)
         {
             RoomInstance r = go.GetComponent<RoomInstance>() ?? go.AddComponent<RoomInstance>();

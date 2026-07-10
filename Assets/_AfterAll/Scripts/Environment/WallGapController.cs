@@ -38,6 +38,34 @@ namespace AfterAll.Environment
 
         public float WallLengthMeters => _wallLengthM;
 
+        /// <summary>
+        /// Closed-wall geometry for footprint baking / 2D planning (world space).
+        /// </summary>
+        public bool TryGetClosedWallGeometry(
+            out Vector3 seamWorld,
+            out Vector3 axisWorld,
+            out float lengthMeters,
+            out Vector3 outwardWorld)
+        {
+            seamWorld = default;
+            axisWorld = default;
+            lengthMeters = 0f;
+            outwardWorld = default;
+
+            AutoFindChildren();
+            if (!_baselineCached)
+                RebuildBaseline();
+
+            if (!_baselineCached || _wallLengthM < 0.1f)
+                return false;
+
+            seamWorld = _seamWorld;
+            axisWorld = _axisWorld;
+            lengthMeters = _wallLengthM;
+            outwardWorld = ComputeOutwardForward(_seamWorld);
+            return outwardWorld.sqrMagnitude > 0.0001f;
+        }
+
         public bool TryGetSocket(out RoomSocket socket)
         {
             ResolveSocketReference();

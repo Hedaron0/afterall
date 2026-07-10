@@ -8,6 +8,12 @@ using UnityEngine;
 
 namespace AfterAll.Environment
 {
+    public enum RoomGenerationMode
+    {
+        Legacy = 0,
+        PathNetwork = 1
+    }
+
     /// <summary>
     /// Press Play: builds a chain of connected rooms from the prefab pool.
     /// Inspector: assign Room Prefabs + Room Count. Nothing else.
@@ -86,6 +92,14 @@ namespace AfterAll.Environment
         [SerializeField] private RoomPrefabEntry[] _roomPrefabEntries = Array.Empty<RoomPrefabEntry>();
         [SerializeField, HideInInspector] private GameObject[] _roomPrefabs = Array.Empty<GameObject>();
         [SerializeField] private int _roomCount = 5;
+
+        [Header("Generation Mode")]
+        [SerializeField] private RoomGenerationMode _generationMode = RoomGenerationMode.PathNetwork;
+        [SerializeField, Min(1)] private int _pathCount = 3;
+        [SerializeField] private RoomFootprint[] _pathNetworkFootprints = Array.Empty<RoomFootprint>();
+        [Tooltip("When PathNetwork mode uses random gap offsets from the plan.")]
+        [SerializeField] private bool _pathNetworkRandomGapOffset = true;
+
         [Header("Connection Rules")]
         [Tooltip("Reserved for future gameplay doors — does not affect proc-gen gap FrameDoor spawn.")]
         [SerializeField] private bool _forceDoorsOnConnections;
@@ -169,6 +183,38 @@ namespace AfterAll.Environment
                 ? Mathf.Max(_maxGlobalConnectAttempts, _roomCount * _attemptsPerOpening)
                 : _maxGlobalConnectAttempts;
 
+        public int LastUsedSeed => _lastUsedSeed;
+        public RoomGenerationMode GenerationMode => _generationMode;
+
+        public void ConfigurePathNetworkFromEditor(
+            int seed,
+            int roomCount,
+            int pathCount,
+            bool randomGapOffset,
+            RoomFootprint[] footprints)
+        {
+            _generationMode = RoomGenerationMode.PathNetwork;
+            _useFixedSeed = true;
+            _fixedSeed = seed;
+            _randomizeSeedOnPlay = false;
+            _roomCount = Mathf.Max(1, roomCount);
+            _pathCount = Mathf.Max(1, pathCount);
+            _pathNetworkRandomGapOffset = randomGapOffset;
+            _randomGapOffset = randomGapOffset;
+            if (footprints != null && footprints.Length > 0)
+                _pathNetworkFootprints = footprints;
+        }
+
+        public void SetPathNetworkFootprints(RoomFootprint[] footprints)
+        {
+            _generationMode = RoomGenerationMode.PathNetwork;
+            if (footprints != null)
+                _pathNetworkFootprints = footprints;
+        }
+
+        public int RoomCount => _roomCount;
+        public int PathCount => _pathCount;
+
         private void Awake()
         {
             if (_contentManager == null)
@@ -193,7 +239,221 @@ namespace AfterAll.Environment
             if (_buildRoutine != null)
                 StopCoroutine(_buildRoutine);
 
-            _buildRoutine = StartCoroutine(BuildRoutine());
+            _buildRoutine = StartCoroutine(
+                _generationMode == RoomGenerationMode.PathNetwork
+                    ? BuildPathNetworkRoutine()
+                    : BuildRoutine());
+        }
+
+        private IEnumerator BuildPathNetworkRoutine()
+        {
+            _placedRoomCount = 0;
+            _weightedPickStats = default;
+
+            if (_connector == null)
+                _connector = GetComponent<RoomConnector>();
+
+            if (_connector == null || !TryPreparePrefabPool())
+            {
+                Debug.LogError("[RoomPoolSpawner] Need RoomConnector + at least one valid weighted room prefab entry.");
+                _buildRoutine = null;
+                yield break;
+            }
+
+            List<RoomFootprint> library = ResolvePathNetworkLibrary();
+            if (library.Count == 0)
+            {
+                Debug.LogError(
+                    "[RoomPoolSpawner] PathNetwork mode needs RoomFootprint assets. " +
+                    "Run AfterAll → Generation → Bake Room Footprints, then assign them or use Layout Top View → Push Seed.");
+                _buildRoutine = null;
+                yield break;
+            }
+
+            ClearLevelRoot();
+            _connector.ResetStats();
+            InitializeRng();
+            _connector.ConfigureOffsetSearch(false, 1, _lastUsedSeed);
+            _connector.ConfigureGapOffset(_pathNetworkRandomGapOffset, _gapEdgeMarginM, _gapOffsetSpanFraction);
+
+            var gapPolicy = new GapOffsetPolicy
+            {
+                randomGapOffset = _pathNetworkRandomGapOffset,
+                edgeMarginM = _gapEdgeMarginM,
+                spanFraction = _gapOffsetSpanFraction
+            };
+
+            LayoutPlan plan = PathNetworkPlanner.Generate(
+                library,
+                _lastUsedSeed,
+                _roomCount,
+                _pathCount,
+                _pathNetworkRandomGapOffset,
+                gapPolicy);
+
+            Debug.Log(
+                $"[RoomPoolSpawner] PathNetwork Seed={_lastUsedSeed}, Target={_roomCount}, Paths={_pathCount}, " +
+                $"RandomGap={_pathNetworkRandomGapOffset}. {plan.notes}");
+
+            Dictionary<string, GameObject> prefabById = BuildPrefabLookup();
+            var placedRooms = new List<RoomInstance>(plan.PlacedCount);
+            RoomInstance.SocketValidationReport validationTotals = default;
+
+            for (int i = 0; i < plan.placements.Count; i++)
+            {
+                LayoutPlanPlacement placement = plan.placements[i];
+                if (!prefabById.TryGetValue(placement.prefabId, out GameObject prefab) || prefab == null)
+                {
+                    Debug.LogError($"[RoomPoolSpawner] Missing prefab for plan id '{placement.prefabId}'.");
+                    continue;
+                }
+
+                GameObject go = Instantiate(prefab, _connector.LevelRoot);
+                go.transform.SetPositionAndRotation(
+                    new Vector3(placement.positionXZ.x, 0f, placement.positionXZ.y),
+                    Quaternion.Euler(0f, placement.yawDegrees, 0f));
+
+                RoomInstance room = GetRoom(go);
+                room.SealAllWalls();
+                RoomInstance.SocketValidationReport validation = room.ValidateSocketContracts(logWarnings: true);
+                validationTotals.missingContractCount += validation.missingContractCount;
+                validationTotals.duplicateDirectionCount += validation.duplicateDirectionCount;
+
+                if (i == 0)
+                    room.MarkAsHub();
+                else
+                    room.SetGraphDepth(1);
+
+                placedRooms.Add(room);
+                _placedRoomCount = placedRooms.Count;
+
+                if (_spawnDelaySeconds > 0f)
+                    yield return new WaitForSeconds(_spawnDelaySeconds);
+                else
+                    yield return null;
+            }
+
+            int connectionsApplied = 0;
+            foreach (LayoutPlanConnection connection in plan.connections)
+            {
+                if (connection.parentIndex < 0 || connection.childIndex < 0)
+                    continue;
+                if (connection.parentIndex >= placedRooms.Count || connection.childIndex >= placedRooms.Count)
+                    continue;
+
+                RoomInstance parent = placedRooms[connection.parentIndex];
+                RoomInstance child = placedRooms[connection.childIndex];
+                WallGapController parentWall = parent.GetWall(connection.parentWall);
+                WallGapController childWall = child.GetWall(connection.childWall);
+                if (parentWall == null || childWall == null)
+                {
+                    Debug.LogWarning(
+                        $"[RoomPoolSpawner] Planned wall missing: {connection.parentWall} / {connection.childWall}");
+                    continue;
+                }
+
+                bool spawnFrame = ShouldSpawnFrame();
+                if (_connector.ApplyPlannedConnection(
+                        parent,
+                        parentWall,
+                        child,
+                        childWall,
+                        connection.parentGapOffsetM,
+                        connection.childGapOffsetM,
+                        spawnFrame))
+                {
+                    connectionsApplied++;
+                    if (child.GraphDepth < 0 || child.GraphDepth > parent.GraphDepth + 1)
+                        child.SetGraphDepth(parent.GraphDepth + 1);
+                }
+            }
+
+            RoomInstance startRoom = placedRooms.Count > 0 ? placedRooms[0] : null;
+            RoomConnector.ConnectionStats stats = _connector.GetStats();
+            (ReachabilityAuditResult reachability, int finalPlacedCount) = RunReachabilityAudit(startRoom);
+            int postBuildOverlaps = ValidatePlacedRoomOverlaps();
+            if (_repositionPlayerAfterBuild)
+                PlacePlayerAfterBuild(startRoom);
+
+            _contentManager?.ActivateAll(_lastUsedSeed);
+
+            var summary = new StringBuilder();
+            summary.AppendLine(
+                $"[RoomPoolSpawner] PathNetwork done. Placed={finalPlacedCount}/{_roomCount}, " +
+                $"Connections={connectionsApplied}/{plan.connections.Count}, Seed={_lastUsedSeed}.");
+            summary.AppendLine(plan.notes);
+            summary.AppendLine(
+                $"Reachability: reachable={reachability.reachableCount}, unreachable={reachability.unreachableCount}, " +
+                $"salvaged={reachability.salvagedCount}, destroyed={reachability.destroyedCount}.");
+            summary.AppendLine(
+                $"Validation missingContracts={validationTotals.missingContractCount}, " +
+                $"duplicateDirs={validationTotals.duplicateDirectionCount}, postBuildOverlaps={postBuildOverlaps}.");
+            summary.AppendLine(
+                $"Connector stats: NoCompatible={stats.noCompatibleSocket}, Gap={stats.gapMismatch}, " +
+                $"Overlap={stats.overlapRejected}.");
+            Debug.Log(summary.ToString());
+
+            _buildRoutine = null;
+        }
+
+        private List<RoomFootprint> ResolvePathNetworkLibrary()
+        {
+            var result = new List<RoomFootprint>();
+            if (_pathNetworkFootprints == null || _pathNetworkFootprints.Length == 0)
+                return result;
+
+            var poolNames = new HashSet<string>();
+            foreach (RoomPrefabEntry entry in _activePrefabEntries)
+            {
+                if (entry?.Prefab != null)
+                    poolNames.Add(entry.Prefab.name);
+            }
+
+            foreach (RoomFootprint footprint in _pathNetworkFootprints)
+            {
+                if (footprint == null || footprint.Prefab == null)
+                    continue;
+
+                if (poolNames.Count > 0 && !poolNames.Contains(footprint.Prefab.name))
+                    continue;
+
+                result.Add(footprint);
+            }
+
+            if (result.Count == 0)
+            {
+                foreach (RoomFootprint footprint in _pathNetworkFootprints)
+                {
+                    if (footprint != null && footprint.Prefab != null)
+                        result.Add(footprint);
+                }
+            }
+
+            return result;
+        }
+
+        private Dictionary<string, GameObject> BuildPrefabLookup()
+        {
+            var map = new Dictionary<string, GameObject>();
+            foreach (RoomPrefabEntry entry in _activePrefabEntries)
+            {
+                if (entry?.Prefab == null)
+                    continue;
+                map[entry.Prefab.name] = entry.Prefab;
+            }
+
+            if (_pathNetworkFootprints != null)
+            {
+                foreach (RoomFootprint footprint in _pathNetworkFootprints)
+                {
+                    if (footprint?.Prefab == null)
+                        continue;
+                    if (!map.ContainsKey(footprint.Prefab.name))
+                        map[footprint.Prefab.name] = footprint.Prefab;
+                }
+            }
+
+            return map;
         }
 
         private IEnumerator BuildRoutine()
