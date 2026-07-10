@@ -1,105 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &105131689795834377
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 7779816765838315465}
-  - component: {fileID: 3762340135456891518}
-  m_Layer: 0
-  m_Name: Socket_7Wall9
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!4 &7779816765838315465
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 105131689795834377}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: 0.7071067, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: 24.874996, y: -0.6666676, z: 15.849993}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 221753934891366281}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &3762340135456891518
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 105131689795834377}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b1c2d3e4f5a6478990abcdef12345678, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomSocket
-  _wall: {fileID: 5267024659508294248}
-  _width: 1.3
-  _direction: 2
-  _wallIndex: 8
-  _socketTag: 7Wall9
-  _sizeClass: M
---- !u!1 &345174131387209595
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1863500223561350219}
-  - component: {fileID: 6255640968072008511}
-  m_Layer: 0
-  m_Name: Socket_7Wall6
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!4 &1863500223561350219
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 345174131387209595}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: 1, z: -0, w: 0.00000004371139}
-  m_LocalPosition: {x: 15.849995, y: -0.6666666, z: -24.875002}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 221753934891366281}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &6255640968072008511
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 345174131387209595}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b1c2d3e4f5a6478990abcdef12345678, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomSocket
-  _wall: {fileID: 1324580719210961721}
-  _width: 1.3
-  _direction: 3
-  _wallIndex: 5
-  _socketTag: 7Wall6
-  _sizeClass: M
 --- !u!1 &467234076558009854
 GameObject:
   m_ObjectHideFlags: 0
@@ -221,7 +121,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2461106427180837560}
-  - component: {fileID: 8690902653965685927}
   m_Layer: 0
   m_Name: 7Wall2
   m_TagString: Untagged
@@ -246,34 +145,6 @@ Transform:
   - {fileID: 7308312963121562060}
   m_Father: {fileID: 221753934891366281}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &8690902653965685927
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 999789585631527548}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe35fa359a3d11c40a5116cd470fb9d6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.WallGapController
-  gapWidth: 1.3
-  hasOpening: 0
-  randomizeOffset: 0
-  gapOffset: 0
-  wallLeft: {fileID: 1025138282593604186}
-  wallRight: {fileID: 7308312963121562060}
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
-  _frameChance: 0.35
-  _wallLengthM: 20
-  _leftExtentM: 10.000001
-  _rightExtentM: 9.999998
-  _axisWorld: {x: 0, y: 0, z: 1}
-  _seamWorld: {x: 12.956722, y: 0.25000304, z: 21.580908}
-  _leftScaleAxis: 1
-  _rightScaleAxis: 1
-  _baselineCached: 1
 --- !u!1 &1396738279789129522
 GameObject:
   m_ObjectHideFlags: 0
@@ -747,7 +618,7 @@ MonoBehaviour:
   _wall: {fileID: 5630787229710355304}
   _width: 1.3
   _direction: 4
-  _wallIndex: 2
+  _wallIndex: 0
   _socketTag: 7Wall3
   _sizeClass: M
 --- !u!1 &1925692327382808635
@@ -974,56 +845,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.5, y: 0.4999999, z: 0.0024999995}
   m_Center: {x: 0, y: 0, z: 0.0000000037252903}
---- !u!1 &1985947600176453231
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2499457895793548890}
-  - component: {fileID: 5638316117349177572}
-  m_Layer: 0
-  m_Name: Socket_7Wall1
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!4 &2499457895793548890
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1985947600176453231}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0.7071067, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: -24.875, y: -0.66666734, z: 18.900003}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 221753934891366281}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &5638316117349177572
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1985947600176453231}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b1c2d3e4f5a6478990abcdef12345678, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomSocket
-  _wall: {fileID: 1869399230000760885}
-  _width: 1.3
-  _direction: 4
-  _wallIndex: 0
-  _socketTag: 7Wall1
-  _sizeClass: M
 --- !u!1 &2007765918126842413
 GameObject:
   m_ObjectHideFlags: 0
@@ -1183,7 +1004,7 @@ MonoBehaviour:
   _wall: {fileID: 7211674506015918853}
   _width: 1.3
   _direction: 1
-  _wallIndex: 11
+  _wallIndex: 5
   _socketTag: 7Wall12
   _sizeClass: M
 --- !u!1 &2379091610779253309
@@ -1233,7 +1054,7 @@ MonoBehaviour:
   _wall: {fileID: 1508852789485250332}
   _width: 1.3
   _direction: 2
-  _wallIndex: 7
+  _wallIndex: 3
   _socketTag: 7Wall8
   _sizeClass: M
 --- !u!1 &2469550534116350740
@@ -1335,7 +1156,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3230440229313777807}
-  - component: {fileID: 1324580719210961721}
   m_Layer: 0
   m_Name: 7Wall6
   m_TagString: Untagged
@@ -1360,34 +1180,6 @@ Transform:
   - {fileID: 1365771440806380684}
   m_Father: {fileID: 221753934891366281}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1324580719210961721
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2853801138399146875}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe35fa359a3d11c40a5116cd470fb9d6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.WallGapController
-  gapWidth: 1.3
-  hasOpening: 0
-  randomizeOffset: 0
-  gapOffset: 0
-  wallLeft: {fileID: 1347639706561849616}
-  wallRight: {fileID: 1365771440806380684}
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
-  _frameChance: 0.35
-  _wallLengthM: 17.5
-  _leftExtentM: 8.75
-  _rightExtentM: 8.75
-  _axisWorld: {x: -1, y: 0, z: 0.0000002179827}
-  _seamWorld: {x: 53.83172, y: 0.25000304, z: -6.044094}
-  _leftScaleAxis: 0
-  _rightScaleAxis: 0
-  _baselineCached: 1
 --- !u!1 &2903950861250893148
 GameObject:
   m_ObjectHideFlags: 0
@@ -1571,7 +1363,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6881009856900848296}
-  - component: {fileID: 196727516193153819}
   m_Layer: 0
   m_Name: 7Wall4
   m_TagString: Untagged
@@ -1596,34 +1387,6 @@ Transform:
   - {fileID: 3689827634774656889}
   m_Father: {fileID: 221753934891366281}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &196727516193153819
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3367160341247454555}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe35fa359a3d11c40a5116cd470fb9d6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.WallGapController
-  gapWidth: 1.3
-  hasOpening: 0
-  randomizeOffset: 0
-  gapOffset: 0
-  wallLeft: {fileID: 8262845141368214677}
-  wallRight: {fileID: 3689827634774656889}
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
-  _frameChance: 0.35
-  _wallLengthM: 12
-  _leftExtentM: 6
-  _rightExtentM: 6
-  _axisWorld: {x: -1, y: 0, z: 0.00000015894572}
-  _seamWorld: {x: 19.081722, y: 0.25000304, z: -6.044092}
-  _leftScaleAxis: 0
-  _rightScaleAxis: 0
-  _baselineCached: 1
 --- !u!1 &3493334887026579166
 GameObject:
   m_ObjectHideFlags: 0
@@ -1736,56 +1499,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.002500014, y: 0.059999987, z: 0.03999999}
   m_Center: {x: -0.0000000021536835, y: -0.03, z: 0.019999996}
---- !u!1 &3606352382492852845
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 8487883906747695140}
-  - component: {fileID: 1485186834363487450}
-  m_Layer: 0
-  m_Name: Socket_7Wall10
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!4 &8487883906747695140
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3606352382492852845}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 16.14999, y: -0.6666666, z: 24.87501}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 221753934891366281}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1485186834363487450
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3606352382492852845}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b1c2d3e4f5a6478990abcdef12345678, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomSocket
-  _wall: {fileID: 369527776163089502}
-  _width: 1.3
-  _direction: 1
-  _wallIndex: 9
-  _socketTag: 7Wall10
-  _sizeClass: M
 --- !u!1 &3634901708740693316
 GameObject:
   m_ObjectHideFlags: 0
@@ -1946,16 +1659,10 @@ Transform:
   - {fileID: 8672243649197858734}
   - {fileID: 1069113544639114074}
   - {fileID: 6233940559162334593}
-  - {fileID: 2499457895793548890}
-  - {fileID: 8521328725325955911}
   - {fileID: 1656016171285071909}
-  - {fileID: 1833043205288266953}
   - {fileID: 8475458633586977965}
-  - {fileID: 1863500223561350219}
   - {fileID: 6419219619597029325}
   - {fileID: 3928418703396846796}
-  - {fileID: 7779816765838315465}
-  - {fileID: 8487883906747695140}
   - {fileID: 1536347400302854630}
   - {fileID: 9170625823136004253}
   - {fileID: 2476281086041912607}
@@ -2195,7 +1902,7 @@ MonoBehaviour:
   _wall: {fileID: 904100656407953529}
   _width: 1.3
   _direction: 1
-  _wallIndex: 10
+  _wallIndex: 4
   _socketTag: 7Wall11
   _sizeClass: M
 --- !u!1 &4408213840368862690
@@ -2207,7 +1914,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1206821135755315903}
-  - component: {fileID: 369527776163089502}
   m_Layer: 0
   m_Name: 7Wall10
   m_TagString: Untagged
@@ -2232,34 +1938,6 @@ Transform:
   - {fileID: 7206535582003142440}
   m_Father: {fileID: 221753934891366281}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &369527776163089502
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4408213840368862690}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe35fa359a3d11c40a5116cd470fb9d6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.WallGapController
-  gapWidth: 1.3
-  hasOpening: 0
-  randomizeOffset: 0
-  gapOffset: 0
-  wallLeft: {fileID: 5222918080959387839}
-  wallRight: {fileID: 7206535582003142440}
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
-  _frameChance: 0.35
-  _wallLengthM: 17.5
-  _leftExtentM: 8.75
-  _rightExtentM: 8.75
-  _axisWorld: {x: 1, y: 0, z: 0}
-  _seamWorld: {x: 53.831715, y: 0.25000304, z: 43.705917}
-  _leftScaleAxis: 0
-  _rightScaleAxis: 0
-  _baselineCached: 1
 --- !u!1 &4410681368984384270
 GameObject:
   m_ObjectHideFlags: 0
@@ -2951,7 +2629,7 @@ MonoBehaviour:
   _wall: {fileID: 2860622795066900123}
   _width: 1.3
   _direction: 3
-  _wallIndex: 4
+  _wallIndex: 1
   _socketTag: 7Wall5
   _sizeClass: M
 --- !u!1 &5261235680753547488
@@ -3389,7 +3067,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3926250926217770858}
-  - component: {fileID: 5267024659508294248}
   m_Layer: 0
   m_Name: 7Wall9
   m_TagString: Untagged
@@ -3414,34 +3091,6 @@ Transform:
   - {fileID: 8297262137842295999}
   m_Father: {fileID: 221753934891366281}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &5267024659508294248
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5821661995701213812}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe35fa359a3d11c40a5116cd470fb9d6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.WallGapController
-  gapWidth: 1.3
-  hasOpening: 0
-  randomizeOffset: 0
-  gapOffset: 0
-  wallLeft: {fileID: 1744459323842135135}
-  wallRight: {fileID: 8297262137842295999}
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
-  _frameChance: 0.35
-  _wallLengthM: 17.5
-  _leftExtentM: 8.75
-  _rightExtentM: 8.75
-  _axisWorld: {x: 0, y: 0, z: -1}
-  _seamWorld: {x: 62.70672, y: 0.25000304, z: 34.830902}
-  _leftScaleAxis: 1
-  _rightScaleAxis: 1
-  _baselineCached: 1
 --- !u!1 &5962556188694678541
 GameObject:
   m_ObjectHideFlags: 0
@@ -3737,7 +3386,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1177092797041578145}
-  - component: {fileID: 1869399230000760885}
   m_Layer: 0
   m_Name: 7Wall1
   m_TagString: Untagged
@@ -3762,34 +3410,6 @@ Transform:
   - {fileID: 7253310007991716456}
   m_Father: {fileID: 221753934891366281}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1869399230000760885
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6146266317671639499}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe35fa359a3d11c40a5116cd470fb9d6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.WallGapController
-  gapWidth: 1.3
-  hasOpening: 0
-  randomizeOffset: 0
-  gapOffset: 0
-  wallLeft: {fileID: 7208691201074369248}
-  wallRight: {fileID: 7253310007991716456}
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
-  _frameChance: 0.35
-  _wallLengthM: 12
-  _leftExtentM: 6
-  _rightExtentM: 6
-  _axisWorld: {x: 0, y: 0, z: 1}
-  _seamWorld: {x: 12.956722, y: 0.25000304, z: 37.58091}
-  _leftScaleAxis: 1
-  _rightScaleAxis: 1
-  _baselineCached: 1
 --- !u!1 &6665882011133882064
 GameObject:
   m_ObjectHideFlags: 0
@@ -3902,56 +3522,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.0875, y: 0.0025000107, z: 0.03999999}
   m_Center: {x: 0.04375, y: -0.00000002415618, z: 0.019999996}
---- !u!1 &7339484240320341992
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 8521328725325955911}
-  - component: {fileID: 6499990049129432651}
-  m_Layer: 0
-  m_Name: Socket_7Wall2
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!4 &8521328725325955911
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7339484240320341992}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0.7071067, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: -24.875, y: -0.6666678, z: 2.8999996}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 221753934891366281}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &6499990049129432651
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7339484240320341992}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b1c2d3e4f5a6478990abcdef12345678, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomSocket
-  _wall: {fileID: 8690902653965685927}
-  _width: 1.3
-  _direction: 4
-  _wallIndex: 1
-  _socketTag: 7Wall2
-  _sizeClass: M
 --- !u!1 &7354215460641909550
 GameObject:
   m_ObjectHideFlags: 0
@@ -4285,7 +3855,7 @@ MonoBehaviour:
   _wall: {fileID: 5942089182769310887}
   _width: 1.3
   _direction: 2
-  _wallIndex: 6
+  _wallIndex: 2
   _socketTag: 7Wall7
   _sizeClass: M
 --- !u!1 &8122583050690009076
@@ -4959,56 +4529,6 @@ MonoBehaviour:
   _leftScaleAxis: 1
   _rightScaleAxis: 1
   _baselineCached: 1
---- !u!1 &9148993575902036020
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1833043205288266953}
-  - component: {fileID: 1556206958739479068}
-  m_Layer: 0
-  m_Name: Socket_7Wall4
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!4 &1833043205288266953
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9148993575902036020}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: 1, z: -0, w: 0.00000004371139}
-  m_LocalPosition: {x: -18.9, y: -0.6666666, z: -24.875}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 221753934891366281}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1556206958739479068
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9148993575902036020}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b1c2d3e4f5a6478990abcdef12345678, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomSocket
-  _wall: {fileID: 196727516193153819}
-  _width: 1.3
-  _direction: 3
-  _wallIndex: 3
-  _socketTag: 7Wall4
-  _sizeClass: M
 --- !u!1001 &98286133351735033
 PrefabInstance:
   m_ObjectHideFlags: 0

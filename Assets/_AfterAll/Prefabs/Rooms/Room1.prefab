@@ -339,56 +339,6 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 2649770143067022293, guid: 3339f8073b853b04ca197e9393446857, type: 3}
---- !u!1 &497901642408624879
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2747971796220705312}
-  - component: {fileID: 5699581071310112575}
-  m_Layer: 0
-  m_Name: Socket_Wall03
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
-  m_IsActive: 0
---- !u!4 &2747971796220705312
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 497901642408624879}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: 1, z: -0, w: -0.00000004371139}
-  m_LocalPosition: {x: -6.908319, y: 1.3, z: -2.3070467}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2418406678075532914}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &5699581071310112575
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 497901642408624879}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b1c2d3e4f5a6478990abcdef12345678, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomSocket
-  _wall: {fileID: 388626163031057735}
-  _width: 1.3
-  _direction: 3
-  _wallIndex: 2
-  _socketTag: Wall03
-  _sizeClass: M
 --- !u!1 &642792294013598506
 GameObject:
   m_ObjectHideFlags: 0
@@ -650,56 +600,6 @@ Transform:
   - {fileID: 6546603098070971619}
   m_Father: {fileID: 8366794921042241394}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &935157738190784099
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 6595817455062263503}
-  - component: {fileID: 2459759302816557812}
-  m_Layer: 0
-  m_Name: Socket_Wall05
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
-  m_IsActive: 0
---- !u!4 &6595817455062263503
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 935157738190784099}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: 1, z: -0, w: 0.00000004371139}
-  m_LocalPosition: {x: -1.8333191, y: 1.3, z: -9.557047}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2418406678075532914}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2459759302816557812
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 935157738190784099}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b1c2d3e4f5a6478990abcdef12345678, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomSocket
-  _wall: {fileID: 1931473236788550071}
-  _width: 1.3
-  _direction: 3
-  _wallIndex: 4
-  _socketTag: Wall05
-  _sizeClass: M
 --- !u!1 &1199467060056036781
 GameObject:
   m_ObjectHideFlags: 0
@@ -740,7 +640,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7493775227071421018}
-  - component: {fileID: 4673381250558113853}
   m_Layer: 0
   m_Name: Wall02
   m_TagString: Untagged
@@ -765,34 +664,6 @@ Transform:
   - {fileID: 5354446638973692308}
   m_Father: {fileID: 2418406678075532914}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &4673381250558113853
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1245997830303198137}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe35fa359a3d11c40a5116cd470fb9d6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.WallGapController
-  gapWidth: 1.3
-  hasOpening: 0
-  randomizeOffset: 0
-  gapOffset: 0
-  wallLeft: {fileID: 3356555984424601949}
-  wallRight: {fileID: 5354446638973692308}
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
-  _frameChance: 0.35
-  _wallLengthM: 13.249998
-  _leftExtentM: 6.6249995
-  _rightExtentM: 6.624998
-  _axisWorld: {x: 0, y: 0, z: 1}
-  _seamWorld: {x: -3.308319, y: 1.3, z: 4.442953}
-  _leftScaleAxis: 1
-  _rightScaleAxis: 1
-  _baselineCached: 1
 --- !u!1 &1370549835554088624
 GameObject:
   m_ObjectHideFlags: 0
@@ -951,7 +822,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5733609606978490700}
-  - component: {fileID: 1931473236788550071}
   m_Layer: 0
   m_Name: Wall05
   m_TagString: Untagged
@@ -976,34 +846,6 @@ Transform:
   - {fileID: 4886136027946230210}
   m_Father: {fileID: 2418406678075532914}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1931473236788550071
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2060615605200616056}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe35fa359a3d11c40a5116cd470fb9d6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.WallGapController
-  gapWidth: 1.3
-  hasOpening: 0
-  randomizeOffset: 0
-  gapOffset: 0
-  wallLeft: {fileID: 6707493711152144074}
-  wallRight: {fileID: 4886136027946230210}
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
-  _frameChance: 0.35
-  _wallLengthM: 18
-  _leftExtentM: 9
-  _rightExtentM: 9
-  _axisWorld: {x: -1, y: 0, z: 0}
-  _seamWorld: {x: -1.6833191, y: 1.3, z: -9.557047}
-  _leftScaleAxis: 0
-  _rightScaleAxis: 0
-  _baselineCached: 1
 --- !u!1 &2547925042504016806
 GameObject:
   m_ObjectHideFlags: 0
@@ -1117,56 +959,6 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 2335916145675134757, guid: 3339f8073b853b04ca197e9393446857, type: 3}
---- !u!1 &2784676391870044841
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1968785402875141680}
-  - component: {fileID: 2175628118075355778}
-  m_Layer: 0
-  m_Name: Socket_Wall06
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
-  m_IsActive: 0
---- !u!4 &1968785402875141680
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2784676391870044841}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: 0.7071067, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: 7.441681, y: 1.299999, z: 0.66795313}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2418406678075532914}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2175628118075355778
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2784676391870044841}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b1c2d3e4f5a6478990abcdef12345678, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomSocket
-  _wall: {fileID: 1487548141058785260}
-  _width: 1.3
-  _direction: 2
-  _wallIndex: 5
-  _socketTag: Wall06
-  _sizeClass: M
 --- !u!1 &2843376208230964839
 GameObject:
   m_ObjectHideFlags: 0
@@ -1934,7 +1726,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1578557274653431806}
-  - component: {fileID: 1487548141058785260}
   m_Layer: 0
   m_Name: Wall06
   m_TagString: Untagged
@@ -1959,84 +1750,6 @@ Transform:
   - {fileID: 8629647299632280796}
   m_Father: {fileID: 2418406678075532914}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1487548141058785260
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5404976608512600056}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe35fa359a3d11c40a5116cd470fb9d6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.WallGapController
-  gapWidth: 1.3
-  hasOpening: 0
-  randomizeOffset: 0
-  gapOffset: 0
-  wallLeft: {fileID: 1255608026428320646}
-  wallRight: {fileID: 8629647299632280796}
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
-  _frameChance: 0.35
-  _wallLengthM: 20.5
-  _leftExtentM: 10.25
-  _rightExtentM: 10.25
-  _axisWorld: {x: 0, y: 0, z: -1}
-  _seamWorld: {x: 7.441681, y: 1.3, z: 0.8179531}
-  _leftScaleAxis: 1
-  _rightScaleAxis: 1
-  _baselineCached: 1
---- !u!1 &5534504655052507429
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 3094215440051503974}
-  - component: {fileID: 4192713112611216285}
-  m_Layer: 0
-  m_Name: Socket_Wall02
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
-  m_IsActive: 0
---- !u!4 &3094215440051503974
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5534504655052507429}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0.7071067, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: -3.308319, y: 1.299999, z: 4.5929523}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2418406678075532914}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &4192713112611216285
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5534504655052507429}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b1c2d3e4f5a6478990abcdef12345678, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomSocket
-  _wall: {fileID: 4673381250558113853}
-  _width: 1.3
-  _direction: 4
-  _wallIndex: 1
-  _socketTag: Wall02
-  _sizeClass: M
 --- !u!1 &5624507154139008724
 GameObject:
   m_ObjectHideFlags: 0
@@ -2310,7 +2023,7 @@ MonoBehaviour:
   _wall: {fileID: 4287706434147627714}
   _width: 1.3
   _direction: 4
-  _wallIndex: 3
+  _wallIndex: 1
   _socketTag: Wall04
   _sizeClass: M
 --- !u!1 &6195827021536205656
@@ -2510,11 +2223,7 @@ Transform:
   - {fileID: 5733609606978490700}
   - {fileID: 1578557274653431806}
   - {fileID: 4227995101237099159}
-  - {fileID: 3094215440051503974}
-  - {fileID: 2747971796220705312}
   - {fileID: 7119804632791531726}
-  - {fileID: 6595817455062263503}
-  - {fileID: 1968785402875141680}
   - {fileID: 8366794921042241394}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -2762,7 +2471,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4204188373494495844}
-  - component: {fileID: 388626163031057735}
   m_Layer: 0
   m_Name: Wall03
   m_TagString: Untagged
@@ -2787,34 +2495,6 @@ Transform:
   - {fileID: 2912596886078487878}
   m_Father: {fileID: 2418406678075532914}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &388626163031057735
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7641678514924699555}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe35fa359a3d11c40a5116cd470fb9d6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.WallGapController
-  gapWidth: 1.3
-  hasOpening: 0
-  randomizeOffset: 0
-  gapOffset: 0
-  wallLeft: {fileID: 4918297411299316029}
-  wallRight: {fileID: 2912596886078487878}
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
-  _frameChance: 0.35
-  _wallLengthM: 7.25
-  _leftExtentM: 3.625
-  _rightExtentM: 3.625
-  _axisWorld: {x: 1, y: 0, z: 0}
-  _seamWorld: {x: -7.058319, y: 1.3, z: -2.3070467}
-  _leftScaleAxis: 0
-  _rightScaleAxis: 0
-  _baselineCached: 1
 --- !u!1 &8245705728461059192
 GameObject:
   m_ObjectHideFlags: 0
