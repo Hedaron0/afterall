@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b77e4201ded0ba42b8029a264603878, type: 3}
+  m_Name: Room1_Footprint
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomFootprint
+  _prefab: {fileID: 6930005898840827697, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
+  _spawnWeight: 10
+  _boundsMin: {x: -10.933319, y: -9.5820465}
+  _boundsMax: {x: 7.466681, y: 11.317952}
+  _walls:
+  - name: Wall01
+    seamLocal: {x: 2.066681, y: 11.192952}
+    axisLocal: {x: 1, y: 0}
+    startLocal: {x: -3.183319, y: 11.192952}
+    endLocal: {x: 7.316681, y: 11.192952}
+    lengthM: 10.5
+    outwardLocal: {x: 0, y: 1}
+    direction: 1
+    doorValid: 1
+  - name: Wall04
+    seamLocal: {x: -10.808319, y: -5.932047}
+    axisLocal: {x: 0, y: 1}
+    startLocal: {x: -10.808319, y: -9.432047}
+    endLocal: {x: -10.808319, y: -2.432047}
+    lengthM: 7
+    outwardLocal: {x: -1, y: 0}
+    direction: 4
+    doorValid: 1
+  _gapWidthM: 1.3

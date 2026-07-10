@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b77e4201ded0ba42b8029a264603878, type: 3}
+  m_Name: room5_Footprint
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomFootprint
+  _prefab: {fileID: 282913196119312983, guid: 30b02d360b31ad24e97ecbf001ce8a0c, type: 3}
+  _spawnWeight: 10
+  _boundsMin: {x: -3, y: -2.9999998}
+  _boundsMax: {x: 3, y: 2.9999998}
+  _walls:
+  - name: 5Wall1
+    seamLocal: {x: -2.8750005, y: 0}
+    axisLocal: {x: -0.0000003467907, y: 1}
+    startLocal: {x: -2.8749995, y: -2.75}
+    endLocal: {x: -2.8750014, y: 2.75}
+    lengthM: 5.5
+    outwardLocal: {x: -1, y: -0.0000003467907}
+    direction: 4
+    doorValid: 1
+  - name: 5Wall2
+    seamLocal: {x: 0, y: -2.875}
+    axisLocal: {x: -1, y: 0}
+    startLocal: {x: 2.75, y: -2.875}
+    endLocal: {x: -2.75, y: -2.875}
+    lengthM: 5.5
+    outwardLocal: {x: 0, y: -1}
+    direction: 3
+    doorValid: 1
+  - name: 5Wall3
+    seamLocal: {x: 2.8750005, y: 0}
+    axisLocal: {x: 0.0000003467907, y: -1}
+    startLocal: {x: 2.8749995, y: 2.75}
+    endLocal: {x: 2.8750014, y: -2.75}
+    lengthM: 5.5
+    outwardLocal: {x: 1, y: 0.0000003467907}
+    direction: 2
+    doorValid: 1
+  - name: 5Wall4
+    seamLocal: {x: 0, y: 2.875}
+    axisLocal: {x: 1, y: 0}
+    startLocal: {x: -2.75, y: 2.875}
+    endLocal: {x: 2.75, y: 2.875}
+    lengthM: 5.5
+    outwardLocal: {x: 0, y: 1}
+    direction: 1
+    doorValid: 1
+  _gapWidthM: 1.3
