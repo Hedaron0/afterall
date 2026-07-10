@@ -23,5 +23,7 @@ namespace AfterAll.Environment
             _prefab = prefab;
             _weight = Mathf.Max(1, weight);
         }
+
+        public void SetWeight(int weight) => _weight = Mathf.Max(1, weight);
     }
 }

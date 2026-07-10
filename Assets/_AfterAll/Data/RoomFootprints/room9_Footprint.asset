@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: room9_Footprint
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomFootprint
   _prefab: {fileID: 1837065743007804278, guid: 29d6f6efdf2f51042a69e4bb54ce8ece, type: 3}
-  _spawnWeight: 10
+  _spawnWeight: 15
   _boundsMin: {x: -1.3999999, y: -7.999999}
   _boundsMax: {x: 1.4000002, y: 7.999999}
   _walls:

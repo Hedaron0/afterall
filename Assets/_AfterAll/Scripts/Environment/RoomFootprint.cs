@@ -39,8 +39,33 @@ namespace AfterAll.Environment
         public Vector2 BoundsMax => _boundsMax;
         public Vector2 BoundsSize => _boundsMax - _boundsMin;
         public Vector2 BoundsCenter => (_boundsMin + _boundsMax) * 0.5f;
+        public float BoundsAreaM2
+        {
+            get
+            {
+                Vector2 size = BoundsSize;
+                return Mathf.Max(0.5f, Mathf.Abs(size.x * size.y));
+            }
+        }
         public Wall[] Walls => _walls;
         public float GapWidthM => _gapWidthM > 0.05f ? _gapWidthM : DefaultGapWidthM;
+
+        /// <summary>
+        /// Smaller rooms get higher weight (appear more often). Soft 1/sqrt(area) curve.
+        /// </summary>
+        public static int ComputeSpawnWeightFromArea(float areaM2, int minWeight = 2, int maxWeight = 40)
+        {
+            float area = Mathf.Max(0.5f, areaM2);
+            // area 16 → ~25, area 36 → ~17, area 100 → ~10, area 400 → ~5, area 2500 → ~2
+            int weight = Mathf.RoundToInt(100f / Mathf.Sqrt(area));
+            return Mathf.Clamp(weight, Mathf.Max(1, minWeight), Mathf.Max(minWeight, maxWeight));
+        }
+
+        public int RecomputeSpawnWeightFromBounds()
+        {
+            _spawnWeight = ComputeSpawnWeightFromArea(BoundsAreaM2);
+            return _spawnWeight;
+        }
 
         public void SetBakedData(
             GameObject prefab,

@@ -79,8 +79,53 @@ namespace AfterAll.Editor
 
             Undo.RecordObject(spawner, "Assign Room Footprints");
             spawner.SetPathNetworkFootprints(footprints.ToArray());
+            spawner.SyncPrefabWeightsFromFootprints(footprints);
             EditorUtility.SetDirty(spawner);
-            Debug.Log($"[RoomFootprintBaker] Assigned {footprints.Count} footprints to {spawner.name}.");
+            Debug.Log($"[RoomFootprintBaker] Assigned {footprints.Count} footprints + size weights to {spawner.name}.");
+        }
+
+        [MenuItem("AfterAll/Generation/Recompute Footprint Weights From Size")]
+        private static void RecomputeAllFootprintWeights()
+        {
+            if (!AssetDatabase.IsValidFolder(OutputFolder))
+            {
+                Debug.LogWarning("[RoomFootprintBaker] Bake footprints first.");
+                return;
+            }
+
+            string[] guids = AssetDatabase.FindAssets("t:RoomFootprint", new[] { OutputFolder });
+            int updated = 0;
+            foreach (string guid in guids)
+            {
+                RoomFootprint footprint = AssetDatabase.LoadAssetAtPath<RoomFootprint>(AssetDatabase.GUIDToAssetPath(guid));
+                if (footprint == null)
+                    continue;
+
+                int weight = footprint.RecomputeSpawnWeightFromBounds();
+                EditorUtility.SetDirty(footprint);
+                updated++;
+                Debug.Log(
+                    $"[RoomFootprintBaker] {footprint.PrefabId}: area={footprint.BoundsAreaM2:F1}m² → weight={weight}");
+            }
+
+            RoomPoolSpawner spawner = Object.FindFirstObjectByType<RoomPoolSpawner>();
+            if (spawner != null)
+            {
+                var list = new List<RoomFootprint>();
+                foreach (string guid in guids)
+                {
+                    RoomFootprint footprint = AssetDatabase.LoadAssetAtPath<RoomFootprint>(AssetDatabase.GUIDToAssetPath(guid));
+                    if (footprint != null)
+                        list.Add(footprint);
+                }
+
+                Undo.RecordObject(spawner, "Sync Size Weights");
+                spawner.SyncPrefabWeightsFromFootprints(list);
+                EditorUtility.SetDirty(spawner);
+            }
+
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[RoomFootprintBaker] Recomputed weights on {updated} footprints.");
         }
 
         private static bool TryBakePrefab(GameObject prefabAsset, string prefabPath, out string error)
@@ -192,9 +237,13 @@ namespace AfterAll.Editor
                     AssetDatabase.CreateAsset(asset, assetPath);
                 }
 
-                int weight = asset.SpawnWeight > 0 ? asset.SpawnWeight : 10;
+                float area = Mathf.Max(0.5f, Mathf.Abs((boundsMax.x - boundsMin.x) * (boundsMax.y - boundsMin.y)));
+                int weight = RoomFootprint.ComputeSpawnWeightFromArea(area);
                 asset.SetBakedData(prefabAsset, weight, boundsMin, boundsMax, bakedWalls.ToArray(), gapWidth);
                 EditorUtility.SetDirty(asset);
+                Debug.Log(
+                    $"[RoomFootprintBaker] {prefabAsset.name}: walls={bakedWalls.Count}, " +
+                    $"area={area:F1}m², weight={weight}");
                 return true;
             }
             finally

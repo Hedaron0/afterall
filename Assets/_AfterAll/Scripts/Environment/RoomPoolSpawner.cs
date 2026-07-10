@@ -212,6 +212,28 @@ namespace AfterAll.Environment
                 _pathNetworkFootprints = footprints;
         }
 
+        public void SyncPrefabWeightsFromFootprints(IReadOnlyList<RoomFootprint> footprints)
+        {
+            if (footprints == null || footprints.Count == 0 || _roomPrefabEntries == null)
+                return;
+
+            var weightByName = new Dictionary<string, int>();
+            foreach (RoomFootprint footprint in footprints)
+            {
+                if (footprint?.Prefab == null)
+                    continue;
+                weightByName[footprint.Prefab.name] = footprint.SpawnWeight;
+            }
+
+            foreach (RoomPrefabEntry entry in _roomPrefabEntries)
+            {
+                if (entry?.Prefab == null)
+                    continue;
+                if (weightByName.TryGetValue(entry.Prefab.name, out int weight))
+                    entry.SetWeight(weight);
+            }
+        }
+
         public int RoomCount => _roomCount;
         public int PathCount => _pathCount;
 
