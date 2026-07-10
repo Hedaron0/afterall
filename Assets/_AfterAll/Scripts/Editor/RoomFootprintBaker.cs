@@ -156,14 +156,31 @@ namespace AfterAll.Editor
                     return false;
                 }
 
-                if (!TryGetLocalFloorBounds(root.transform, out Vector2 boundsMin, out Vector2 boundsMax))
+                // Prefer wall-hull bounds so floor meshes that overhang seams do not
+                // poison overlap tests (false "always overlap" → only 1 room placed).
+                Vector2 wallMin = bakedWalls[0].startLocal;
+                Vector2 wallMax = bakedWalls[0].endLocal;
+                foreach (RoomFootprint.Wall wall in bakedWalls)
                 {
-                    boundsMin = bakedWalls[0].startLocal;
-                    boundsMax = bakedWalls[0].endLocal;
-                    foreach (RoomFootprint.Wall wall in bakedWalls)
+                    wallMin = Vector2.Min(wallMin, Vector2.Min(wall.startLocal, wall.endLocal));
+                    wallMax = Vector2.Max(wallMax, Vector2.Max(wall.startLocal, wall.endLocal));
+                    wallMin = Vector2.Min(wallMin, wall.seamLocal);
+                    wallMax = Vector2.Max(wallMax, wall.seamLocal);
+                }
+
+                Vector2 boundsMin = wallMin;
+                Vector2 boundsMax = wallMax;
+                if (TryGetLocalFloorBounds(root.transform, out Vector2 floorMin, out Vector2 floorMax))
+                {
+                    // Intersect floor with a slight expand of wall hull — keeps interior
+                    // without inheriting decorative overhang past doors.
+                    Vector2 expand = new Vector2(0.15f, 0.15f);
+                    boundsMin = Vector2.Max(floorMin, wallMin - expand);
+                    boundsMax = Vector2.Min(floorMax, wallMax + expand);
+                    if (boundsMin.x >= boundsMax.x || boundsMin.y >= boundsMax.y)
                     {
-                        boundsMin = Vector2.Min(boundsMin, Vector2.Min(wall.startLocal, wall.endLocal));
-                        boundsMax = Vector2.Max(boundsMax, Vector2.Max(wall.startLocal, wall.endLocal));
+                        boundsMin = wallMin;
+                        boundsMax = wallMax;
                     }
                 }
 

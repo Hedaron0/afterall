@@ -11,7 +11,12 @@ namespace AfterAll.Environment
     public static class PathNetworkPlanner
     {
         private const float OverlapEpsilon = 0.05f;
-        private const int MaxInfillAttempts = 500;
+        /// <summary>
+        /// Floor AABBs often extend slightly past wall seams. Without inset, seam-snapped
+        /// neighbors always "overlap" and the planner never places a second room.
+        /// </summary>
+        private const float OverlapInsetM = 0.2f;
+        private const int MaxInfillAttempts = 800;
 
         private struct PlannedRoom
         {
@@ -162,76 +167,99 @@ namespace AfterAll.Environment
                 return false;
 
             Shuffle(openWallIndices, rng);
-            RoomFootprint childFootprint = PickWeighted(library, rng);
+
+            var prefabOrder = new List<int>(library.Count);
+            for (int i = 0; i < library.Count; i++)
+            {
+                if (library[i] != null)
+                    prefabOrder.Add(i);
+            }
+
+            Shuffle(prefabOrder, rng);
+
+            // Bias: try a few weighted picks first, then the rest.
+            for (int w = 0; w < Mathf.Min(3, prefabOrder.Count); w++)
+            {
+                RoomFootprint weighted = PickWeighted(library, rng);
+                int weightedIndex = prefabOrder.FindIndex(i => library[i] == weighted);
+                if (weightedIndex > 0)
+                {
+                    (prefabOrder[0], prefabOrder[weightedIndex]) = (prefabOrder[weightedIndex], prefabOrder[0]);
+                }
+            }
 
             foreach (int parentWallIndex in openWallIndices)
             {
                 PlannedWall parentWall = parent.walls[parentWallIndex];
                 float parentOffset = SampleGapOffset(parentWall, rng, gapPolicy);
 
-                List<int> childWallIndices = CollectDoorWallIndices(childFootprint);
-                Shuffle(childWallIndices, rng);
-
-                foreach (int childWallIndex in childWallIndices)
+                foreach (int prefabIndex in prefabOrder)
                 {
-                    RoomFootprint.Wall childWallDef = childFootprint.Walls[childWallIndex];
-                    if (!childWallDef.doorValid)
-                        continue;
+                    RoomFootprint childFootprint = library[prefabIndex];
+                    List<int> childWallIndices = CollectDoorWallIndices(childFootprint);
+                    Shuffle(childWallIndices, rng);
 
-                    float childOffset = SampleGapOffset(
-                        ToPlannedWallLocal(childWallDef, childFootprint.GapWidthM),
-                        rng,
-                        gapPolicy);
-
-                    if (!TrySnap(
-                            parent,
-                            parentWallIndex,
-                            parentOffset,
-                            childFootprint,
-                            childWallDef.name,
-                            childOffset,
-                            out PlannedRoom candidate))
+                    foreach (int childWallIndex in childWallIndices)
                     {
-                        failed++;
-                        continue;
+                        RoomFootprint.Wall childWallDef = childFootprint.Walls[childWallIndex];
+                        if (!childWallDef.doorValid)
+                            continue;
+
+                        float childOffset = SampleGapOffset(
+                            ToPlannedWallLocal(childWallDef, childFootprint.GapWidthM),
+                            rng,
+                            gapPolicy);
+
+                        if (!TrySnap(
+                                parent,
+                                parentWallIndex,
+                                parentOffset,
+                                childFootprint,
+                                childWallDef.name,
+                                childOffset,
+                                out PlannedRoom candidate))
+                        {
+                            failed++;
+                            continue;
+                        }
+
+                        if (OverlapsAny(candidate, placed))
+                        {
+                            failed++;
+                            continue;
+                        }
+
+                        childIndex = placed.Count;
+                        placed.Add(candidate);
+
+                        PlannedRoom updatedParent = placed[parentIndex];
+                        PlannedWall pw = updatedParent.walls[parentWallIndex];
+                        pw.isConnected = true;
+                        updatedParent.walls[parentWallIndex] = pw;
+                        placed[parentIndex] = updatedParent;
+
+                        PlannedRoom updatedChild = placed[childIndex];
+                        int childPlannedWallIndex = FindWallIndex(updatedChild, childWallDef.name);
+                        if (childPlannedWallIndex >= 0)
+                        {
+                            PlannedWall cw = updatedChild.walls[childPlannedWallIndex];
+                            cw.isConnected = true;
+                            updatedChild.walls[childPlannedWallIndex] = cw;
+                            placed[childIndex] = updatedChild;
+                        }
+
+                        plan.connections.Add(new LayoutPlanConnection
+                        {
+                            parentIndex = parentIndex,
+                            parentWall = parentWall.name,
+                            childIndex = childIndex,
+                            childWall = childWallDef.name,
+                            parentGapOffsetM = parentOffset,
+                            childGapOffsetM = childOffset
+                        });
+
+                        return true;
                     }
-
-                    if (OverlapsAny(candidate, placed))
-                    {
-                        failed++;
-                        continue;
-                    }
-
-                    childIndex = placed.Count;
-                    placed.Add(candidate);
-
-                    PlannedRoom updatedParent = placed[parentIndex];
-                    PlannedWall pw = updatedParent.walls[parentWallIndex];
-                    pw.isConnected = true;
-                    updatedParent.walls[parentWallIndex] = pw;
-                    placed[parentIndex] = updatedParent;
-
-                    PlannedRoom updatedChild = placed[childIndex];
-                    int childPlannedWallIndex = FindWallIndex(updatedChild, childWallDef.name);
-                    if (childPlannedWallIndex >= 0)
-                    {
-                        PlannedWall cw = updatedChild.walls[childPlannedWallIndex];
-                        cw.isConnected = true;
-                        updatedChild.walls[childPlannedWallIndex] = cw;
-                        placed[childIndex] = updatedChild;
-                    }
-
-                    plan.connections.Add(new LayoutPlanConnection
-                    {
-                        parentIndex = parentIndex,
-                        parentWall = parentWall.name,
-                        childIndex = childIndex,
-                        childWall = childWallDef.name,
-                        parentGapOffsetM = parentOffset,
-                        childGapOffsetM = childOffset
-                    });
-
-                    return true;
                 }
             }
 
@@ -261,6 +289,10 @@ namespace AfterAll.Environment
             float targetAngle = Mathf.Atan2(-parentOutward.x, -parentOutward.y);
             float localAngle = Mathf.Atan2(childOutwardLocal.x, childOutwardLocal.y);
             float theta = QuantizeHalfPi(targetAngle - localAngle);
+
+            Vector2 childOutwardWorld = Rotate(childOutwardLocal, theta);
+            if (Vector2.Dot(childOutwardWorld, parentOutward) > -0.5f)
+                return false;
 
             Vector2 rotatedChildSeam = Rotate(childSeamLocal, theta);
             Vector2 position = parentSeam - rotatedChildSeam;
@@ -318,19 +350,41 @@ namespace AfterAll.Environment
         {
             for (int i = 0; i < placed.Count; i++)
             {
-                if (AabbOverlap(candidate.boundsMin, candidate.boundsMax, placed[i].boundsMin, placed[i].boundsMax))
+                if (AabbOverlap(
+                        candidate.boundsMin,
+                        candidate.boundsMax,
+                        placed[i].boundsMin,
+                        placed[i].boundsMax,
+                        OverlapInsetM))
                     return true;
             }
 
             return false;
         }
 
-        private static bool AabbOverlap(Vector2 aMin, Vector2 aMax, Vector2 bMin, Vector2 bMax)
+        private static bool AabbOverlap(
+            Vector2 aMin,
+            Vector2 aMax,
+            Vector2 bMin,
+            Vector2 bMax,
+            float inset)
         {
-            return aMin.x < bMax.x - OverlapEpsilon &&
-                   aMax.x > bMin.x + OverlapEpsilon &&
-                   aMin.y < bMax.y - OverlapEpsilon &&
-                   aMax.y > bMin.y + OverlapEpsilon;
+            float insetClamped = Mathf.Max(0f, inset);
+            Vector2 aMinI = aMin + Vector2.one * insetClamped;
+            Vector2 aMaxI = aMax - Vector2.one * insetClamped;
+            Vector2 bMinI = bMin + Vector2.one * insetClamped;
+            Vector2 bMaxI = bMax - Vector2.one * insetClamped;
+
+            // Degenerate after inset → treat as non-overlapping (too thin to matter).
+            if (aMinI.x >= aMaxI.x - OverlapEpsilon || aMinI.y >= aMaxI.y - OverlapEpsilon)
+                return false;
+            if (bMinI.x >= bMaxI.x - OverlapEpsilon || bMinI.y >= bMaxI.y - OverlapEpsilon)
+                return false;
+
+            return aMinI.x < bMaxI.x - OverlapEpsilon &&
+                   aMaxI.x > bMinI.x + OverlapEpsilon &&
+                   aMinI.y < bMaxI.y - OverlapEpsilon &&
+                   aMaxI.y > bMinI.y + OverlapEpsilon;
         }
 
         private static float SampleGapOffset(PlannedWall wall, System.Random rng, GapOffsetPolicy policy)

@@ -465,8 +465,9 @@ namespace AfterAll.Environment
         }
 
         /// <summary>
-        /// Applies a planned connection: opens both walls at fixed offsets, snaps child to parent socket, marks graph.
-        /// Child must already be instantiated; pose should match the plan (snap corrects small drift).
+        /// Applies a planned connection: opens both walls at fixed offsets and marks the graph.
+        /// Does not re-snap transforms — rooms must already sit at LayoutPlan poses.
+        /// Re-snapping would move a room after other connections were applied and collapse the layout.
         /// </summary>
         public bool ApplyPlannedConnection(
             RoomInstance parent,
@@ -492,8 +493,6 @@ namespace AfterAll.Environment
                 childWall.ConfigureOpening(false, false, 0f);
                 return false;
             }
-
-            RoomSocket.SnapRoom(child, childSocket, parentSocket);
 
             parent.MarkWallConnected(parentWall, child);
             child.MarkWallConnected(childWall, parent);
