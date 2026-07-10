@@ -588,8 +588,14 @@ namespace AfterAll.Environment
 
         private float GetWallFloorY()
         {
-            Renderer leftR = wallLeft.GetComponentInChildren<Renderer>();
-            Renderer rightR = wallRight.GetComponentInChildren<Renderer>();
+            // Keep door sockets on the walkable floor plane so mixed prefab pivots
+            // do not produce vertically mismatched openings after floor alignment.
+            RoomInstance room = GetComponentInParent<RoomInstance>();
+            if (room != null)
+                return room.GetWalkableFloorY();
+
+            Renderer leftR = wallLeft != null ? wallLeft.GetComponentInChildren<Renderer>() : null;
+            Renderer rightR = wallRight != null ? wallRight.GetComponentInChildren<Renderer>() : null;
             return leftR != null && rightR != null
                 ? Mathf.Min(leftR.bounds.min.y, rightR.bounds.min.y)
                 : transform.position.y;

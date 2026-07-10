@@ -465,9 +465,9 @@ namespace AfterAll.Environment
         }
 
         /// <summary>
-        /// Applies a planned connection: opens both walls at fixed offsets and marks the graph.
-        /// Does not re-snap transforms — rooms must already sit at LayoutPlan poses.
-        /// Re-snapping would move a room after other connections were applied and collapse the layout.
+        /// Applies a planned connection. When <paramref name="snapChildTransform"/> is true (first
+        /// placement of the child), snaps the child socket onto the parent so floor heights match.
+        /// When false, only opens gaps / marks graph (child already posed).
         /// </summary>
         public bool ApplyPlannedConnection(
             RoomInstance parent,
@@ -476,7 +476,8 @@ namespace AfterAll.Environment
             WallGapController childWall,
             float parentOffsetMeters,
             float childOffsetMeters,
-            bool spawnFrame = false)
+            bool spawnFrame = false,
+            bool snapChildTransform = false)
         {
             if (parent == null || parentWall == null || child == null || childWall == null)
                 return false;
@@ -494,6 +495,12 @@ namespace AfterAll.Environment
                 return false;
             }
 
+            if (snapChildTransform)
+            {
+                RoomSocket.SnapRoom(child, childSocket, parentSocket);
+                AlignRoomFloors(parent, child);
+            }
+
             parent.MarkWallConnected(parentWall, child);
             child.MarkWallConnected(childWall, parent);
             parentSocket.IsConnected = true;
@@ -501,8 +508,20 @@ namespace AfterAll.Environment
 
             Debug.Log(
                 $"[RoomConnector] Planned {parent.name}/{parentWall.name} -> {child.name}/{childWall.name} " +
-                $"(offsets {parentOffsetMeters:F2}/{childOffsetMeters:F2})");
+                $"(offsets {parentOffsetMeters:F2}/{childOffsetMeters:F2}, snap={snapChildTransform})");
             return true;
+        }
+
+        private static void AlignRoomFloors(RoomInstance parent, RoomInstance child)
+        {
+            if (parent == null || child == null)
+                return;
+
+            float parentFloorY = parent.GetWalkableFloorY();
+            float childFloorY = child.GetWalkableFloorY();
+            float delta = parentFloorY - childFloorY;
+            if (Mathf.Abs(delta) > 0.0001f)
+                child.transform.position += new Vector3(0f, delta, 0f);
         }
 
         private static RoomInstance EnsureRoomInstance(GameObject go)

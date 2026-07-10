@@ -183,6 +183,28 @@ namespace AfterAll.Environment
             return FlattenFootprint(GetWorldBounds());
         }
 
+        /// <summary>Top of floor meshes — walkable surface used to keep rooms coplanar.</summary>
+        public float GetWalkableFloorY()
+        {
+            Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
+            float top = float.NegativeInfinity;
+            bool any = false;
+
+            foreach (Renderer renderer in renderers)
+            {
+                if (!IsFloorRenderer(renderer))
+                    continue;
+
+                top = Mathf.Max(top, renderer.bounds.max.y);
+                any = true;
+            }
+
+            if (any)
+                return top;
+
+            return GetWorldBounds().min.y;
+        }
+
         /// <summary>Walkable interior used for parent penetration checks.</summary>
         public Bounds GetInteriorFootprintBounds(float insetPerSide = 0.2f)
         {

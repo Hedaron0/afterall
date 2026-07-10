@@ -317,54 +317,86 @@ namespace AfterAll.Environment
                 $"[RoomPoolSpawner] PathNetwork Seed={_lastUsedSeed}, Target={_roomCount}, Paths={_pathCount}, " +
                 $"RandomGap={_pathNetworkRandomGapOffset}. {plan.notes}");
 
+            // Let deferred Destroy from ClearLevelRoot flush before we spawn.
+            yield return null;
+
             Dictionary<string, GameObject> prefabById = BuildPrefabLookup();
-            var placedRooms = new List<RoomInstance>(plan.PlacedCount);
+            var roomsByIndex = new Dictionary<int, RoomInstance>(plan.PlacedCount);
             RoomInstance.SocketValidationReport validationTotals = default;
+            int connectionsApplied = 0;
 
-            for (int i = 0; i < plan.placements.Count; i++)
+            if (plan.placements.Count == 0)
             {
-                LayoutPlanPlacement placement = plan.placements[i];
-                if (!prefabById.TryGetValue(placement.prefabId, out GameObject prefab) || prefab == null)
-                {
-                    Debug.LogError($"[RoomPoolSpawner] Missing prefab for plan id '{placement.prefabId}'.");
-                    continue;
-                }
-
-                GameObject go = Instantiate(prefab, _connector.LevelRoot);
-                go.transform.SetPositionAndRotation(
-                    new Vector3(placement.positionXZ.x, 0f, placement.positionXZ.y),
-                    Quaternion.Euler(0f, placement.yawDegrees, 0f));
-
-                RoomInstance room = GetRoom(go);
-                room.SealAllWalls();
-                RoomInstance.SocketValidationReport validation = room.ValidateSocketContracts(logWarnings: true);
-                validationTotals.missingContractCount += validation.missingContractCount;
-                validationTotals.duplicateDirectionCount += validation.duplicateDirectionCount;
-
-                if (i == 0)
-                    room.MarkAsHub();
-                else
-                    room.SetGraphDepth(1);
-
-                placedRooms.Add(room);
-                _placedRoomCount = placedRooms.Count;
-
-                if (_spawnDelaySeconds > 0f)
-                    yield return new WaitForSeconds(_spawnDelaySeconds);
-                else
-                    yield return null;
+                Debug.LogError("[RoomPoolSpawner] PathNetwork plan has no placements.");
+                _buildRoutine = null;
+                yield break;
             }
 
-            int connectionsApplied = 0;
+            // Hub first — local origin, yaw from plan. Floor locked to LevelRoot Y.
+            LayoutPlanPlacement hubPlacement = plan.placements[0];
+            if (!prefabById.TryGetValue(hubPlacement.prefabId, out GameObject hubPrefab) || hubPrefab == null)
+            {
+                Debug.LogError($"[RoomPoolSpawner] Missing hub prefab '{hubPlacement.prefabId}'.");
+                _buildRoutine = null;
+                yield break;
+            }
+
+            GameObject hubGo = Instantiate(hubPrefab, _connector.LevelRoot);
+            hubGo.transform.SetLocalPositionAndRotation(
+                Vector3.zero,
+                Quaternion.Euler(0f, hubPlacement.yawDegrees, 0f));
+            RoomInstance hub = GetRoom(hubGo);
+            hub.SealAllWalls();
+            AlignRoomWalkableFloorToWorldY(hub, _connector.LevelRoot.position.y);
+            float hubWalkableY = hub.GetWalkableFloorY();
+            hub.MarkAsHub();
+            RoomInstance.SocketValidationReport hubValidation = hub.ValidateSocketContracts(logWarnings: true);
+            validationTotals.missingContractCount += hubValidation.missingContractCount;
+            validationTotals.duplicateDirectionCount += hubValidation.duplicateDirectionCount;
+            roomsByIndex[0] = hub;
+            _placedRoomCount = 1;
+
+            if (_spawnDelaySeconds > 0f)
+                yield return new WaitForSeconds(_spawnDelaySeconds);
+            else
+                yield return null;
+
+            // Spawn each child once via its first connection + SnapRoom (matches Legacy floor heights).
             foreach (LayoutPlanConnection connection in plan.connections)
             {
                 if (connection.parentIndex < 0 || connection.childIndex < 0)
                     continue;
-                if (connection.parentIndex >= placedRooms.Count || connection.childIndex >= placedRooms.Count)
+                if (connection.childIndex >= plan.placements.Count || connection.parentIndex >= plan.placements.Count)
+                    continue;
+                if (!roomsByIndex.TryGetValue(connection.parentIndex, out RoomInstance parent) || parent == null)
                     continue;
 
-                RoomInstance parent = placedRooms[connection.parentIndex];
-                RoomInstance child = placedRooms[connection.childIndex];
+                bool childAlreadyPlaced = roomsByIndex.ContainsKey(connection.childIndex);
+                RoomInstance child;
+                if (!childAlreadyPlaced)
+                {
+                    LayoutPlanPlacement childPlacement = plan.placements[connection.childIndex];
+                    if (!prefabById.TryGetValue(childPlacement.prefabId, out GameObject childPrefab) || childPrefab == null)
+                    {
+                        Debug.LogError($"[RoomPoolSpawner] Missing prefab '{childPlacement.prefabId}'.");
+                        continue;
+                    }
+
+                    GameObject childGo = Instantiate(childPrefab, _connector.LevelRoot);
+                    childGo.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+                    child = GetRoom(childGo);
+                    child.SealAllWalls();
+                    RoomInstance.SocketValidationReport childValidation = child.ValidateSocketContracts(logWarnings: true);
+                    validationTotals.missingContractCount += childValidation.missingContractCount;
+                    validationTotals.duplicateDirectionCount += childValidation.duplicateDirectionCount;
+                    roomsByIndex[connection.childIndex] = child;
+                    _placedRoomCount = roomsByIndex.Count;
+                }
+                else
+                {
+                    child = roomsByIndex[connection.childIndex];
+                }
+
                 WallGapController parentWall = parent.GetWall(connection.parentWall);
                 WallGapController childWall = child.GetWall(connection.childWall);
                 if (parentWall == null || childWall == null)
@@ -375,6 +407,7 @@ namespace AfterAll.Environment
                 }
 
                 bool spawnFrame = ShouldSpawnFrame();
+                bool snap = !childAlreadyPlaced;
                 if (_connector.ApplyPlannedConnection(
                         parent,
                         parentWall,
@@ -382,15 +415,55 @@ namespace AfterAll.Environment
                         childWall,
                         connection.parentGapOffsetM,
                         connection.childGapOffsetM,
-                        spawnFrame))
+                        spawnFrame,
+                        snap))
                 {
                     connectionsApplied++;
-                    if (child.GraphDepth < 0 || child.GraphDepth > parent.GraphDepth + 1)
+                    if (snap)
                         child.SetGraphDepth(parent.GraphDepth + 1);
+                }
+
+                if (snap)
+                {
+                    if (_spawnDelaySeconds > 0f)
+                        yield return new WaitForSeconds(_spawnDelaySeconds);
+                    else
+                        yield return null;
                 }
             }
 
-            RoomInstance startRoom = placedRooms.Count > 0 ? placedRooms[0] : null;
+            // Final pass: lock every room's walkable floor to the hub (fixes thickness / pivot drift).
+            foreach (KeyValuePair<int, RoomInstance> pair in roomsByIndex)
+            {
+                if (pair.Value != null)
+                    AlignRoomWalkableFloorToWorldY(pair.Value, hubWalkableY);
+            }
+
+            // Refresh openings so sockets rebind to the shared walkable floor Y.
+            foreach (KeyValuePair<int, RoomInstance> pair in roomsByIndex)
+            {
+                RoomInstance room = pair.Value;
+                if (room == null)
+                    continue;
+
+                foreach (WallGapController wall in room.Walls)
+                {
+                    if (wall == null || !wall.hasOpening)
+                        continue;
+
+                    wall.ConfigureOpening(true, false, wall.gapOffset);
+                }
+            }
+
+            // Any planned rooms that never got a connection (should be rare) — skip.
+            var placedRooms = new List<RoomInstance>(roomsByIndex.Count);
+            for (int i = 0; i < plan.placements.Count; i++)
+            {
+                if (roomsByIndex.TryGetValue(i, out RoomInstance room) && room != null)
+                    placedRooms.Add(room);
+            }
+
+            RoomInstance startRoom = hub;
             RoomConnector.ConnectionStats stats = _connector.GetStats();
             (ReachabilityAuditResult reachability, int finalPlacedCount) = RunReachabilityAudit(startRoom);
             int postBuildOverlaps = ValidatePlacedRoomOverlaps();
@@ -399,11 +472,24 @@ namespace AfterAll.Environment
 
             _contentManager?.ActivateAll(_lastUsedSeed);
 
+            float minFloorY = float.PositiveInfinity;
+            float maxFloorY = float.NegativeInfinity;
+            foreach (RoomInstance room in placedRooms)
+            {
+                if (room == null)
+                    continue;
+                float floorY = room.GetWalkableFloorY();
+                minFloorY = Mathf.Min(minFloorY, floorY);
+                maxFloorY = Mathf.Max(maxFloorY, floorY);
+            }
+
             var summary = new StringBuilder();
             summary.AppendLine(
                 $"[RoomPoolSpawner] PathNetwork done. Placed={finalPlacedCount}/{_roomCount}, " +
                 $"Connections={connectionsApplied}/{plan.connections.Count}, Seed={_lastUsedSeed}.");
             summary.AppendLine(plan.notes);
+            summary.AppendLine(
+                $"FloorY range=[{minFloorY:F3}, {maxFloorY:F3}] delta={maxFloorY - minFloorY:F3}m (want ~0).");
             summary.AppendLine(
                 $"Reachability: reachable={reachability.reachableCount}, unreachable={reachability.unreachableCount}, " +
                 $"salvaged={reachability.salvagedCount}, destroyed={reachability.destroyedCount}.");
@@ -416,6 +502,17 @@ namespace AfterAll.Environment
             Debug.Log(summary.ToString());
 
             _buildRoutine = null;
+        }
+
+        private static void AlignRoomWalkableFloorToWorldY(RoomInstance room, float targetWalkableY)
+        {
+            if (room == null)
+                return;
+
+            float current = room.GetWalkableFloorY();
+            float delta = targetWalkableY - current;
+            if (Mathf.Abs(delta) > 0.0001f)
+                room.transform.position += new Vector3(0f, delta, 0f);
         }
 
         private List<RoomFootprint> ResolvePathNetworkLibrary()
