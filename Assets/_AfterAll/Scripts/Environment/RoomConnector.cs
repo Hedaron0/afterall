@@ -13,6 +13,7 @@ namespace AfterAll.Environment
         {
             public int noCompatibleSocket;
             public int gapMismatch;
+            public int openingFitRejected;
             public int overlapRejected;
             public int fallbackUsed;
             public int offsetRetried;
@@ -267,6 +268,7 @@ namespace AfterAll.Environment
             bool anyCompatibleByContract = false;
             bool usedFallback = false;
             bool failedGap = false;
+            bool failedOpeningFit = false;
             bool failedOverlap = false;
             bool solvedOverlap = false;
             int retryAttempts = 0;
@@ -282,6 +284,16 @@ namespace AfterAll.Environment
 
             foreach (WallGapController wall in childRoom.Walls)
             {
+                if (wall == null)
+                    continue;
+
+                // Reject before expensive open/snap loops when openings can't cover each other.
+                if (!WallGapController.AreOpeningsPairable(parentWall, wall))
+                {
+                    failedOpeningFit = true;
+                    continue;
+                }
+
                 bool wallHadOverlap = false;
                 bool wallFoundAfterOverlap = false;
 
@@ -360,6 +372,8 @@ namespace AfterAll.Environment
                     _stats.noCompatibleSocket++;
                 if (failedGap)
                     _stats.gapMismatch++;
+                if (failedOpeningFit)
+                    _stats.openingFitRejected++;
                 if (failedOverlap)
                     _stats.overlapRejected++;
                 if (usedFallback)
@@ -371,7 +385,7 @@ namespace AfterAll.Environment
             }
 
             childRoom.SealAllWalls();
-            parentRoom.OpenWall(parentWall, selectedParentOffset, spawnFrame);
+            parentRoom.OpenWall(parentWall, selectedParentOffset, spawnFrame && !parentWall.UsesFullOpening);
             childRoom.OpenWall(selectedWall, selectedChildOffset, false);
             if (!parentWall.TryGetSocket(out RoomSocket selectedParentSocket) || !selectedWall.TryGetSocket(out RoomSocket selectedSocket))
             {
@@ -486,7 +500,8 @@ namespace AfterAll.Environment
                 return false;
 
             parent.OpenWall(parentWall, parentOffsetMeters, false);
-            child.OpenWall(childWall, childOffsetMeters, spawnFrame);
+            bool childFrame = spawnFrame && !childWall.UsesFullOpening;
+            child.OpenWall(childWall, childOffsetMeters, childFrame);
 
             if (!parentWall.TryGetSocket(out RoomSocket parentSocket) || !childWall.TryGetSocket(out RoomSocket childSocket))
             {

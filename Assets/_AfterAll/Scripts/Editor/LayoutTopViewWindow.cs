@@ -38,11 +38,29 @@ namespace AfterAll.Editor
 
         private void OnGUI()
         {
+            HandleHotkeys();
             DrawToolbar();
             Rect canvas = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
             HandleCanvasInput(canvas);
             DrawCanvas(canvas);
             DrawFooter();
+        }
+
+        private void HandleHotkeys()
+        {
+            Event e = Event.current;
+            if (e.type != EventType.KeyDown)
+                return;
+
+            // Skip when typing in a text/int field.
+            if (EditorGUIUtility.editingTextField)
+                return;
+
+            if (e.keyCode == KeyCode.R)
+            {
+                RandomizeSeedAndGenerate();
+                e.Use();
+            }
         }
 
         private void DrawToolbar()
@@ -59,6 +77,13 @@ namespace AfterAll.Editor
             }
 
             _seed = EditorGUILayout.IntField(_seed, GUILayout.Width(80f));
+
+            if (GUILayout.Button(new GUIContent("R", "Random seed + Generate (hotkey: R)"), EditorStyles.toolbarButton, GUILayout.Width(24f)))
+                RandomizeSeedAndGenerate();
+
+            if (GUILayout.Button(new GUIContent("Random", "Pick a random seed and regenerate layout"), EditorStyles.toolbarButton, GUILayout.Width(60f)))
+                RandomizeSeedAndGenerate();
+
             _roomCount = Mathf.Max(1, EditorGUILayout.IntField(_roomCount, GUILayout.Width(50f)));
             _pathCount = Mathf.Max(1, EditorGUILayout.IntField(_pathCount, GUILayout.Width(40f)));
             _randomGapOffset = GUILayout.Toggle(_randomGapOffset, "RandomGap", EditorStyles.toolbarButton, GUILayout.Width(80f));
@@ -89,6 +114,12 @@ namespace AfterAll.Editor
         private void DrawFooter()
         {
             EditorGUILayout.HelpBox(_status, MessageType.Info);
+        }
+
+        private void RandomizeSeedAndGenerate()
+        {
+            _seed = Random.Range(1, int.MaxValue);
+            GeneratePlan();
         }
 
         private void GeneratePlan()
@@ -154,7 +185,8 @@ namespace AfterAll.Editor
         {
             var names = new string[_library.Count];
             for (int i = 0; i < _library.Count; i++)
-                names[i] = $"{_library[i].PrefabId} (w{_library[i].SpawnWeight}, walls={_library[i].Walls.Length})";
+                names[i] =
+                    $"{_library[i].PrefabId} [{_library[i].ResolvedRole}] (w{_library[i].SpawnWeight}, walls={_library[i].Walls.Length})";
             return names;
         }
 

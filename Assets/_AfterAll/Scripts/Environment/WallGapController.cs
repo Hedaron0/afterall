@@ -4,8 +4,8 @@ using System.Collections.Generic;
 namespace AfterAll.Environment
 {
     /// <summary>
-    /// Cuts a 1.3m gap between WallLeft/WallRight and exposes a Socket for room connection.
-    /// Socket position always comes from live wall transforms — never baked editor world coords.
+    /// Opens a wall for room connection: StandardGap (1.3m cut), FullWall (hide pieces),
+    /// or OpenEnd (socket portal). Socket position comes from live geometry — never baked world coords.
     /// </summary>
     [ExecuteAlways]
     public class WallGapController : MonoBehaviour
@@ -20,6 +20,7 @@ namespace AfterAll.Environment
         public Transform wallLeft;
         public Transform wallRight;
 
+        [SerializeField] private WallOpeningMode _openingMode = WallOpeningMode.StandardGap;
         [SerializeField] private GameObject _framePrefab;
         [SerializeField, Range(0f, 1f)] private float _frameChance = 0.35f;
 
@@ -37,6 +38,62 @@ namespace AfterAll.Environment
         private RoomSocket _socket;
 
         public float WallLengthMeters => _wallLengthM;
+        public WallOpeningMode OpeningMode => _openingMode;
+        public bool UsesFullOpening =>
+            _openingMode == WallOpeningMode.FullWall || _openingMode == WallOpeningMode.OpenEnd;
+
+        /// <summary>Opening width used when connected (gapWidth or full wall length).</summary>
+        public float EffectiveOpeningWidth
+        {
+            get
+            {
+                EnsureBaselineIfPossible();
+                if (UsesFullOpening)
+                    return Mathf.Max(0.05f, _wallLengthM > 0.1f ? _wallLengthM - 0.05f : gapWidth);
+                return gapWidth > 0.05f ? gapWidth : RoomFootprint.DefaultGapWidthM;
+            }
+        }
+
+        public void SetOpeningMode(WallOpeningMode mode) => _openingMode = mode;
+
+        /// <summary>
+        /// Slack when checking that one wall's face covers the other side's opening.
+        /// Prevents wide FullWall holes with a narrow room leaving void flanks.
+        /// </summary>
+        public const float OpeningCoverSlackM = 0.35f;
+
+        /// <summary>
+        /// True when each connecting face is wide enough to cover the other side's opening.
+        /// </summary>
+        public static bool AreOpeningsPairable(
+            float parentOpeningM,
+            float parentWallLengthM,
+            float childOpeningM,
+            float childWallLengthM,
+            float slackM = OpeningCoverSlackM)
+        {
+            if (parentOpeningM < 0.05f || childOpeningM < 0.05f)
+                return false;
+            if (parentWallLengthM < 0.05f || childWallLengthM < 0.05f)
+                return false;
+
+            // Narrower room must still cover the wider hole — otherwise empty flanks.
+            if (childWallLengthM + slackM < parentOpeningM)
+                return false;
+            if (parentWallLengthM + slackM < childOpeningM)
+                return false;
+
+            return true;
+        }
+
+        public static bool AreOpeningsPairable(WallGapController parent, WallGapController child) =>
+            parent != null &&
+            child != null &&
+            AreOpeningsPairable(
+                parent.EffectiveOpeningWidth,
+                parent.WallLengthMeters,
+                child.EffectiveOpeningWidth,
+                child.WallLengthMeters);
 
         /// <summary>
         /// Closed-wall geometry for footprint baking / 2D planning (world space).
@@ -55,6 +112,32 @@ namespace AfterAll.Environment
             AutoFindChildren();
             if (!_baselineCached)
                 RebuildBaseline();
+
+            if (_openingMode == WallOpeningMode.OpenEnd)
+            {
+                // Portal: use transform as seam; length from serialized gap or measured pieces if present.
+                if (_baselineCached && _wallLengthM >= 0.1f)
+                {
+                    seamWorld = _seamWorld;
+                    axisWorld = _axisWorld;
+                    lengthMeters = _wallLengthM;
+                }
+                else
+                {
+                    seamWorld = transform.position;
+                    axisWorld = Vector3.ProjectOnPlane(transform.right, Vector3.up).normalized;
+                    if (axisWorld.sqrMagnitude < 0.0001f)
+                        axisWorld = Vector3.right;
+                    lengthMeters = Mathf.Max(gapWidth, 1.3f);
+                    _seamWorld = seamWorld;
+                    _axisWorld = axisWorld;
+                    _wallLengthM = lengthMeters;
+                    _baselineCached = true;
+                }
+
+                outwardWorld = ComputeOutwardForward(seamWorld);
+                return outwardWorld.sqrMagnitude > 0.0001f;
+            }
 
             if (!_baselineCached || _wallLengthM < 0.1f)
                 return false;
@@ -166,13 +249,22 @@ namespace AfterAll.Environment
             out float maxOffset,
             out float effectiveGapWidth)
         {
-            EnsureBaseline();
+            EnsureBaselineIfPossible();
             minOffset = 0f;
             maxOffset = 0f;
             effectiveGapWidth = 0f;
 
-            if (_wallLengthM < 0.1f)
+            if (_wallLengthM < 0.1f && _openingMode != WallOpeningMode.OpenEnd)
                 return false;
+
+            if (UsesFullOpening)
+            {
+                effectiveGapWidth = EffectiveOpeningWidth;
+                float center = Mathf.Max(0f, (_wallLengthM - effectiveGapWidth) * 0.5f);
+                minOffset = center;
+                maxOffset = center;
+                return effectiveGapWidth >= 0.05f;
+            }
 
             float edgeMargin = Mathf.Max(0f, policy.edgeMarginM);
             float spanFraction = Mathf.Clamp(policy.spanFraction > 0f ? policy.spanFraction : 1f, 0f, 1f);
@@ -212,11 +304,16 @@ namespace AfterAll.Environment
             if (!_baselineCached)
                 RebuildBaseline();
 
-            if (wallLeft == null || wallRight == null || _wallLengthM < 0.1f)
+            if (_wallLengthM < 0.1f)
                 return false;
 
-            float effectiveGapWidth = Mathf.Min(gapWidth, _wallLengthM - 0.05f);
+            float effectiveGapWidth = UsesFullOpening
+                ? EffectiveOpeningWidth
+                : Mathf.Min(gapWidth, _wallLengthM - 0.05f);
             if (effectiveGapWidth < 0.05f)
+                return false;
+
+            if (!UsesFullOpening && (wallLeft == null || wallRight == null))
                 return false;
 
             float maxD = Mathf.Max(0f, _wallLengthM - effectiveGapWidth);
@@ -422,12 +519,17 @@ namespace AfterAll.Environment
             AutoFindChildren();
             ClearSpawnedFrame();
 
+            if (_openingMode == WallOpeningMode.OpenEnd)
+            {
+                ApplyOpenEndOpening();
+                return;
+            }
+
             if (wallLeft == null || wallRight == null)
                 return;
 
             EnsureWallPieceCollision(wallLeft);
             EnsureWallPieceCollision(wallRight);
-
             EnsureBaseline();
 
             if (_wallLengthM < 0.1f)
@@ -436,9 +538,18 @@ namespace AfterAll.Environment
             if (!hasOpening)
             {
                 HideSocket();
+                SetWallPiecesVisible(true);
                 RestoreClosed();
                 return;
             }
+
+            if (_openingMode == WallOpeningMode.FullWall)
+            {
+                ApplyFullWallOpening();
+                return;
+            }
+
+            SetWallPiecesVisible(true);
 
             if (!TryComputeGapMetrics(useRandomOffset, out float d, out float effectiveGapWidth))
             {
@@ -457,20 +568,89 @@ namespace AfterAll.Environment
                 _rightScaleAxis,
                 _rightExtentM > 0.0001f ? (_wallLengthM - d - effectiveGapWidth) / _rightExtentM : 0f);
 
-            UpdateSocketFromLiveGap();
+            UpdateSocketFromLiveGap(effectiveGapWidth);
             TrySpawnFrame(effectiveGapWidth);
         }
 
+        private void ApplyFullWallOpening()
+        {
+            RestoreClosed();
+            SetWallPiecesVisible(false);
+
+            float width = EffectiveOpeningWidth;
+            Vector3 center = _seamWorld;
+            center.y = GetWallFloorY();
+            Vector3 outward = ComputeOutwardForward(center);
+            EnsureSocket();
+            _socket.Bind(this, width);
+            _socket.AlignAt(center, outward, width);
+            // No door frames on full-wall openings.
+        }
+
+        private void ApplyOpenEndOpening()
+        {
+            EnsureBaselineIfPossible();
+
+            if (!hasOpening)
+            {
+                HideSocket();
+                SetWallPiecesVisible(true);
+                RestoreClosed();
+                return;
+            }
+
+            // Portal: hide any leftover end pieces if present.
+            if (wallLeft != null || wallRight != null)
+            {
+                RestoreClosed();
+                SetWallPiecesVisible(false);
+            }
+
+            float width = EffectiveOpeningWidth;
+            Vector3 center = _baselineCached ? _seamWorld : transform.position;
+            center.y = GetWallFloorY();
+            Vector3 outward = ComputeOutwardForward(center);
+            EnsureSocket();
+            _socket.Bind(this, width);
+            _socket.AlignAt(center, outward, width);
+        }
+
+        private void SetWallPiecesVisible(bool visible)
+        {
+            SetPieceActive(wallLeft, visible);
+            SetPieceActive(wallRight, visible);
+        }
+
+        private static void SetPieceActive(Transform piece, bool visible)
+        {
+            if (piece == null)
+                return;
+
+            // Keep the transform hierarchy; toggle renderers + colliders so rollback is cheap.
+            foreach (Renderer renderer in piece.GetComponentsInChildren<Renderer>(true))
+                renderer.enabled = visible;
+
+            foreach (Collider col in piece.GetComponentsInChildren<Collider>(true))
+                col.enabled = visible;
+        }
+
+        private void EnsureBaselineIfPossible()
+        {
+            AutoFindChildren();
+            if (!_baselineCached)
+                RebuildBaseline();
+        }
+
         /// <summary>Gap center = midpoint between split wall pivots (always correct world position).</summary>
-        private void UpdateSocketFromLiveGap()
+        private void UpdateSocketFromLiveGap(float openingWidth)
         {
             Vector3 center = (wallLeft.position + wallRight.position) * 0.5f;
             center.y = GetWallFloorY();
 
             Vector3 outward = ComputeOutwardForward(center);
             EnsureSocket();
-            _socket.Bind(this, gapWidth);
-            _socket.AlignAt(center, outward, gapWidth);
+            _socket.Bind(this, openingWidth);
+            _socket.AlignAt(center, outward, openingWidth);
         }
 
         private void ResolveSocketReference()
@@ -547,21 +727,35 @@ namespace AfterAll.Environment
             if (_wallLengthM < 0.1f)
                 return false;
 
+            if (UsesFullOpening)
+            {
+                effectiveGapWidth = EffectiveOpeningWidth;
+                float maxD = Mathf.Max(0f, _wallLengthM - effectiveGapWidth);
+                gapOffsetM = maxD * 0.5f;
+                return effectiveGapWidth >= 0.05f;
+            }
+
             effectiveGapWidth = Mathf.Min(gapWidth, _wallLengthM - 0.05f);
             if (effectiveGapWidth < 0.05f)
                 return false;
 
-            float maxD = Mathf.Max(0f, _wallLengthM - effectiveGapWidth);
+            float maxOffset = Mathf.Max(0f, _wallLengthM - effectiveGapWidth);
             gapOffsetM = useRandomOffset
-                ? Random.Range(0f, maxD)
-                : Mathf.Clamp(gapOffset, 0f, maxD);
+                ? Random.Range(0f, maxOffset)
+                : Mathf.Clamp(gapOffset, 0f, maxOffset);
 
             return true;
         }
 
         private void TrySpawnFrame(float effectiveGapWidth)
         {
+            if (UsesFullOpening)
+                return;
+
             if (_framePrefab == null || !ShouldSpawnFrame())
+                return;
+
+            if (wallLeft == null || wallRight == null)
                 return;
 
             Vector3 center = (wallLeft.position + wallRight.position) * 0.5f;
@@ -628,7 +822,23 @@ namespace AfterAll.Environment
         private void RebuildBaseline()
         {
             AutoFindChildren();
+
+            if (_openingMode == WallOpeningMode.OpenEnd && (wallLeft == null || wallRight == null))
+            {
+                SetWallPiecesVisible(true);
+                _seamWorld = transform.position;
+                _axisWorld = Vector3.ProjectOnPlane(transform.right, Vector3.up).normalized;
+                if (_axisWorld.sqrMagnitude < 0.0001f)
+                    _axisWorld = Vector3.right;
+                _wallLengthM = Mathf.Max(gapWidth, 1.3f);
+                _leftExtentM = _wallLengthM * 0.5f;
+                _rightExtentM = _wallLengthM * 0.5f;
+                _baselineCached = true;
+                return;
+            }
+
             RestoreClosed();
+            SetWallPiecesVisible(true);
             _baselineCached = CacheFromClosedMesh();
         }
 

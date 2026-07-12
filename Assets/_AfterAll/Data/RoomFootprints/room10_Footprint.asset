@@ -1,0 +1,65 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b77e4201ded0ba42b8029a264603878, type: 3}
+  m_Name: room10_Footprint
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomFootprint
+  _prefab: {fileID: 6533891609094673242, guid: cfeabc9ff2216a140824d727516688da, type: 3}
+  _spawnWeight: 2
+  _role: 0
+  _boundsMin: {x: -47.596153, y: -21.173075}
+  _boundsMax: {x: 42.80385, y: 28.826921}
+  _walls:
+  - name: 10Wall1
+    seamLocal: {x: -27.346151, y: -21.048077}
+    axisLocal: {x: -1, y: 0.00000031789145}
+    startLocal: {x: -21.346151, y: -21.048079}
+    endLocal: {x: -33.346153, y: -21.048075}
+    lengthM: 12
+    outwardLocal: {x: -0.00000031789145, y: -1}
+    direction: 3
+    doorValid: 1
+    openingMode: 0
+    openingWidthM: 4
+  - name: 10Wall2
+    seamLocal: {x: 32.153847, y: -21.048077}
+    axisLocal: {x: -1, y: 0.00000031789145}
+    startLocal: {x: 38.153847, y: -21.048079}
+    endLocal: {x: 26.153847, y: -21.048075}
+    lengthM: 12
+    outwardLocal: {x: -0.00000031789145, y: -1}
+    direction: 3
+    doorValid: 1
+    openingMode: 0
+    openingWidthM: 4
+  - name: 10Wall3
+    seamLocal: {x: 36.653847, y: 28.701925}
+    axisLocal: {x: 1, y: -0.00000031789145}
+    startLocal: {x: 30.653847, y: 28.701927}
+    endLocal: {x: 42.653847, y: 28.701923}
+    lengthM: 12
+    outwardLocal: {x: 0.00000031789145, y: 1}
+    direction: 1
+    doorValid: 1
+    openingMode: 0
+    openingWidthM: 4
+  - name: 10Wall4
+    seamLocal: {x: -47.47115, y: 3.8269231}
+    axisLocal: {x: 0, y: 1}
+    startLocal: {x: -47.47115, y: -2.1730764}
+    endLocal: {x: -47.47115, y: 9.826922}
+    lengthM: 11.999999
+    outwardLocal: {x: -1, y: 0}
+    direction: 4
+    doorValid: 1
+    openingMode: 0
+    openingWidthM: 4
+  _gapWidthM: 4

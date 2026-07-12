@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomFootprint
   _prefab: {fileID: 1837065743007804278, guid: 29d6f6efdf2f51042a69e4bb54ce8ece, type: 3}
   _spawnWeight: 15
+  _role: 0
   _boundsMin: {x: -1.3999999, y: -7.999999}
   _boundsMax: {x: 1.4000002, y: 7.999999}
   _walls:
@@ -26,6 +27,8 @@ MonoBehaviour:
     outwardLocal: {x: 0.0000007629396, y: 1}
     direction: 1
     doorValid: 1
+    openingMode: 1
+    openingWidthM: 2.4499998
   - name: 9Wall2
     seamLocal: {x: 0.00000047683716, y: -7.875001}
     axisLocal: {x: -1, y: 0.0000007629397}
@@ -35,4 +38,6 @@ MonoBehaviour:
     outwardLocal: {x: -0.0000007629397, y: -1}
     direction: 3
     doorValid: 1
+    openingMode: 1
+    openingWidthM: 2.4499996
   _gapWidthM: 1.3

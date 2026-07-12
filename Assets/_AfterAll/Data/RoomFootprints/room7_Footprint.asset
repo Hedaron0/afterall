@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomFootprint
   _prefab: {fileID: 3659607563418797165, guid: 661db5d6aea0493449dd7f418acf7e8d, type: 3}
   _spawnWeight: 2
+  _role: 0
   _boundsMin: {x: -25, y: -24.999998}
   _boundsMax: {x: 25, y: 24.999998}
   _walls:
@@ -26,6 +27,8 @@ MonoBehaviour:
     outwardLocal: {x: -1, y: 0}
     direction: 4
     doorValid: 1
+    openingMode: 0
+    openingWidthM: 4
   - name: 7Wall5
     seamLocal: {x: -2.75, y: -24.875}
     axisLocal: {x: -1, y: 0.00000019073487}
@@ -35,15 +38,8 @@ MonoBehaviour:
     outwardLocal: {x: -0.00000019073487, y: -1}
     direction: 3
     doorValid: 1
-  - name: 7Wall7
-    seamLocal: {x: 24.875, y: -18.75}
-    axisLocal: {x: 0, y: -1}
-    startLocal: {x: 24.875, y: -12.75}
-    endLocal: {x: 24.875, y: -24.75}
-    lengthM: 12
-    outwardLocal: {x: 1, y: 0}
-    direction: 2
-    doorValid: 1
+    openingMode: 0
+    openingWidthM: 4
   - name: 7Wall8
     seamLocal: {x: 24.874996, y: -2.7500038}
     axisLocal: {x: 0, y: -1}
@@ -53,15 +49,19 @@ MonoBehaviour:
     outwardLocal: {x: 1, y: 0}
     direction: 2
     doorValid: 1
-  - name: 7Wall11
-    seamLocal: {x: -2.7500038, y: 24.875002}
+    openingMode: 0
+    openingWidthM: 4
+  - name: 7Wall10
+    seamLocal: {x: 16, y: 24.87501}
     axisLocal: {x: 1, y: 0}
-    startLocal: {x: -12.750004, y: 24.875002}
-    endLocal: {x: 7.249996, y: 24.875002}
-    lengthM: 20
+    startLocal: {x: 7.25, y: 24.87501}
+    endLocal: {x: 24.75, y: 24.87501}
+    lengthM: 17.5
     outwardLocal: {x: 0, y: 1}
     direction: 1
     doorValid: 1
+    openingMode: 0
+    openingWidthM: 4
   - name: 7Wall12
     seamLocal: {x: -18.75, y: 24.875002}
     axisLocal: {x: 1, y: 0}
@@ -71,4 +71,6 @@ MonoBehaviour:
     outwardLocal: {x: 0, y: 1}
     direction: 1
     doorValid: 1
-  _gapWidthM: 1.3
+    openingMode: 0
+    openingWidthM: 4
+  _gapWidthM: 4

@@ -41,6 +41,7 @@ namespace AfterAll.Environment
             public float lengthM;
             public bool isConnected;
             public float gapWidthM;
+            public WallOpeningMode openingMode;
         }
 
         public static LayoutPlan Generate(
@@ -49,7 +50,8 @@ namespace AfterAll.Environment
             int roomCount,
             int pathCount,
             bool randomGapOffset = false,
-            GapOffsetPolicy gapPolicy = default)
+            GapOffsetPolicy gapPolicy = default,
+            float corridorBudgetFraction = RoomRolePicker.DefaultCorridorBudgetFraction)
         {
             var plan = new LayoutPlan
             {
@@ -73,10 +75,13 @@ namespace AfterAll.Environment
             var rng = new System.Random(seed);
             var placed = new List<PlannedRoom>();
             int failed = 0;
+            int corridorPlaced = 0;
 
-            RoomFootprint hubFootprint = PickWeighted(library, rng);
+            RoomFootprint hubFootprint = RoomRolePicker.PickHub(library, rng);
             PlannedRoom hub = CreateRoom(hubFootprint, Vector2.zero, 0f);
             placed.Add(hub);
+            if (hubFootprint.ResolvedRole == RoomRole.Corridor)
+                corridorPlaced++;
 
             int roomsPerPath = Mathf.Max(1, plan.roomCount / plan.pathCount);
 
@@ -92,6 +97,8 @@ namespace AfterAll.Environment
                             rng,
                             gapPolicy,
                             plan,
+                            corridorBudgetFraction,
+                            ref corridorPlaced,
                             out int childIndex,
                             ref failed))
                         break;
@@ -124,6 +131,8 @@ namespace AfterAll.Environment
                         rng,
                         gapPolicy,
                         plan,
+                        corridorBudgetFraction,
+                        ref corridorPlaced,
                         out int childIndex,
                         ref failed))
                 {
@@ -146,7 +155,7 @@ namespace AfterAll.Environment
             plan.failedAttempts = failed;
             plan.notes =
                 $"PathNetwork placed={plan.PlacedCount}/{plan.roomCount}, paths={plan.pathCount}, " +
-                $"failed={failed}, randomGap={randomGapOffset}";
+                $"corridors={corridorPlaced}, failed={failed}, randomGap={randomGapOffset}";
             return plan;
         }
 
@@ -157,6 +166,8 @@ namespace AfterAll.Environment
             System.Random rng,
             GapOffsetPolicy gapPolicy,
             LayoutPlan plan,
+            float corridorBudgetFraction,
+            ref int corridorPlaced,
             out int childIndex,
             ref int failed)
         {
@@ -168,25 +179,17 @@ namespace AfterAll.Environment
 
             Shuffle(openWallIndices, rng);
 
+            RoomRole lastRole = parent.footprint != null ? parent.footprint.ResolvedRole : RoomRole.Room;
             var prefabOrder = new List<int>(library.Count);
-            for (int i = 0; i < library.Count; i++)
-            {
-                if (library[i] != null)
-                    prefabOrder.Add(i);
-            }
-
-            Shuffle(prefabOrder, rng);
-
-            // Bias: try a few weighted picks first, then the rest.
-            for (int w = 0; w < Mathf.Min(3, prefabOrder.Count); w++)
-            {
-                RoomFootprint weighted = PickWeighted(library, rng);
-                int weightedIndex = prefabOrder.FindIndex(i => library[i] == weighted);
-                if (weightedIndex > 0)
-                {
-                    (prefabOrder[0], prefabOrder[weightedIndex]) = (prefabOrder[weightedIndex], prefabOrder[0]);
-                }
-            }
+            RoomRolePicker.BuildContextPrefabOrder(
+                library,
+                rng,
+                lastRole,
+                corridorPlaced,
+                placed.Count,
+                plan.roomCount,
+                prefabOrder,
+                corridorBudgetFraction);
 
             foreach (int parentWallIndex in openWallIndices)
             {
@@ -205,8 +208,19 @@ namespace AfterAll.Environment
                         if (!childWallDef.doorValid)
                             continue;
 
+                        float childOpening = ResolveOpeningWidth(childWallDef, childFootprint.GapWidthM);
+                        if (!WallGapController.AreOpeningsPairable(
+                                parentWall.gapWidthM,
+                                parentWall.lengthM,
+                                childOpening,
+                                childWallDef.lengthM))
+                        {
+                            failed++;
+                            continue;
+                        }
+
                         float childOffset = SampleGapOffset(
-                            ToPlannedWallLocal(childWallDef, childFootprint.GapWidthM),
+                            ToPlannedWallLocal(childWallDef, childOpening),
                             rng,
                             gapPolicy);
 
@@ -231,6 +245,9 @@ namespace AfterAll.Environment
 
                         childIndex = placed.Count;
                         placed.Add(candidate);
+
+                        if (childFootprint.ResolvedRole == RoomRole.Corridor)
+                            corridorPlaced++;
 
                         PlannedRoom updatedParent = placed[parentIndex];
                         PlannedWall pw = updatedParent.walls[parentWallIndex];
@@ -318,7 +335,8 @@ namespace AfterAll.Environment
                     doorValid = wall.doorValid,
                     lengthM = wall.lengthM,
                     isConnected = false,
-                    gapWidthM = footprint.GapWidthM
+                    gapWidthM = ResolveOpeningWidth(wall, footprint.GapWidthM),
+                    openingMode = wall.openingMode
                 });
             }
 
@@ -387,12 +405,28 @@ namespace AfterAll.Environment
                    aMaxI.y > bMinI.y + OverlapEpsilon;
         }
 
+        private static float ResolveOpeningWidth(RoomFootprint.Wall wall, float footprintDefault)
+        {
+            if (wall.openingWidthM > 0.05f)
+                return wall.openingWidthM;
+
+            if (wall.openingMode == WallOpeningMode.FullWall || wall.openingMode == WallOpeningMode.OpenEnd)
+                return Mathf.Max(0.05f, wall.lengthM - 0.05f);
+
+            return footprintDefault > 0.05f ? footprintDefault : RoomFootprint.DefaultGapWidthM;
+        }
+
         private static float SampleGapOffset(PlannedWall wall, System.Random rng, GapOffsetPolicy policy)
         {
+            // Full openings are always centered — no random door slide.
+            bool forceCenter = wall.openingMode == WallOpeningMode.FullWall ||
+                               wall.openingMode == WallOpeningMode.OpenEnd ||
+                               wall.gapWidthM >= wall.lengthM - 0.2f;
+
             if (!TryGetOffsetRange(wall.lengthM, wall.gapWidthM, policy, out float min, out float max))
                 return 0f;
 
-            if (!policy.randomGapOffset || rng == null || Mathf.Abs(max - min) < 0.0001f)
+            if (forceCenter || !policy.randomGapOffset || rng == null || Mathf.Abs(max - min) < 0.0001f)
                 return (min + max) * 0.5f;
 
             return min + (float)rng.NextDouble() * (max - min);
@@ -457,7 +491,8 @@ namespace AfterAll.Environment
                 lengthM = wall.lengthM,
                 gapWidthM = gapWidthM,
                 doorValid = wall.doorValid,
-                direction = wall.direction
+                direction = wall.direction,
+                openingMode = wall.openingMode
             };
 
         private static List<int> CollectOpenDoorWallIndices(PlannedRoom room)
@@ -496,34 +531,6 @@ namespace AfterAll.Environment
             }
 
             return -1;
-        }
-
-        private static RoomFootprint PickWeighted(IReadOnlyList<RoomFootprint> library, System.Random rng)
-        {
-            int total = 0;
-            for (int i = 0; i < library.Count; i++)
-            {
-                if (library[i] != null)
-                    total += library[i].SpawnWeight;
-            }
-
-            if (total <= 0)
-                return library[0];
-
-            int roll = rng.Next(total);
-            int cumulative = 0;
-            for (int i = 0; i < library.Count; i++)
-            {
-                RoomFootprint entry = library[i];
-                if (entry == null)
-                    continue;
-
-                cumulative += entry.SpawnWeight;
-                if (roll < cumulative)
-                    return entry;
-            }
-
-            return library[library.Count - 1];
         }
 
         private static void Shuffle(List<int> values, System.Random rng)

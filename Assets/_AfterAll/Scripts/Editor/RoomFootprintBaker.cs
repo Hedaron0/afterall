@@ -81,7 +81,7 @@ namespace AfterAll.Editor
             spawner.SetPathNetworkFootprints(footprints.ToArray());
             spawner.SyncPrefabWeightsFromFootprints(footprints);
             EditorUtility.SetDirty(spawner);
-            Debug.Log($"[RoomFootprintBaker] Assigned {footprints.Count} footprints + size weights to {spawner.name}.");
+            Debug.Log($"[RoomFootprintBaker] Assigned {footprints.Count} footprints + role/size weights to {spawner.name}.");
         }
 
         [MenuItem("AfterAll/Generation/Recompute Footprint Weights From Size")]
@@ -102,10 +102,12 @@ namespace AfterAll.Editor
                     continue;
 
                 int weight = footprint.RecomputeSpawnWeightFromBounds();
+                RoomRole role = footprint.ResolvedRole;
                 EditorUtility.SetDirty(footprint);
                 updated++;
                 Debug.Log(
-                    $"[RoomFootprintBaker] {footprint.PrefabId}: area={footprint.BoundsAreaM2:F1}m² → weight={weight}");
+                    $"[RoomFootprintBaker] {footprint.PrefabId}: area={footprint.BoundsAreaM2:F1}m² → " +
+                    $"role={role}, weight={weight}");
             }
 
             RoomPoolSpawner spawner = Object.FindFirstObjectByType<RoomPoolSpawner>();
@@ -126,6 +128,51 @@ namespace AfterAll.Editor
 
             AssetDatabase.SaveAssets();
             Debug.Log($"[RoomFootprintBaker] Recomputed weights on {updated} footprints.");
+        }
+
+        [MenuItem("AfterAll/Generation/Recompute Footprint Roles From Bounds")]
+        private static void RecomputeAllFootprintRoles()
+        {
+            if (!AssetDatabase.IsValidFolder(OutputFolder))
+            {
+                Debug.LogWarning("[RoomFootprintBaker] Bake footprints first.");
+                return;
+            }
+
+            string[] guids = AssetDatabase.FindAssets("t:RoomFootprint", new[] { OutputFolder });
+            int updated = 0;
+            foreach (string guid in guids)
+            {
+                RoomFootprint footprint = AssetDatabase.LoadAssetAtPath<RoomFootprint>(AssetDatabase.GUIDToAssetPath(guid));
+                if (footprint == null)
+                    continue;
+
+                // Reset to Auto so ResolvedRole reclassifies from bounds.
+                footprint.SetRole(RoomRole.Auto);
+                RoomRole role = footprint.ResolvedRole;
+                EditorUtility.SetDirty(footprint);
+                updated++;
+                Debug.Log($"[RoomFootprintBaker] {footprint.PrefabId}: Auto → resolved {role}");
+            }
+
+            RoomPoolSpawner spawner = Object.FindFirstObjectByType<RoomPoolSpawner>();
+            if (spawner != null)
+            {
+                var list = new List<RoomFootprint>();
+                foreach (string guid in guids)
+                {
+                    RoomFootprint footprint = AssetDatabase.LoadAssetAtPath<RoomFootprint>(AssetDatabase.GUIDToAssetPath(guid));
+                    if (footprint != null)
+                        list.Add(footprint);
+                }
+
+                Undo.RecordObject(spawner, "Sync Footprint Roles");
+                spawner.SyncPrefabWeightsFromFootprints(list);
+                EditorUtility.SetDirty(spawner);
+            }
+
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[RoomFootprintBaker] Recomputed roles on {updated} footprints (Auto classify).");
         }
 
         private static bool TryBakePrefab(GameObject prefabAsset, string prefabPath, out string error)
@@ -168,6 +215,7 @@ namespace AfterAll.Editor
 
                     gapWidth = wall.gapWidth > 0.05f ? wall.gapWidth : gapWidth;
                     bool doorValid = wall.TryGetGapOffsetRange(out _, out _, out _);
+                    float openingWidth = wall.EffectiveOpeningWidth;
 
                     Vector3 startWorld = seamWorld - axisWorld.normalized * (lengthM * 0.5f);
                     Vector3 endWorld = seamWorld + axisWorld.normalized * (lengthM * 0.5f);
@@ -191,7 +239,9 @@ namespace AfterAll.Editor
                         lengthM = lengthM,
                         outwardLocal = outwardLocal.normalized,
                         direction = direction,
-                        doorValid = doorValid
+                        doorValid = doorValid,
+                        openingMode = wall.OpeningMode,
+                        openingWidthM = openingWidth
                     });
                 }
 
@@ -239,11 +289,12 @@ namespace AfterAll.Editor
 
                 float area = Mathf.Max(0.5f, Mathf.Abs((boundsMax.x - boundsMin.x) * (boundsMax.y - boundsMin.y)));
                 int weight = RoomFootprint.ComputeSpawnWeightFromArea(area);
-                asset.SetBakedData(prefabAsset, weight, boundsMin, boundsMax, bakedWalls.ToArray(), gapWidth);
+                RoomRole role = RoomFootprint.ClassifyFromBounds(boundsMax - boundsMin, area);
+                asset.SetBakedData(prefabAsset, weight, boundsMin, boundsMax, bakedWalls.ToArray(), gapWidth, RoomRole.Auto);
                 EditorUtility.SetDirty(asset);
                 Debug.Log(
                     $"[RoomFootprintBaker] {prefabAsset.name}: walls={bakedWalls.Count}, " +
-                    $"area={area:F1}m², weight={weight}");
+                    $"area={area:F1}m², role={role}, weight={weight}");
                 return true;
             }
             finally

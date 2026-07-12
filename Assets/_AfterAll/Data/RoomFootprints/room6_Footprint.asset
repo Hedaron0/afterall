@@ -14,18 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomFootprint
   _prefab: {fileID: 5154039689004106256, guid: 0d01d46f78254d144b7652e9254bf96e, type: 3}
   _spawnWeight: 7
+  _role: 0
   _boundsMin: {x: -8.750003, y: -2.9999998}
   _boundsMax: {x: 8.749997, y: 8.65}
   _walls:
-  - name: 6Wall1
-    seamLocal: {x: -2.8750005, y: 0}
-    axisLocal: {x: -0.0000003467907, y: 1}
-    startLocal: {x: -2.8749995, y: -2.75}
-    endLocal: {x: -2.8750014, y: 2.75}
-    lengthM: 5.5
-    outwardLocal: {x: -1, y: -0.0000003467907}
-    direction: 4
-    doorValid: 1
   - name: 6Wall2
     seamLocal: {x: 0, y: -2.875}
     axisLocal: {x: -1, y: 0}
@@ -35,6 +27,8 @@ MonoBehaviour:
     outwardLocal: {x: 0, y: -1}
     direction: 3
     doorValid: 1
+    openingMode: 1
+    openingWidthM: 5.45
   - name: 6Wall5
     seamLocal: {x: 8.624998, y: 5.75}
     axisLocal: {x: 0, y: -1}
@@ -44,6 +38,8 @@ MonoBehaviour:
     outwardLocal: {x: 1, y: 0}
     direction: 2
     doorValid: 1
+    openingMode: 1
+    openingWidthM: 5.45
   - name: 6Wall9
     seamLocal: {x: -8.625002, y: 5.75}
     axisLocal: {x: 0, y: 1}
@@ -53,4 +49,6 @@ MonoBehaviour:
     outwardLocal: {x: -1, y: 0}
     direction: 4
     doorValid: 1
+    openingMode: 1
+    openingWidthM: 5.45
   _gapWidthM: 1.3
