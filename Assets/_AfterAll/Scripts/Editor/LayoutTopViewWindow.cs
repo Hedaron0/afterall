@@ -14,8 +14,11 @@ namespace AfterAll.Editor
         private LayoutPlan _plan;
         private int _inspectIndex;
         private int _seed = 12345;
-        private int _roomCount = 40;
-        private int _pathCount = 3;
+        private int _settlementCount = 3;
+        private int _roomsPerSettlement = 5;
+        private int _corridorRoomsPerBridge = 2;
+        private int _stubBudget = 1;
+        private ExitBiasDirection _exitBias = ExitBiasDirection.East;
         private bool _randomGapOffset;
         private float _gapEdgeMarginM = 0.15f;
         private Vector2 _scroll;
@@ -52,7 +55,6 @@ namespace AfterAll.Editor
             if (e.type != EventType.KeyDown)
                 return;
 
-            // Skip when typing in a text/int field.
             if (EditorGUIUtility.editingTextField)
                 return;
 
@@ -84,8 +86,11 @@ namespace AfterAll.Editor
             if (GUILayout.Button(new GUIContent("Random", "Pick a random seed and regenerate layout"), EditorStyles.toolbarButton, GUILayout.Width(60f)))
                 RandomizeSeedAndGenerate();
 
-            _roomCount = Mathf.Max(1, EditorGUILayout.IntField(_roomCount, GUILayout.Width(50f)));
-            _pathCount = Mathf.Max(1, EditorGUILayout.IntField(_pathCount, GUILayout.Width(40f)));
+            _settlementCount = Mathf.Max(1, EditorGUILayout.IntField(new GUIContent("", "Settlements"), _settlementCount, GUILayout.Width(36f)));
+            _roomsPerSettlement = Mathf.Max(1, EditorGUILayout.IntField(new GUIContent("", "Rooms/settlement"), _roomsPerSettlement, GUILayout.Width(36f)));
+            _corridorRoomsPerBridge = Mathf.Max(1, EditorGUILayout.IntField(new GUIContent("", "Corridor rooms/bridge"), _corridorRoomsPerBridge, GUILayout.Width(36f)));
+            _stubBudget = Mathf.Max(0, EditorGUILayout.IntField(new GUIContent("", "Stub budget"), _stubBudget, GUILayout.Width(30f)));
+            _exitBias = (ExitBiasDirection)EditorGUILayout.EnumPopup(_exitBias, GUILayout.Width(64f));
             _randomGapOffset = GUILayout.Toggle(_randomGapOffset, "RandomGap", EditorStyles.toolbarButton, GUILayout.Width(80f));
 
             if (GUILayout.Button("Generate", EditorStyles.toolbarButton, GUILayout.Width(70f)))
@@ -96,6 +101,10 @@ namespace AfterAll.Editor
 
             GUILayout.FlexibleSpace();
             EditorGUILayout.LabelField($"Lib:{_library.Count}", GUILayout.Width(50f));
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField("Settle / Rooms / Bridge / Stub / Bias", EditorStyles.miniLabel);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.BeginHorizontal();
@@ -130,17 +139,30 @@ namespace AfterAll.Editor
                 return;
             }
 
-            var policy = new GapOffsetPolicy
-            {
-                randomGapOffset = _randomGapOffset,
-                edgeMarginM = _gapEdgeMarginM,
-                spanFraction = 1f
-            };
-
-            _plan = PathNetworkPlanner.Generate(_library, _seed, _roomCount, _pathCount, _randomGapOffset, policy);
+            SettlementSpineConfig config = BuildConfig();
+            _plan = SettlementSpinePlanner.Generate(_library, _seed, config);
             _status = _plan.notes;
             FramePlan();
             Repaint();
+        }
+
+        private SettlementSpineConfig BuildConfig()
+        {
+            return new SettlementSpineConfig
+            {
+                settlementCount = _settlementCount,
+                roomsPerSettlement = _roomsPerSettlement,
+                corridorRoomsPerBridge = _corridorRoomsPerBridge,
+                stubBudget = _stubBudget,
+                exitBias = _exitBias,
+                randomGapOffset = _randomGapOffset,
+                gapPolicy = new GapOffsetPolicy
+                {
+                    randomGapOffset = _randomGapOffset,
+                    edgeMarginM = _gapEdgeMarginM,
+                    spanFraction = 1f
+                }
+            };
         }
 
         private void PushSeedToSceneSpawner()
@@ -152,10 +174,12 @@ namespace AfterAll.Editor
                 return;
             }
 
-            Undo.RecordObject(spawner, "Set Path Network Seed");
-            spawner.ConfigurePathNetworkFromEditor(_seed, _roomCount, _pathCount, _randomGapOffset, _library.ToArray());
+            Undo.RecordObject(spawner, "Set Settlement Spine Seed");
+            spawner.ConfigureSettlementSpineFromEditor(_seed, BuildConfig(), _library.ToArray());
             EditorUtility.SetDirty(spawner);
-            _status = $"Pushed seed={_seed}, rooms={_roomCount}, paths={_pathCount} to {spawner.name}.";
+            _status =
+                $"Pushed seed={_seed}, settlements={_settlementCount}, rooms/settle={_roomsPerSettlement}, " +
+                $"bridge={_corridorRoomsPerBridge} to {spawner.name}.";
         }
 
         private void ReloadLibrary()
@@ -186,7 +210,8 @@ namespace AfterAll.Editor
             var names = new string[_library.Count];
             for (int i = 0; i < _library.Count; i++)
                 names[i] =
-                    $"{_library[i].PrefabId} [{_library[i].ResolvedRole}] (w{_library[i].SpawnWeight}, walls={_library[i].Walls.Length})";
+                    $"{_library[i].PrefabId} [{_library[i].ResolvedRole}] " +
+                    $"(area={_library[i].BoundsAreaM2:F0}m², walls={_library[i].Walls.Length})";
             return names;
         }
 
@@ -276,17 +301,21 @@ namespace AfterAll.Editor
                 if (!byId.TryGetValue(placement.prefabId, out RoomFootprint footprint))
                     continue;
 
-                Color fill = i == 0
-                    ? new Color(0.9f, 0.35f, 0.2f, 0.4f)
-                    : new Color(0.3f, 0.65f, 0.45f, 0.35f);
+                Color fill;
+                if (i == 0)
+                    fill = new Color(0.9f, 0.35f, 0.2f, 0.4f);
+                else if (i == _plan.exitIndex)
+                    fill = new Color(0.85f, 0.25f, 0.75f, 0.4f);
+                else if (footprint.ResolvedRole == RoomRole.Corridor)
+                    fill = new Color(0.35f, 0.45f, 0.75f, 0.35f);
+                else
+                    fill = new Color(0.3f, 0.65f, 0.45f, 0.35f);
+
                 DrawFootprintAt(origin, footprint, placement.positionXZ, placement.yawDegrees * Mathf.Deg2Rad, fill, false);
             }
 
-            // Door marks with planned offsets.
             foreach (LayoutPlanConnection connection in _plan.connections)
-            {
                 DrawConnectionDoors(origin, byId, connection);
-            }
         }
 
         private void DrawConnectionDoors(

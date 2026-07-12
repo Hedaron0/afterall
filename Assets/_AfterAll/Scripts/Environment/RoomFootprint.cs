@@ -17,7 +17,8 @@ namespace AfterAll.Environment
     }
 
     /// <summary>
-    /// Layout role for room-pool picking. Auto classifies from footprint bounds.
+    /// Layout role for settlement-spine picking (Hub / Room / Corridor).
+    /// Auto classifies from footprint bounds.
     /// </summary>
     public enum RoomRole
     {
@@ -29,7 +30,7 @@ namespace AfterAll.Environment
 
     /// <summary>
     /// Baked 2D layout data for a room prefab (walls + floor AABB in prefab-local XZ).
-    /// SpawnWeight is within-role only; role + streak/budget control global mix.
+    /// Role drives settlement vs corridor phases — no weight-based mix.
     /// </summary>
     [CreateAssetMenu(fileName = "RoomFootprint", menuName = "AfterAll/Generation/Room Footprint")]
     public class RoomFootprint : ScriptableObject
@@ -57,7 +58,6 @@ namespace AfterAll.Environment
         }
 
         [SerializeField] private GameObject _prefab;
-        [SerializeField, Min(1)] private int _spawnWeight = 10;
         [SerializeField] private RoomRole _role = RoomRole.Auto;
         [SerializeField] private Vector2 _boundsMin;
         [SerializeField] private Vector2 _boundsMax;
@@ -66,7 +66,6 @@ namespace AfterAll.Environment
 
         public GameObject Prefab => _prefab;
         public string PrefabId => _prefab != null ? _prefab.name : name;
-        public int SpawnWeight => Mathf.Max(1, _spawnWeight);
         public RoomRole Role => _role;
         public RoomRole ResolvedRole => ResolveRole(_role, BoundsSize, BoundsAreaM2);
         public Vector2 BoundsMin => _boundsMin;
@@ -83,18 +82,6 @@ namespace AfterAll.Environment
         }
         public Wall[] Walls => _walls;
         public float GapWidthM => _gapWidthM > 0.05f ? _gapWidthM : DefaultGapWidthM;
-
-        /// <summary>
-        /// Within-role weight: smaller rooms appear more often inside the same role.
-        /// Soft 1/sqrt(area) curve.
-        /// </summary>
-        public static int ComputeSpawnWeightFromArea(float areaM2, int minWeight = 2, int maxWeight = 40)
-        {
-            float area = Mathf.Max(0.5f, areaM2);
-            // area 16 → ~25, area 36 → ~17, area 100 → ~10, area 400 → ~5, area 2500 → ~2
-            int weight = Mathf.RoundToInt(100f / Mathf.Sqrt(area));
-            return Mathf.Clamp(weight, Mathf.Max(1, minWeight), Mathf.Max(minWeight, maxWeight));
-        }
 
         public static RoomRole ClassifyFromBounds(Vector2 boundsSize, float areaM2)
         {
@@ -117,12 +104,6 @@ namespace AfterAll.Environment
         public static RoomRole ResolveRole(RoomRole role, Vector2 boundsSize, float areaM2) =>
             role == RoomRole.Auto ? ClassifyFromBounds(boundsSize, areaM2) : role;
 
-        public int RecomputeSpawnWeightFromBounds()
-        {
-            _spawnWeight = ComputeSpawnWeightFromArea(BoundsAreaM2);
-            return _spawnWeight;
-        }
-
         public RoomRole RecomputeRoleFromBounds(bool forceAuto = false)
         {
             if (forceAuto || _role == RoomRole.Auto)
@@ -134,7 +115,6 @@ namespace AfterAll.Environment
 
         public void SetBakedData(
             GameObject prefab,
-            int spawnWeight,
             Vector2 boundsMin,
             Vector2 boundsMax,
             Wall[] walls,
@@ -142,7 +122,6 @@ namespace AfterAll.Environment
             RoomRole role = RoomRole.Auto)
         {
             _prefab = prefab;
-            _spawnWeight = Mathf.Max(1, spawnWeight);
             _boundsMin = boundsMin;
             _boundsMax = boundsMax;
             _walls = walls ?? Array.Empty<Wall>();

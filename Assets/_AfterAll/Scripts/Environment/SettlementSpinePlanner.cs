@@ -5,18 +5,22 @@ using UnityEngine;
 namespace AfterAll.Environment
 {
     /// <summary>
-    /// Pure-data path-network layout planner (no Instantiate).
-    /// Phase 1: N spines from hub. Phase 2: frontier infill. No proximity links.
+    /// Pure-data settlement-spine layout planner (no Instantiate).
+    /// Start hub → settlement clusters → corridor bridges toward exit → optional stubs.
+    /// No random frontier infill; no proximity links.
     /// </summary>
-    public static class PathNetworkPlanner
+    public static class SettlementSpinePlanner
     {
         private const float OverlapEpsilon = 0.05f;
-        /// <summary>
-        /// Floor AABBs often extend slightly past wall seams. Without inset, seam-snapped
-        /// neighbors always "overlap" and the planner never places a second room.
-        /// </summary>
         private const float OverlapInsetM = 0.2f;
-        private const int MaxInfillAttempts = 800;
+        private const float DirectionDotMin = 0.35f;
+
+        private enum PrefabPickMode
+        {
+            Settlement,
+            Corridor,
+            Stub
+        }
 
         private struct PlannedRoom
         {
@@ -47,18 +51,24 @@ namespace AfterAll.Environment
         public static LayoutPlan Generate(
             IReadOnlyList<RoomFootprint> library,
             int seed,
-            int roomCount,
-            int pathCount,
-            bool randomGapOffset = false,
-            GapOffsetPolicy gapPolicy = default,
-            float corridorBudgetFraction = RoomRolePicker.DefaultCorridorBudgetFraction)
+            SettlementSpineConfig config)
         {
+            config.Clamp();
+            if (config.gapPolicy.edgeMarginM <= 0f && config.gapPolicy.spanFraction <= 0f)
+                config.gapPolicy = GapOffsetPolicy.Default;
+
+            config.gapPolicy.randomGapOffset = config.randomGapOffset;
+
             var plan = new LayoutPlan
             {
                 seed = seed,
-                roomCount = Mathf.Max(1, roomCount),
-                pathCount = Mathf.Max(1, pathCount),
-                randomGapOffset = randomGapOffset
+                roomCount = config.EstimatedRoomCount,
+                settlementCount = config.settlementCount,
+                roomsPerSettlement = config.roomsPerSettlement,
+                corridorRoomsPerBridge = config.corridorRoomsPerBridge,
+                stubBudget = config.stubBudget,
+                randomGapOffset = config.randomGapOffset,
+                exitIndex = -1
             };
 
             if (library == null || library.Count == 0)
@@ -67,78 +77,86 @@ namespace AfterAll.Environment
                 return plan;
             }
 
-            if (gapPolicy.edgeMarginM <= 0f && gapPolicy.spanFraction <= 0f)
-                gapPolicy = GapOffsetPolicy.Default;
-
-            gapPolicy.randomGapOffset = randomGapOffset;
-
             var rng = new System.Random(seed);
             var placed = new List<PlannedRoom>();
             int failed = 0;
+            Vector2 exitBias = config.ExitBiasVector;
+
+            RoomFootprint hubFootprint = PickHub(library);
+            placed.Add(CreateRoom(hubFootprint, Vector2.zero, 0f));
+
+            int bridgeTipIndex = 0;
             int corridorPlaced = 0;
+            int stubPlaced = 0;
 
-            RoomFootprint hubFootprint = RoomRolePicker.PickHub(library, rng);
-            PlannedRoom hub = CreateRoom(hubFootprint, Vector2.zero, 0f);
-            placed.Add(hub);
-            if (hubFootprint.ResolvedRole == RoomRole.Corridor)
-                corridorPlaced++;
-
-            int roomsPerPath = Mathf.Max(1, plan.roomCount / plan.pathCount);
-
-            for (int path = 0; path < plan.pathCount && placed.Count < plan.roomCount; path++)
+            for (int settlement = 0; settlement < config.settlementCount; settlement++)
             {
-                int lastIndex = 0;
-                for (int step = 0; step < roomsPerPath && placed.Count < plan.roomCount; step++)
+                var cluster = new List<int> { bridgeTipIndex };
+
+                GrowSettlement(
+                    placed,
+                    cluster,
+                    library,
+                    rng,
+                    config.gapPolicy,
+                    plan,
+                    config.roomsPerSettlement,
+                    PrefabPickMode.Settlement,
+                    preferDirection: null,
+                    ref failed);
+
+                int stubsThisCluster = Mathf.Min(config.stubBudget, 2);
+                for (int s = 0; s < stubsThisCluster; s++)
+                {
+                    if (TryGrowFromCluster(
+                            placed,
+                            cluster,
+                            library,
+                            rng,
+                            config.gapPolicy,
+                            plan,
+                            PrefabPickMode.Stub,
+                            preferDirection: null,
+                            out int stubChild,
+                            ref failed))
+                    {
+                        stubPlaced++;
+                        // Stubs do not expand the spine cluster used for the next bridge.
+                    }
+                }
+
+                if (settlement >= config.settlementCount - 1)
+                {
+                    bridgeTipIndex = PickFarthestInCluster(placed, cluster, exitBias);
+                    break;
+                }
+
+                int bridgeStart = PickBestBridgeParent(placed, cluster, exitBias, rng);
+                int tip = bridgeStart;
+                for (int c = 0; c < config.corridorRoomsPerBridge; c++)
                 {
                     if (!TryGrowFrom(
                             placed,
-                            lastIndex,
+                            tip,
                             library,
                             rng,
-                            gapPolicy,
+                            config.gapPolicy,
                             plan,
-                            corridorBudgetFraction,
-                            ref corridorPlaced,
+                            PrefabPickMode.Corridor,
+                            exitBias,
                             out int childIndex,
                             ref failed))
                         break;
 
-                    lastIndex = childIndex;
+                    tip = childIndex;
+                    corridorPlaced++;
+                    // Corridor rooms are not settlement members.
                 }
+
+                bridgeTipIndex = tip;
             }
 
-            var frontier = new List<int>();
-            for (int i = 0; i < placed.Count; i++)
-                frontier.Add(i);
-
-            int infillAttempts = 0;
-            while (placed.Count < plan.roomCount && frontier.Count > 0 && infillAttempts < MaxInfillAttempts)
-            {
-                infillAttempts++;
-                int frontierIdx = rng.Next(frontier.Count);
-                int parentIndex = frontier[frontierIdx];
-
-                if (!HasOpenDoorWall(placed[parentIndex]))
-                {
-                    frontier.RemoveAt(frontierIdx);
-                    continue;
-                }
-
-                if (TryGrowFrom(
-                        placed,
-                        parentIndex,
-                        library,
-                        rng,
-                        gapPolicy,
-                        plan,
-                        corridorBudgetFraction,
-                        ref corridorPlaced,
-                        out int childIndex,
-                        ref failed))
-                {
-                    frontier.Add(childIndex);
-                }
-            }
+            plan.exitIndex = bridgeTipIndex;
 
             for (int i = 0; i < placed.Count; i++)
             {
@@ -154,9 +172,85 @@ namespace AfterAll.Environment
 
             plan.failedAttempts = failed;
             plan.notes =
-                $"PathNetwork placed={plan.PlacedCount}/{plan.roomCount}, paths={plan.pathCount}, " +
-                $"corridors={corridorPlaced}, failed={failed}, randomGap={randomGapOffset}";
+                $"SettlementSpine placed={plan.PlacedCount}, settlements={config.settlementCount}, " +
+                $"roomsPerSettlement={config.roomsPerSettlement}, bridge={config.corridorRoomsPerBridge}, " +
+                $"corridors={corridorPlaced}, stubs={stubPlaced}, exit={plan.exitIndex}, " +
+                $"bias={config.exitBias}, failed={failed}, randomGap={config.randomGapOffset}";
             return plan;
+        }
+
+        private static void GrowSettlement(
+            List<PlannedRoom> placed,
+            List<int> cluster,
+            IReadOnlyList<RoomFootprint> library,
+            System.Random rng,
+            GapOffsetPolicy gapPolicy,
+            LayoutPlan plan,
+            int roomsPerSettlement,
+            PrefabPickMode mode,
+            Vector2? preferDirection,
+            ref int failed)
+        {
+            int target = Mathf.Max(1, roomsPerSettlement);
+            // Cluster already has the seed room; grow until cluster size hits target.
+            int guard = target * 12;
+            while (cluster.Count < target && guard-- > 0)
+            {
+                if (!TryGrowFromCluster(
+                        placed,
+                        cluster,
+                        library,
+                        rng,
+                        gapPolicy,
+                        plan,
+                        mode,
+                        preferDirection,
+                        out int childIndex,
+                        ref failed))
+                    break;
+
+                cluster.Add(childIndex);
+            }
+        }
+
+        private static bool TryGrowFromCluster(
+            List<PlannedRoom> placed,
+            List<int> cluster,
+            IReadOnlyList<RoomFootprint> library,
+            System.Random rng,
+            GapOffsetPolicy gapPolicy,
+            LayoutPlan plan,
+            PrefabPickMode mode,
+            Vector2? preferDirection,
+            out int childIndex,
+            ref int failed)
+        {
+            childIndex = -1;
+            var parents = new List<int>(cluster);
+            Shuffle(parents, rng);
+
+            // Prefer denser packing: parents with fewer open walls first (more "interior"),
+            // then shuffle ties via the shuffled list order.
+            parents.Sort((a, b) =>
+                CollectOpenDoorWallIndices(placed[a]).Count.CompareTo(CollectOpenDoorWallIndices(placed[b]).Count));
+
+            foreach (int parentIndex in parents)
+            {
+                if (TryGrowFrom(
+                        placed,
+                        parentIndex,
+                        library,
+                        rng,
+                        gapPolicy,
+                        plan,
+                        mode,
+                        preferDirection,
+                        out childIndex,
+                        ref failed))
+                    return true;
+            }
+
+            return false;
         }
 
         private static bool TryGrowFrom(
@@ -166,8 +260,8 @@ namespace AfterAll.Environment
             System.Random rng,
             GapOffsetPolicy gapPolicy,
             LayoutPlan plan,
-            float corridorBudgetFraction,
-            ref int corridorPlaced,
+            PrefabPickMode mode,
+            Vector2? preferDirection,
             out int childIndex,
             ref int failed)
         {
@@ -177,23 +271,22 @@ namespace AfterAll.Environment
             if (openWallIndices.Count == 0)
                 return false;
 
-            Shuffle(openWallIndices, rng);
+            OrderWalls(openWallIndices, parent, preferDirection, rng);
 
-            RoomRole lastRole = parent.footprint != null ? parent.footprint.ResolvedRole : RoomRole.Room;
-            var prefabOrder = new List<int>(library.Count);
-            RoomRolePicker.BuildContextPrefabOrder(
-                library,
-                rng,
-                lastRole,
-                corridorPlaced,
-                placed.Count,
-                plan.roomCount,
-                prefabOrder,
-                corridorBudgetFraction);
+            List<int> prefabOrder = BuildPrefabOrder(library, mode, rng);
+            if (prefabOrder.Count == 0)
+                return false;
 
             foreach (int parentWallIndex in openWallIndices)
             {
                 PlannedWall parentWall = parent.walls[parentWallIndex];
+                if (preferDirection.HasValue &&
+                    mode == PrefabPickMode.Corridor &&
+                    Vector2.Dot(parentWall.outward, preferDirection.Value) < DirectionDotMin)
+                {
+                    // Soft skip — still allow later as fallback by keeping them at end of OrderWalls.
+                }
+
                 float parentOffset = SampleGapOffset(parentWall, rng, gapPolicy);
 
                 foreach (int prefabIndex in prefabOrder)
@@ -243,11 +336,20 @@ namespace AfterAll.Environment
                             continue;
                         }
 
+                        // Corridor: require child placement advances along exit bias.
+                        if (mode == PrefabPickMode.Corridor && preferDirection.HasValue)
+                        {
+                            Vector2 delta = candidate.positionXZ - parent.positionXZ;
+                            if (delta.sqrMagnitude > 0.01f &&
+                                Vector2.Dot(delta.normalized, preferDirection.Value) < 0f)
+                            {
+                                failed++;
+                                continue;
+                            }
+                        }
+
                         childIndex = placed.Count;
                         placed.Add(candidate);
-
-                        if (childFootprint.ResolvedRole == RoomRole.Corridor)
-                            corridorPlaced++;
 
                         PlannedRoom updatedParent = placed[parentIndex];
                         PlannedWall pw = updatedParent.walls[parentWallIndex];
@@ -281,6 +383,157 @@ namespace AfterAll.Environment
             }
 
             return false;
+        }
+
+        private static void OrderWalls(
+            List<int> wallIndices,
+            PlannedRoom parent,
+            Vector2? preferDirection,
+            System.Random rng)
+        {
+            Shuffle(wallIndices, rng);
+            if (!preferDirection.HasValue)
+                return;
+
+            Vector2 dir = preferDirection.Value;
+            wallIndices.Sort((a, b) =>
+            {
+                float da = Vector2.Dot(parent.walls[a].outward, dir);
+                float db = Vector2.Dot(parent.walls[b].outward, dir);
+                return db.CompareTo(da);
+            });
+        }
+
+        private static List<int> BuildPrefabOrder(
+            IReadOnlyList<RoomFootprint> library,
+            PrefabPickMode mode,
+            System.Random rng)
+        {
+            var preferred = new List<int>();
+            var fallback = new List<int>();
+
+            for (int i = 0; i < library.Count; i++)
+            {
+                RoomFootprint fp = library[i];
+                if (fp == null)
+                    continue;
+
+                RoomRole role = fp.ResolvedRole;
+                bool match = mode switch
+                {
+                    PrefabPickMode.Corridor => role == RoomRole.Corridor,
+                    PrefabPickMode.Settlement => role == RoomRole.Room || role == RoomRole.Hub,
+                    PrefabPickMode.Stub => role == RoomRole.Room,
+                    _ => true
+                };
+
+                if (match)
+                    preferred.Add(i);
+                else if (mode == PrefabPickMode.Settlement && role != RoomRole.Corridor)
+                    fallback.Add(i);
+                else if (mode == PrefabPickMode.Stub && role != RoomRole.Corridor)
+                    fallback.Add(i);
+                else if (mode == PrefabPickMode.Corridor && role != RoomRole.Corridor)
+                    fallback.Add(i);
+            }
+
+            if (mode == PrefabPickMode.Settlement || mode == PrefabPickMode.Stub)
+            {
+                preferred.Sort((a, b) => library[b].BoundsAreaM2.CompareTo(library[a].BoundsAreaM2));
+                // Light shuffle among similar sizes so seeds vary.
+                SoftShuffleFront(preferred, rng, Mathf.Min(4, preferred.Count));
+            }
+            else
+            {
+                Shuffle(preferred, rng);
+            }
+
+            Shuffle(fallback, rng);
+            preferred.AddRange(fallback);
+            return preferred;
+        }
+
+        private static void SoftShuffleFront(List<int> values, System.Random rng, int count)
+        {
+            for (int i = count - 1; i > 0; i--)
+            {
+                int j = rng.Next(i + 1);
+                (values[i], values[j]) = (values[j], values[i]);
+            }
+        }
+
+        private static RoomFootprint PickHub(IReadOnlyList<RoomFootprint> library)
+        {
+            RoomFootprint bestHub = null;
+            float bestHubArea = -1f;
+            RoomFootprint largest = null;
+            float largestArea = -1f;
+
+            for (int i = 0; i < library.Count; i++)
+            {
+                RoomFootprint entry = library[i];
+                if (entry == null)
+                    continue;
+
+                float area = entry.BoundsAreaM2;
+                if (area > largestArea)
+                {
+                    largestArea = area;
+                    largest = entry;
+                }
+
+                if (entry.ResolvedRole == RoomRole.Hub && area > bestHubArea)
+                {
+                    bestHubArea = area;
+                    bestHub = entry;
+                }
+            }
+
+            return bestHub ?? largest ?? library[0];
+        }
+
+        private static int PickFarthestInCluster(List<PlannedRoom> placed, List<int> cluster, Vector2 exitBias)
+        {
+            int best = cluster[0];
+            float bestScore = float.NegativeInfinity;
+            foreach (int index in cluster)
+            {
+                float score = Vector2.Dot(placed[index].positionXZ, exitBias);
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = index;
+                }
+            }
+
+            return best;
+        }
+
+        private static int PickBestBridgeParent(
+            List<PlannedRoom> placed,
+            List<int> cluster,
+            Vector2 exitBias,
+            System.Random rng)
+        {
+            var candidates = new List<int>();
+            foreach (int index in cluster)
+            {
+                PlannedRoom room = placed[index];
+                List<int> walls = CollectOpenDoorWallIndices(room);
+                foreach (int wallIndex in walls)
+                {
+                    if (Vector2.Dot(room.walls[wallIndex].outward, exitBias) >= DirectionDotMin)
+                    {
+                        candidates.Add(index);
+                        break;
+                    }
+                }
+            }
+
+            if (candidates.Count == 0)
+                return PickFarthestInCluster(placed, cluster, exitBias);
+
+            return candidates[rng.Next(candidates.Count)];
         }
 
         private static bool TrySnap(
@@ -340,18 +593,12 @@ namespace AfterAll.Environment
                 });
             }
 
-            Vector2 min = TransformPoint(footprint.BoundsMin, positionXZ, yawRadians);
-            Vector2 max = TransformPoint(footprint.BoundsMax, positionXZ, yawRadians);
-            Vector2 boundsMin = Vector2.Min(min, max);
-            Vector2 boundsMax = Vector2.Max(min, max);
-
-            // Rotate AABB corners for correct world bounds.
             Vector2 c0 = TransformPoint(new Vector2(footprint.BoundsMin.x, footprint.BoundsMin.y), positionXZ, yawRadians);
             Vector2 c1 = TransformPoint(new Vector2(footprint.BoundsMin.x, footprint.BoundsMax.y), positionXZ, yawRadians);
             Vector2 c2 = TransformPoint(new Vector2(footprint.BoundsMax.x, footprint.BoundsMin.y), positionXZ, yawRadians);
             Vector2 c3 = TransformPoint(new Vector2(footprint.BoundsMax.x, footprint.BoundsMax.y), positionXZ, yawRadians);
-            boundsMin = Vector2.Min(Vector2.Min(c0, c1), Vector2.Min(c2, c3));
-            boundsMax = Vector2.Max(Vector2.Max(c0, c1), Vector2.Max(c2, c3));
+            Vector2 boundsMin = Vector2.Min(Vector2.Min(c0, c1), Vector2.Min(c2, c3));
+            Vector2 boundsMax = Vector2.Max(Vector2.Max(c0, c1), Vector2.Max(c2, c3));
 
             return new PlannedRoom
             {
@@ -393,7 +640,6 @@ namespace AfterAll.Environment
             Vector2 bMinI = bMin + Vector2.one * insetClamped;
             Vector2 bMaxI = bMax - Vector2.one * insetClamped;
 
-            // Degenerate after inset → treat as non-overlapping (too thin to matter).
             if (aMinI.x >= aMaxI.x - OverlapEpsilon || aMinI.y >= aMaxI.y - OverlapEpsilon)
                 return false;
             if (bMinI.x >= bMaxI.x - OverlapEpsilon || bMinI.y >= bMaxI.y - OverlapEpsilon)
@@ -418,7 +664,6 @@ namespace AfterAll.Environment
 
         private static float SampleGapOffset(PlannedWall wall, System.Random rng, GapOffsetPolicy policy)
         {
-            // Full openings are always centered — no random door slide.
             bool forceCenter = wall.openingMode == WallOpeningMode.FullWall ||
                                wall.openingMode == WallOpeningMode.OpenEnd ||
                                wall.gapWidthM >= wall.lengthM - 0.2f;
@@ -507,8 +752,6 @@ namespace AfterAll.Environment
 
             return list;
         }
-
-        private static bool HasOpenDoorWall(PlannedRoom room) => CollectOpenDoorWallIndices(room).Count > 0;
 
         private static List<int> CollectDoorWallIndices(RoomFootprint footprint)
         {

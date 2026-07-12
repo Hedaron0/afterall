@@ -1,5 +1,8 @@
+using System;
+
 namespace AfterAll.Environment
 {
+    [Serializable]
     public struct GapOffsetPolicy
     {
         public bool randomGapOffset;
