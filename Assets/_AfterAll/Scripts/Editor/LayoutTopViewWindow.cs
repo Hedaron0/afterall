@@ -14,20 +14,15 @@ namespace AfterAll.Editor
         private LayoutPlan _plan;
         private int _inspectIndex;
         private int _seed = 12345;
-        private int _settlementCount = 3;
-        private int _roomsPerSettlement = 5;
-        private int _corridorRoomsPerBridge = 2;
-        private int _stubBudget = 1;
-        private ExitBiasDirection _exitBias = ExitBiasDirection.East;
+        private int _roomCount = 20;
         private bool _randomGapOffset;
         private float _gapEdgeMarginM = 0.15f;
-        private Vector2 _scroll;
         private float _zoom = 6f;
         private Vector2 _pan;
         private bool _isDragging;
         private Vector2 _dragStart;
         private Vector2 _panAtDragStart;
-        private string _status = "Bake footprints, then Generate.";
+        private string _status = "Bake footprints, then Random.";
 
         [MenuItem("AfterAll/Generation/Layout Top View")]
         private static void Open()
@@ -80,31 +75,20 @@ namespace AfterAll.Editor
 
             _seed = EditorGUILayout.IntField(_seed, GUILayout.Width(80f));
 
-            if (GUILayout.Button(new GUIContent("R", "Random seed + Generate (hotkey: R)"), EditorStyles.toolbarButton, GUILayout.Width(24f)))
+            if (GUILayout.Button(new GUIContent("Random", "New seed + generate (hotkey: R)"), EditorStyles.toolbarButton, GUILayout.Width(64f)))
                 RandomizeSeedAndGenerate();
 
-            if (GUILayout.Button(new GUIContent("Random", "Pick a random seed and regenerate layout"), EditorStyles.toolbarButton, GUILayout.Width(60f)))
-                RandomizeSeedAndGenerate();
-
-            _settlementCount = Mathf.Max(1, EditorGUILayout.IntField(new GUIContent("", "Settlements"), _settlementCount, GUILayout.Width(36f)));
-            _roomsPerSettlement = Mathf.Max(1, EditorGUILayout.IntField(new GUIContent("", "Rooms/settlement"), _roomsPerSettlement, GUILayout.Width(36f)));
-            _corridorRoomsPerBridge = Mathf.Max(1, EditorGUILayout.IntField(new GUIContent("", "Corridor rooms/bridge"), _corridorRoomsPerBridge, GUILayout.Width(36f)));
-            _stubBudget = Mathf.Max(0, EditorGUILayout.IntField(new GUIContent("", "Stub budget"), _stubBudget, GUILayout.Width(30f)));
-            _exitBias = (ExitBiasDirection)EditorGUILayout.EnumPopup(_exitBias, GUILayout.Width(64f));
-            _randomGapOffset = GUILayout.Toggle(_randomGapOffset, "RandomGap", EditorStyles.toolbarButton, GUILayout.Width(80f));
+            EditorGUILayout.LabelField("Rooms", GUILayout.Width(42f));
+            _roomCount = Mathf.Clamp(EditorGUILayout.IntField(_roomCount, GUILayout.Width(40f)), 8, 80);
 
             if (GUILayout.Button("Generate", EditorStyles.toolbarButton, GUILayout.Width(70f)))
                 GeneratePlan();
 
-            if (GUILayout.Button("Push Seed → Scene", EditorStyles.toolbarButton, GUILayout.Width(120f)))
-                PushSeedToSceneSpawner();
+            if (GUILayout.Button(new GUIContent("Push → Play", "Write seed/rooms/footprints to RoomPoolSpawner and enter Play Mode"), EditorStyles.toolbarButton, GUILayout.Width(90f)))
+                PushSeedAndEnterPlay();
 
             GUILayout.FlexibleSpace();
             EditorGUILayout.LabelField($"Lib:{_library.Count}", GUILayout.Width(50f));
-            EditorGUILayout.EndHorizontal();
-
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("Settle / Rooms / Bridge / Stub / Bias", EditorStyles.miniLabel);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.BeginHorizontal();
@@ -139,47 +123,42 @@ namespace AfterAll.Editor
                 return;
             }
 
-            SettlementSpineConfig config = BuildConfig();
-            _plan = SettlementSpinePlanner.Generate(_library, _seed, config);
+            PaintGrowthConfig config = BuildConfig();
+            _plan = PaintGrowthPlanner.Generate(_library, _seed, config);
             _status = _plan.notes;
             FramePlan();
             Repaint();
         }
 
-        private SettlementSpineConfig BuildConfig()
+        private PaintGrowthConfig BuildConfig()
         {
-            return new SettlementSpineConfig
+            var policy = new GapOffsetPolicy
             {
-                settlementCount = _settlementCount,
-                roomsPerSettlement = _roomsPerSettlement,
-                corridorRoomsPerBridge = _corridorRoomsPerBridge,
-                stubBudget = _stubBudget,
-                exitBias = _exitBias,
                 randomGapOffset = _randomGapOffset,
-                gapPolicy = new GapOffsetPolicy
-                {
-                    randomGapOffset = _randomGapOffset,
-                    edgeMarginM = _gapEdgeMarginM,
-                    spanFraction = 1f
-                }
+                edgeMarginM = _gapEdgeMarginM,
+                spanFraction = 1f
             };
+            return PaintGrowthConfig.FromTargetRoomCount(_roomCount, _randomGapOffset, policy);
         }
 
-        private void PushSeedToSceneSpawner()
+        private void PushSeedAndEnterPlay()
         {
             RoomPoolSpawner spawner = Object.FindFirstObjectByType<RoomPoolSpawner>();
             if (spawner == null)
             {
-                _status = "No RoomPoolSpawner in open scenes.";
+                _status = "No RoomPoolSpawner in open scenes. Open Test.unity first.";
                 return;
             }
 
-            Undo.RecordObject(spawner, "Set Settlement Spine Seed");
-            spawner.ConfigureSettlementSpineFromEditor(_seed, BuildConfig(), _library.ToArray());
+            Undo.RecordObject(spawner, "Set Paint Growth Seed");
+            spawner.ConfigurePaintGrowthFromEditor(_seed, BuildConfig(), _library.ToArray());
             EditorUtility.SetDirty(spawner);
-            _status =
-                $"Pushed seed={_seed}, settlements={_settlementCount}, rooms/settle={_roomsPerSettlement}, " +
-                $"bridge={_corridorRoomsPerBridge} to {spawner.name}.";
+            if (spawner.gameObject.scene.IsValid())
+                UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(spawner.gameObject.scene);
+
+            _status = $"Pushed seed={_seed}, rooms={_roomCount} → entering Play…";
+            Repaint();
+            EditorApplication.isPlaying = true;
         }
 
         private void ReloadLibrary()
@@ -209,9 +188,13 @@ namespace AfterAll.Editor
         {
             var names = new string[_library.Count];
             for (int i = 0; i < _library.Count; i++)
+            {
+                string shape = _library[i].IsCorridorShape ? "passage" : "room";
                 names[i] =
-                    $"{_library[i].PrefabId} [{_library[i].ResolvedRole}] " +
+                    $"{_library[i].PrefabId} [{shape}] " +
                     $"(area={_library[i].BoundsAreaM2:F0}m², walls={_library[i].Walls.Length})";
+            }
+
             return names;
         }
 
@@ -306,7 +289,7 @@ namespace AfterAll.Editor
                     fill = new Color(0.9f, 0.35f, 0.2f, 0.4f);
                 else if (i == _plan.exitIndex)
                     fill = new Color(0.85f, 0.25f, 0.75f, 0.4f);
-                else if (footprint.ResolvedRole == RoomRole.Corridor)
+                else if (footprint.IsCorridorShape)
                     fill = new Color(0.35f, 0.45f, 0.75f, 0.35f);
                 else
                     fill = new Color(0.3f, 0.65f, 0.45f, 0.35f);

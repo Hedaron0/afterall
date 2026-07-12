@@ -22,6 +22,7 @@ namespace AfterAll.Environment
         public IReadOnlyList<RoomInstance> ConnectedRooms => _connectedRooms;
         public bool IsHub { get; private set; }
         public int GraphDepth { get; private set; } = -1;
+        public string PrefabId { get; set; } = string.Empty;
 
         private void Awake() => CacheWalls();
 

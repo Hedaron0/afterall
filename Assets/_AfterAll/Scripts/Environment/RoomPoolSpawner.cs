@@ -10,8 +10,8 @@ using UnityEngine.Serialization;
 namespace AfterAll.Environment
 {
     /// <summary>
-    /// Settlement-spine layout: plan in Layout Top View (or on Play), then apply sockets in-scene.
-    /// Generation policy lives in SettlementSpinePlanner + Top View.
+    /// Paint-growth layout: plan in Layout Top View (or on Play), then apply sockets in-scene.
+    /// Generation policy lives in PaintGrowthPlanner + Top View.
     /// </summary>
     public class RoomPoolSpawner : MonoBehaviour
     {
@@ -43,14 +43,9 @@ namespace AfterAll.Environment
         [SerializeField] private RoomConnector _connector;
         [SerializeField] private RoomPrefabEntry[] _roomPrefabEntries = Array.Empty<RoomPrefabEntry>();
         [SerializeField, HideInInspector] private GameObject[] _roomPrefabs = Array.Empty<GameObject>();
-        [SerializeField, Min(1)] private int _roomCount = 40;
+        [SerializeField, Min(1)] private int _roomCount = 20;
 
-        [Header("Settlement Spine")]
-        [SerializeField, Min(1)] private int _settlementCount = 3;
-        [SerializeField, Min(1)] private int _roomsPerSettlement = 5;
-        [SerializeField, Min(1)] private int _corridorRoomsPerBridge = 2;
-        [SerializeField, Min(0)] private int _stubBudget = 1;
-        [SerializeField] private ExitBiasDirection _exitBias = ExitBiasDirection.East;
+        [Header("Paint Growth")]
         [FormerlySerializedAs("_pathNetworkFootprints")]
         [SerializeField] private RoomFootprint[] _settlementFootprints = Array.Empty<RoomFootprint>();
         [FormerlySerializedAs("_pathNetworkRandomGapOffset")]
@@ -89,75 +84,82 @@ namespace AfterAll.Environment
 
         public int LastUsedSeed => _lastUsedSeed;
         public int RoomCount => _roomCount;
-        public int SettlementCount => _settlementCount;
 
-        public void ConfigureSettlementSpineFromEditor(
+        public void ConfigurePaintGrowthFromEditor(
             int seed,
-            SettlementSpineConfig config,
+            PaintGrowthConfig config,
             RoomFootprint[] footprints)
         {
             config.Clamp();
             _useFixedSeed = true;
             _fixedSeed = seed;
             _randomizeSeedOnPlay = false;
-            _settlementCount = config.settlementCount;
-            _roomsPerSettlement = config.roomsPerSettlement;
-            _corridorRoomsPerBridge = config.corridorRoomsPerBridge;
-            _stubBudget = config.stubBudget;
-            _exitBias = config.exitBias;
             _randomGapOffset = config.randomGapOffset;
-            _roomCount = Mathf.Max(1, config.EstimatedRoomCount);
+            _roomCount = Mathf.Max(8, config.targetRoomCount);
             if (config.gapPolicy.edgeMarginM > 0f)
                 _gapEdgeMarginM = config.gapPolicy.edgeMarginM;
             if (footprints != null && footprints.Length > 0)
+            {
                 _settlementFootprints = footprints;
+                EnsurePrefabEntriesFromFootprints(footprints);
+            }
         }
 
         public void SetSettlementFootprints(RoomFootprint[] footprints)
         {
             if (footprints != null)
+            {
                 _settlementFootprints = footprints;
+                EnsurePrefabEntriesFromFootprints(footprints);
+            }
         }
 
-        public void SyncPrefabRolesFromFootprints(IReadOnlyList<RoomFootprint> footprints)
+        /// <summary>
+        /// Keeps the Play prefab pool aligned with footprint prefabs so Push → Play works.
+        /// </summary>
+        public void EnsurePrefabEntriesFromFootprints(IReadOnlyList<RoomFootprint> footprints)
         {
-            if (footprints == null || footprints.Count == 0 || _roomPrefabEntries == null)
+            if (footprints == null || footprints.Count == 0)
                 return;
 
-            var roleByName = new Dictionary<string, RoomRole>();
+            var byName = new Dictionary<string, RoomPrefabEntry>();
+            if (_roomPrefabEntries != null)
+            {
+                foreach (RoomPrefabEntry entry in _roomPrefabEntries)
+                {
+                    if (entry?.Prefab == null)
+                        continue;
+                    byName[entry.Prefab.name] = entry;
+                }
+            }
+
+            bool changed = false;
             foreach (RoomFootprint footprint in footprints)
             {
                 if (footprint?.Prefab == null)
                     continue;
-                roleByName[footprint.Prefab.name] = footprint.ResolvedRole;
+                if (byName.ContainsKey(footprint.Prefab.name))
+                    continue;
+                byName[footprint.Prefab.name] = new RoomPrefabEntry(footprint.Prefab);
+                changed = true;
             }
 
-            foreach (RoomPrefabEntry entry in _roomPrefabEntries)
-            {
-                if (entry?.Prefab == null)
-                    continue;
-                if (roleByName.TryGetValue(entry.Prefab.name, out RoomRole role))
-                    entry.SetResolvedRoleFromFootprint(role);
-            }
+            if (!changed && _roomPrefabEntries != null && _roomPrefabEntries.Length == byName.Count)
+                return;
+
+            var list = new List<RoomPrefabEntry>(byName.Values);
+            _roomPrefabEntries = list.ToArray();
         }
 
-        private SettlementSpineConfig BuildConfig()
+        private PaintGrowthConfig BuildConfig()
         {
-            return new SettlementSpineConfig
+            var policy = new GapOffsetPolicy
             {
-                settlementCount = _settlementCount,
-                roomsPerSettlement = _roomsPerSettlement,
-                corridorRoomsPerBridge = _corridorRoomsPerBridge,
-                stubBudget = _stubBudget,
-                exitBias = _exitBias,
                 randomGapOffset = _randomGapOffset,
-                gapPolicy = new GapOffsetPolicy
-                {
-                    randomGapOffset = _randomGapOffset,
-                    edgeMarginM = _gapEdgeMarginM,
-                    spanFraction = _gapOffsetSpanFraction
-                }
+                edgeMarginM = _gapEdgeMarginM,
+                spanFraction = _gapOffsetSpanFraction
             };
+            return PaintGrowthConfig.FromTargetRoomCount(_roomCount, _randomGapOffset, policy);
         }
 
         private void Awake()
@@ -184,29 +186,44 @@ namespace AfterAll.Environment
             if (_buildRoutine != null)
                 StopCoroutine(_buildRoutine);
 
-            _buildRoutine = StartCoroutine(BuildSettlementSpineRoutine());
+            _buildRoutine = StartCoroutine(BuildPaintGrowthRoutine());
         }
 
-        private IEnumerator BuildSettlementSpineRoutine()
+        private IEnumerator BuildPaintGrowthRoutine()
         {
             _placedRoomCount = 0;
 
             if (_connector == null)
                 _connector = GetComponent<RoomConnector>();
 
-            if (_connector == null || !TryPreparePrefabPool())
+            if (_connector == null)
             {
-                Debug.LogError("[RoomPoolSpawner] Need RoomConnector + at least one valid room prefab entry.");
+                Debug.LogError("[RoomPoolSpawner] Need RoomConnector.");
                 _buildRoutine = null;
                 yield break;
             }
 
             List<RoomFootprint> library = ResolveSettlementLibrary();
+#if UNITY_EDITOR
+            if (library.Count == 0)
+                library = EditorLoadAllFootprints();
+#endif
             if (library.Count == 0)
             {
                 Debug.LogError(
                     "[RoomPoolSpawner] Settlement Spine needs RoomFootprint assets. " +
-                    "Run AfterAll → Generation → Bake Room Footprints, then assign them or use Layout Top View → Push Seed.");
+                    "Run AfterAll → Generation → Bake Room Footprints, then assign them or use Layout Top View → Push → Play.");
+                _buildRoutine = null;
+                yield break;
+            }
+
+            if (_settlementFootprints == null || _settlementFootprints.Length == 0)
+                _settlementFootprints = library.ToArray();
+            EnsurePrefabEntriesFromFootprints(library);
+
+            if (!TryPreparePrefabPool())
+            {
+                Debug.LogError("[RoomPoolSpawner] Need at least one valid room prefab entry (sync from footprints failed).");
                 _buildRoutine = null;
                 yield break;
             }
@@ -217,14 +234,12 @@ namespace AfterAll.Environment
             _connector.ConfigureOffsetSearch(false, 1, _lastUsedSeed);
             _connector.ConfigureGapOffset(_randomGapOffset, _gapEdgeMarginM, _gapOffsetSpanFraction);
 
-            SettlementSpineConfig config = BuildConfig();
-            LayoutPlan plan = SettlementSpinePlanner.Generate(library, _lastUsedSeed, config);
-            _roomCount = Mathf.Max(_roomCount, plan.PlacedCount);
+            PaintGrowthConfig config = BuildConfig();
+            LayoutPlan plan = PaintGrowthPlanner.Generate(library, _lastUsedSeed, config);
 
             Debug.Log(
-                $"[RoomPoolSpawner] SettlementSpine Seed={_lastUsedSeed}, " +
-                $"Settlements={_settlementCount}, Rooms/Settle={_roomsPerSettlement}, " +
-                $"Bridge={_corridorRoomsPerBridge}. {plan.notes}");
+                $"[RoomPoolSpawner] PaintGrowth Seed={_lastUsedSeed}, TargetRooms={config.targetRoomCount}, " +
+                $"Placed={plan.PlacedCount}. {plan.notes}");
 
             yield return null;
 
@@ -253,6 +268,7 @@ namespace AfterAll.Environment
                 Vector3.zero,
                 Quaternion.Euler(0f, hubPlacement.yawDegrees, 0f));
             RoomInstance hub = GetRoom(hubGo);
+            hub.PrefabId = hubPlacement.prefabId;
             hub.SealAllWalls();
             AlignRoomWalkableFloorToWorldY(hub, _connector.LevelRoot.position.y);
             float hubWalkableY = hub.GetWalkableFloorY();
@@ -291,6 +307,7 @@ namespace AfterAll.Environment
                     GameObject childGo = Instantiate(childPrefab, _connector.LevelRoot);
                     childGo.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
                     child = GetRoom(childGo);
+                    child.PrefabId = childPlacement.prefabId;
                     child.SealAllWalls();
                     RoomInstance.SocketValidationReport childValidation = child.ValidateSocketContracts(logWarnings: true);
                     validationTotals.missingContractCount += childValidation.missingContractCount;
@@ -388,7 +405,7 @@ namespace AfterAll.Environment
 
             var summary = new StringBuilder();
             summary.AppendLine(
-                $"[RoomPoolSpawner] SettlementSpine done. Placed={finalPlacedCount}, " +
+                $"[RoomPoolSpawner] PaintGrowth done. Placed={finalPlacedCount}, " +
                 $"Connections={connectionsApplied}/{plan.connections.Count}, Seed={_lastUsedSeed}, " +
                 $"ExitIndex={plan.exitIndex}.");
             summary.AppendLine(plan.notes);
@@ -454,6 +471,27 @@ namespace AfterAll.Environment
 
             return result;
         }
+
+#if UNITY_EDITOR
+        private static List<RoomFootprint> EditorLoadAllFootprints()
+        {
+            const string folder = "Assets/_AfterAll/Data/RoomFootprints";
+            var result = new List<RoomFootprint>();
+            if (!UnityEditor.AssetDatabase.IsValidFolder(folder))
+                return result;
+
+            string[] guids = UnityEditor.AssetDatabase.FindAssets("t:RoomFootprint", new[] { folder });
+            foreach (string guid in guids)
+            {
+                RoomFootprint footprint = UnityEditor.AssetDatabase.LoadAssetAtPath<RoomFootprint>(
+                    UnityEditor.AssetDatabase.GUIDToAssetPath(guid));
+                if (footprint != null && footprint.Prefab != null)
+                    result.Add(footprint);
+            }
+
+            return result;
+        }
+#endif
 
         private Dictionary<string, GameObject> BuildPrefabLookup()
         {
@@ -990,9 +1028,6 @@ namespace AfterAll.Environment
                 _activePrefabEntries = Array.Empty<RoomPrefabEntry>();
                 return;
             }
-
-            if (_settlementFootprints != null && _settlementFootprints.Length > 0)
-                SyncPrefabRolesFromFootprints(_settlementFootprints);
 
             var valid = new List<RoomPrefabEntry>(_roomPrefabEntries.Length);
             foreach (RoomPrefabEntry entry in _roomPrefabEntries)

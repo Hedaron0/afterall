@@ -79,14 +79,14 @@ namespace AfterAll.Editor
 
             Undo.RecordObject(spawner, "Assign Room Footprints");
             spawner.SetSettlementFootprints(footprints.ToArray());
-            spawner.SyncPrefabRolesFromFootprints(footprints);
             EditorUtility.SetDirty(spawner);
-            Debug.Log($"[RoomFootprintBaker] Assigned {footprints.Count} footprints + roles to {spawner.name}.");
+            Debug.Log($"[RoomFootprintBaker] Assigned {footprints.Count} footprints to {spawner.name}.");
         }
 
         [MenuItem("AfterAll/Generation/Recompute Footprint Roles From Bounds")]
         private static void RecomputeAllFootprintRoles()
         {
+            // Kept as a no-op-ish refresh: roles are hidden; shapes are geometry-derived at plan time.
             if (!AssetDatabase.IsValidFolder(OutputFolder))
             {
                 Debug.LogWarning("[RoomFootprintBaker] Bake footprints first.");
@@ -102,30 +102,15 @@ namespace AfterAll.Editor
                     continue;
 
                 footprint.SetRole(RoomRole.Auto);
-                RoomRole role = footprint.ResolvedRole;
                 EditorUtility.SetDirty(footprint);
                 updated++;
-                Debug.Log($"[RoomFootprintBaker] {footprint.PrefabId}: Auto → resolved {role}");
-            }
-
-            RoomPoolSpawner spawner = Object.FindFirstObjectByType<RoomPoolSpawner>();
-            if (spawner != null)
-            {
-                var list = new List<RoomFootprint>();
-                foreach (string guid in guids)
-                {
-                    RoomFootprint footprint = AssetDatabase.LoadAssetAtPath<RoomFootprint>(AssetDatabase.GUIDToAssetPath(guid));
-                    if (footprint != null)
-                        list.Add(footprint);
-                }
-
-                Undo.RecordObject(spawner, "Sync Footprint Roles");
-                spawner.SyncPrefabRolesFromFootprints(list);
-                EditorUtility.SetDirty(spawner);
+                Debug.Log(
+                    $"[RoomFootprintBaker] {footprint.PrefabId}: area={footprint.BoundsAreaM2:F0}m², " +
+                    $"corridorShape={footprint.IsCorridorShape}");
             }
 
             AssetDatabase.SaveAssets();
-            Debug.Log($"[RoomFootprintBaker] Recomputed roles on {updated} footprints (Auto classify).");
+            Debug.Log($"[RoomFootprintBaker] Refreshed geometry tags on {updated} footprints.");
         }
 
         private static bool TryBakePrefab(GameObject prefabAsset, string prefabPath, out string error)
@@ -238,12 +223,11 @@ namespace AfterAll.Editor
                 }
 
                 float area = Mathf.Max(0.5f, Mathf.Abs((boundsMax.x - boundsMin.x) * (boundsMax.y - boundsMin.y)));
-                RoomRole role = RoomFootprint.ClassifyFromBounds(boundsMax - boundsMin, area);
                 asset.SetBakedData(prefabAsset, boundsMin, boundsMax, bakedWalls.ToArray(), gapWidth, RoomRole.Auto);
                 EditorUtility.SetDirty(asset);
                 Debug.Log(
                     $"[RoomFootprintBaker] {prefabAsset.name}: walls={bakedWalls.Count}, " +
-                    $"area={area:F1}m², role={role}");
+                    $"area={area:F1}m², corridorShape={asset.IsCorridorShape}");
                 return true;
             }
             finally

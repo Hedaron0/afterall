@@ -9,7 +9,12 @@ namespace AfterAll.Environment
     /// </summary>
     public static class RoomContentActivation
     {
-        public static void Apply(Transform contentRoot, RoomContentSettings settings, int seed, RoomInstance room = null)
+        public static void Apply(
+            Transform contentRoot,
+            RoomContentSettings settings,
+            int seed,
+            RoomInstance room = null,
+            HashSet<int> usedPresets = null)
         {
             if (contentRoot == null || settings == null)
                 return;
@@ -19,20 +24,26 @@ namespace AfterAll.Environment
                 return;
 
             var rng = new System.Random(seed);
-            List<Bounds> corridors = RoomOpeningConflict.GetOpenCorridors(room);
-            (Transform selectedPreset, string presetRetryNote) = PickPresetWithRetry(
+            Transform selectedPreset = PickPreset(
                 layout.presets,
                 settings,
                 rng,
                 contentRoot,
-                room,
-                corridors);
+                usedPresets);
+
+            if (selectedPreset != null && usedPresets != null)
+            {
+                if (int.TryParse(selectedPreset.name, out int presetIdx))
+                {
+                    usedPresets.Add(presetIdx);
+                }
+            }
 
             foreach (Transform preset in layout.presets)
                 preset.gameObject.SetActive(preset == selectedPreset);
 
             int pickCount = GetRandomPickCount(settings, rng);
-            List<Transform> selectedRandom = PickRandomItems(layout.randomPool, rng, pickCount, corridors);
+            List<Transform> selectedRandom = PickRandomItems(layout.randomPool, rng, pickCount);
 
             if (layout.randomPool != null)
             {
@@ -53,9 +64,8 @@ namespace AfterAll.Environment
                 string randomNames = selectedRandom.Count > 0
                     ? string.Join(", ", selectedRandom.Select(t => t.name))
                     : "none";
-                string retrySuffix = string.IsNullOrEmpty(presetRetryNote) ? string.Empty : $" ({presetRetryNote})";
                 Debug.Log(
-                    $"[RoomContent] {roomName} preset={presetName}{retrySuffix} random=[{randomNames}] seed={seed}",
+                    $"[RoomContent] {roomName} preset={presetName} random=[{randomNames}] seed={seed}",
                     contentRoot);
             }
         }
@@ -78,48 +88,45 @@ namespace AfterAll.Environment
             return new Layout(presets, randomPool);
         }
 
-        private static (Transform preset, string retryNote) PickPresetWithRetry(
+        private static Transform PickPreset(
             IReadOnlyList<Transform> presets,
             RoomContentSettings settings,
             System.Random rng,
             Transform contentRoot,
-            RoomInstance room,
-            List<Bounds> corridors)
+            HashSet<int> usedPresets)
         {
             if (presets.Count == 0)
-                return (null, null);
+                return null;
 
-            List<Transform> candidates = BuildPresetCandidateOrder(presets, settings, rng, contentRoot);
-            Transform firstChoice = candidates[0];
-
-            if (room == null || corridors.Count == 0)
-                return (firstChoice, null);
-
-            foreach (Transform preset in candidates)
-            {
-                if (!RoomOpeningConflict.PresetConflicts(corridors, preset))
-                {
-                    string note = preset != firstChoice
-                        ? $"retried from {firstChoice.name}"
-                        : null;
-                    return (preset, note);
-                }
-            }
-
-            Debug.LogWarning(
-                $"[RoomContent] All presets conflict with openings on {contentRoot.name}. Using {firstChoice.name}.",
-                contentRoot);
-            return (firstChoice, "all presets conflicted");
+            List<Transform> candidates = BuildPresetCandidateOrder(presets, settings, rng, contentRoot, usedPresets);
+            return candidates.Count > 0 ? candidates[0] : null;
         }
 
         private static List<Transform> BuildPresetCandidateOrder(
             IReadOnlyList<Transform> presets,
             RoomContentSettings settings,
             System.Random rng,
-            Transform contentRoot)
+            Transform contentRoot,
+            HashSet<int> usedPresets)
         {
             var order = new List<Transform>();
             var remaining = new List<Transform>(presets);
+
+            // Separate remaining into unused and used based on tracking set
+            var unusedRemaining = new List<Transform>();
+            var usedRemaining = new List<Transform>();
+
+            foreach (var preset in remaining)
+            {
+                if (int.TryParse(preset.name, out int presetIdx) && usedPresets != null && usedPresets.Contains(presetIdx))
+                {
+                    usedRemaining.Add(preset);
+                }
+                else
+                {
+                    unusedRemaining.Add(preset);
+                }
+            }
 
             int forced = settings.ForcePresetIndex;
             if (forced >= 0)
@@ -128,7 +135,8 @@ namespace AfterAll.Environment
                 if (forcedPreset != null)
                 {
                     order.Add(forcedPreset);
-                    remaining.Remove(forcedPreset);
+                    unusedRemaining.Remove(forcedPreset);
+                    usedRemaining.Remove(forcedPreset);
                 }
                 else
                 {
@@ -138,11 +146,20 @@ namespace AfterAll.Environment
                 }
             }
 
-            while (remaining.Count > 0)
+            // Pick from unused presets first
+            while (unusedRemaining.Count > 0)
             {
-                Transform pick = PickWeightedPreset(remaining, settings, rng);
+                Transform pick = PickWeightedPreset(unusedRemaining, settings, rng);
                 order.Add(pick);
-                remaining.Remove(pick);
+                unusedRemaining.Remove(pick);
+            }
+
+            // Fallback to used presets if we run out of unused ones
+            while (usedRemaining.Count > 0)
+            {
+                Transform pick = PickWeightedPreset(usedRemaining, settings, rng);
+                order.Add(pick);
+                usedRemaining.Remove(pick);
             }
 
             return order;
@@ -193,8 +210,7 @@ namespace AfterAll.Environment
         private static List<Transform> PickRandomItems(
             Transform randomPool,
             System.Random rng,
-            int pickCount,
-            List<Bounds> corridors)
+            int pickCount)
         {
             var selected = new List<Transform>();
             if (randomPool == null || pickCount <= 0)
@@ -216,9 +232,6 @@ namespace AfterAll.Environment
                     chance = pickable.SpawnChance;
 
                 if (rng.NextDouble() > chance)
-                    continue;
-
-                if (corridors.Count > 0 && RoomOpeningConflict.ItemConflicts(corridors, candidate))
                     continue;
 
                 selected.Add(candidate);

@@ -58,7 +58,7 @@ namespace AfterAll.Environment
         }
 
         [SerializeField] private GameObject _prefab;
-        [SerializeField] private RoomRole _role = RoomRole.Auto;
+        [SerializeField, HideInInspector] private RoomRole _role = RoomRole.Auto;
         [SerializeField] private Vector2 _boundsMin;
         [SerializeField] private Vector2 _boundsMax;
         [SerializeField] private Wall[] _walls = Array.Empty<Wall>();
@@ -82,6 +82,35 @@ namespace AfterAll.Environment
         }
         public Wall[] Walls => _walls;
         public float GapWidthM => _gapWidthM > 0.05f ? _gapWidthM : DefaultGapWidthM;
+
+        /// <summary>Long/narrow footprint — used as corridor bridge pieces (geometry, not a manual role).</summary>
+        public bool IsCorridorShape
+        {
+            get
+            {
+                Vector2 size = BoundsSize;
+                float width = Mathf.Abs(size.x);
+                float depth = Mathf.Abs(size.y);
+                float minSide = Mathf.Min(width, depth);
+                float maxSide = Mathf.Max(width, depth);
+                float aspect = minSide > 0.01f ? maxSide / minSide : 1f;
+                return aspect >= CorridorAspectRatio || minSide < CorridorMaxMinSideM;
+            }
+        }
+
+        /// <summary>Higher = better corridor candidate (long and skinny).</summary>
+        public float PassageScore
+        {
+            get
+            {
+                Vector2 size = BoundsSize;
+                float width = Mathf.Abs(size.x);
+                float depth = Mathf.Abs(size.y);
+                float minSide = Mathf.Max(0.01f, Mathf.Min(width, depth));
+                float maxSide = Mathf.Max(width, depth);
+                return maxSide / minSide;
+            }
+        }
 
         public static RoomRole ClassifyFromBounds(Vector2 boundsSize, float areaM2)
         {

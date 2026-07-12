@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace AfterAll.Environment
@@ -29,6 +30,8 @@ namespace AfterAll.Environment
                 return;
             }
 
+            var usedPresetsPerPrefab = new Dictionary<string, HashSet<int>>();
+
             foreach (RoomInstance room in _connector.LevelRoot.GetComponentsInChildren<RoomInstance>())
             {
                 Transform content = room.transform.Find("Content");
@@ -42,7 +45,14 @@ namespace AfterAll.Environment
                     Mathf.RoundToInt(position.z * 100f));
                 int roomSeed = HashCode.Combine(levelSeed, positionKey);
 
-                RoomContentActivation.Apply(content, _settings, roomSeed, room);
+                string prefabId = room.PrefabId;
+                if (string.IsNullOrEmpty(prefabId))
+                    prefabId = room.name.Replace("(Clone)", "").Trim();
+
+                if (!usedPresetsPerPrefab.ContainsKey(prefabId))
+                    usedPresetsPerPrefab[prefabId] = new HashSet<int>();
+
+                RoomContentActivation.Apply(content, _settings, roomSeed, room, usedPresetsPerPrefab[prefabId]);
             }
 
             RefreshOpenWalls();
