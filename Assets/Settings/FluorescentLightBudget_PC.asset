@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e7a4c2b18f4035249a1d6e5f7b8c9012, type: 3}
   m_Name: FluorescentLightBudget_PC
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.LightRenderSettings
-  bubbleRadius: 31.7
+  bubbleRadius: 61.28
   bubbleFlickerRadius: 11
   maxBubblePanels: 774
   spotLightMaxDistance: 30
