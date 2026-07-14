@@ -125,7 +125,14 @@ namespace AfterAll.Editor
 
             PaintGrowthConfig config = BuildConfig();
             _plan = PaintGrowthPlanner.Generate(_library, _seed, config);
-            _status = _plan.notes;
+            LayoutSilhouetteReport silhouette = LayoutSilhouetteMetrics.Evaluate(_plan, _library);
+            string softPass = LayoutSilhouetteMetrics.MeetsSoftClusterTargets(silhouette)
+                ? "soft-pass"
+                : "soft-fail";
+            _status = $"{_plan.notes}\n{silhouette.ToStatusLine()} [{softPass}] " +
+                      $"(targets: aspect≤{LayoutSilhouetteMetrics.TargetMaxHullAspect:F1}, " +
+                      $"fill≥{LayoutSilhouetteMetrics.TargetMinPackingFill:P0}, " +
+                      $"cluster≥{LayoutSilhouetteMetrics.TargetMinClusterScore:F2})";
             FramePlan();
             Repaint();
         }
