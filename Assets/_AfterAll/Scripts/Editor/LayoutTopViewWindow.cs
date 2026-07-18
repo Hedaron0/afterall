@@ -441,6 +441,9 @@ namespace AfterAll.Editor
                     map.Add(footprint.PrefabId, footprint);
             }
 
+            if (_elevatorFootprint != null && !map.ContainsKey(_elevatorFootprint.PrefabId))
+                map.Add(_elevatorFootprint.PrefabId, _elevatorFootprint);
+
             return map;
         }
     }

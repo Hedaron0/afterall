@@ -112,20 +112,33 @@ namespace AfterAll.Environment
             placed.Add(CreateRoom(seedFp, Vector2.zero, 0f));
             TrackUsed(usedCounts, seedFp);
 
-            // Reserve one of the hub's doors for the elevator so normal growth
-            // (FillCluster/GrowBranches/Bridge) never consumes it. Attached last.
-            int reservedElevatorWall = -1;
+            // Attach the elevator to the hub immediately, before any other growth —
+            // every hub door is still free here, giving TryGrowFrom its best (and only
+            // uncontested) shot at pairing + fitting. Once placed, it behaves like any
+            // other room: normal growth's own overlap checks keep clear of it naturally.
             if (elevatorFootprint != null)
             {
-                List<int> hubOpenWalls = CollectOpenDoorWallIndices(placed[0]);
-                if (hubOpenWalls.Count > 0)
+                var elevatorLibrary = new List<RoomFootprint> { elevatorFootprint };
+                if (TryGrowFrom(placed, 0, elevatorLibrary, rng, config.gapPolicy, plan,
+                        PrefabPickMode.Stub, WallPrefer.Any, Vector2.zero,
+                        out int elevatorIndex, ref failed, null, usedCounts))
                 {
-                    reservedElevatorWall = hubOpenWalls[rng.Next(hubOpenWalls.Count)];
-                    PlannedRoom hubRoom = placed[0];
-                    PlannedWall reservedWall = hubRoom.walls[reservedElevatorWall];
-                    reservedWall.isConnected = true; // temp reserve, unmarked before attach
-                    hubRoom.walls[reservedElevatorWall] = reservedWall;
-                    placed[0] = hubRoom;
+                    plan.elevatorIndex = elevatorIndex;
+
+                    // Seal every other door on the elevator — it must end up with
+                    // exactly one connection (to the hub). Without this, later growth
+                    // phases treat it as just another room and branch off its spare
+                    // doors, since it's now placed before the rest of the floor grows.
+                    PlannedRoom elevatorRoom = placed[elevatorIndex];
+                    for (int wi = 0; wi < elevatorRoom.walls.Count; wi++)
+                    {
+                        if (elevatorRoom.walls[wi].isConnected)
+                            continue;
+                        PlannedWall sealedWall = elevatorRoom.walls[wi];
+                        sealedWall.isConnected = true;
+                        elevatorRoom.walls[wi] = sealedWall;
+                    }
+                    placed[elevatorIndex] = elevatorRoom;
                 }
             }
 
@@ -224,31 +237,6 @@ namespace AfterAll.Environment
                     break;
                 packed++;
                 if (!currentCluster.Contains(extra)) currentCluster.Add(extra);
-            }
-
-            // ── Attach elevator to its reserved hub door (last, after everything) ─
-            if (elevatorFootprint != null)
-            {
-                if (reservedElevatorWall >= 0)
-                {
-                    PlannedRoom hubRoom = placed[0];
-                    PlannedWall reservedWall = hubRoom.walls[reservedElevatorWall];
-                    reservedWall.isConnected = false; // un-reserve so TryGrowFrom can use it
-                    hubRoom.walls[reservedElevatorWall] = reservedWall;
-                    placed[0] = hubRoom;
-                }
-
-                var elevatorLibrary = new List<RoomFootprint> { elevatorFootprint };
-                List<int> forcedWalls = reservedElevatorWall >= 0
-                    ? new List<int> { reservedElevatorWall }
-                    : null;
-
-                if (TryGrowFrom(placed, 0, elevatorLibrary, rng, config.gapPolicy, plan,
-                        PrefabPickMode.Stub, WallPrefer.Any, Vector2.zero,
-                        out int elevatorIndex, ref failed, forcedWalls, usedCounts))
-                {
-                    plan.elevatorIndex = elevatorIndex;
-                }
             }
 
             // ── Emit LayoutPlan ────────────────────────────────────────────────

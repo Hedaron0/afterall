@@ -43,6 +43,9 @@ Silhouette targets (measured by `LayoutSilhouetteMetrics`, not auto-enforced): a
 
 MCP For Unity (v6) bridges this repo to the running Unity Editor. After any script change, always `read_console` to catch compile errors before using the new types. Bridge only works while the Editor is open.
 
+- **Claude is slow over MCP; Harun is fast in the Editor.** Route work by who's actually faster at it, not by who technically can do it. Quick logic/data checks (e.g. running a planner seed loop via `execute_code`) — fine to do via MCP. Anything that means building/wiring up scene objects, prefab hierarchies, or GameObject trees (new colliders, button meshes, hierarchy restructuring) — describe the exact steps and hand it to Harun instead of doing it live over MCP.
+- If genuinely unsure which side a task belongs on, ask instead of defaulting to doing it over MCP.
+
 ## Vault (personal notes, outside this repo)
 
 `C:\Users\Harun\Documents\.Harun` — `Goals Dashboard.md` (current status = source of truth), `Daily Notes/YYYY-MM-DD.md` (raw log), `Game Dev Journey/Games/AfterAll — AI Context.md` (project context), `Game Dev Journey/Games/AfterAll — Core Design.md` (living gameplay/story design doc — read it when brainstorming or implementing core systems, append decisions with dates). Use `/standup` to read them; don't read the whole vault.
