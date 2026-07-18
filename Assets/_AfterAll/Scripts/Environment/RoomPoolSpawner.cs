@@ -44,10 +44,14 @@ namespace AfterAll.Environment
         [SerializeField] private RoomPrefabEntry[] _roomPrefabEntries = Array.Empty<RoomPrefabEntry>();
         [SerializeField, HideInInspector] private GameObject[] _roomPrefabs = Array.Empty<GameObject>();
         [SerializeField, Min(1)] private int _roomCount = 20;
+        [Tooltip("Off when an external driver (e.g. RunDirector) owns Build() calls.")]
+        [SerializeField] private bool _autoBuildOnStart = true;
 
         [Header("Paint Growth")]
         [FormerlySerializedAs("_pathNetworkFootprints")]
         [SerializeField] private RoomFootprint[] _settlementFootprints = Array.Empty<RoomFootprint>();
+        [Tooltip("Attached last to one reserved door on the auto-picked hub (room 0); player spawns here instead of the hub.")]
+        [SerializeField] private RoomFootprint _elevatorFootprint;
         [FormerlySerializedAs("_pathNetworkRandomGapOffset")]
         [SerializeField] private bool _randomGapOffset = true;
         [SerializeField, Min(0f)] private float _gapEdgeMarginM = 0.15f;
@@ -85,10 +89,21 @@ namespace AfterAll.Environment
         public int LastUsedSeed => _lastUsedSeed;
         public int RoomCount => _roomCount;
 
+        /// <summary>Runtime entry point for the run loop: generate a new floor with a fresh seed/budget; player spawns in the attached elevator room.</summary>
+        public void BeginNewFloor(int seed, int roomCount)
+        {
+            _useFixedSeed = true;
+            _fixedSeed = seed;
+            _randomizeSeedOnPlay = false;
+            _roomCount = Mathf.Max(8, roomCount);
+            Build();
+        }
+
         public void ConfigurePaintGrowthFromEditor(
             int seed,
             PaintGrowthConfig config,
-            RoomFootprint[] footprints)
+            RoomFootprint[] footprints,
+            RoomFootprint elevatorFootprint = null)
         {
             config.Clamp();
             _useFixedSeed = true;
@@ -103,6 +118,8 @@ namespace AfterAll.Environment
                 _settlementFootprints = footprints;
                 EnsurePrefabEntriesFromFootprints(footprints);
             }
+            if (elevatorFootprint != null)
+                _elevatorFootprint = elevatorFootprint;
         }
 
         public void SetSettlementFootprints(RoomFootprint[] footprints)
@@ -113,6 +130,8 @@ namespace AfterAll.Environment
                 EnsurePrefabEntriesFromFootprints(footprints);
             }
         }
+
+        public void SetElevatorFootprint(RoomFootprint footprint) => _elevatorFootprint = footprint;
 
         /// <summary>
         /// Keeps the Play prefab pool aligned with footprint prefabs so Push → Play works.
@@ -178,7 +197,8 @@ namespace AfterAll.Environment
         private void Start()
         {
             HideHandPlacedRooms();
-            Build();
+            if (_autoBuildOnStart)
+                Build();
         }
 
         public void Build()
@@ -217,6 +237,18 @@ namespace AfterAll.Environment
                 yield break;
             }
 
+            // Elevator footprints never join the general pool — pull any stray ones out
+            // (e.g. from "Assign Footprints" bulk-assigning the whole baked folder) and
+            // auto-adopt one as _elevatorFootprint if none is wired yet.
+            for (int i = library.Count - 1; i >= 0; i--)
+            {
+                if (library[i] == null || !library[i].IsElevator)
+                    continue;
+                if (_elevatorFootprint == null)
+                    _elevatorFootprint = library[i];
+                library.RemoveAt(i);
+            }
+
             if (_settlementFootprints == null || _settlementFootprints.Length == 0)
                 _settlementFootprints = library.ToArray();
             EnsurePrefabEntriesFromFootprints(library);
@@ -235,7 +267,7 @@ namespace AfterAll.Environment
             _connector.ConfigureGapOffset(_randomGapOffset, _gapEdgeMarginM, _gapOffsetSpanFraction);
 
             PaintGrowthConfig config = BuildConfig();
-            LayoutPlan plan = PaintGrowthPlanner.Generate(library, _lastUsedSeed, config);
+            LayoutPlan plan = PaintGrowthPlanner.Generate(library, _lastUsedSeed, config, _elevatorFootprint);
 
             Debug.Log(
                 $"[RoomPoolSpawner] PaintGrowth Seed={_lastUsedSeed}, TargetRooms={config.targetRoomCount}, " +
@@ -384,11 +416,12 @@ namespace AfterAll.Environment
             }
 
             RoomInstance startRoom = hub;
+            roomsByIndex.TryGetValue(plan.elevatorIndex, out RoomInstance elevatorRoom);
             RoomConnector.ConnectionStats stats = _connector.GetStats();
             (ReachabilityAuditResult reachability, int finalPlacedCount) = RunReachabilityAudit(startRoom);
             int postBuildOverlaps = ValidatePlacedRoomOverlaps();
             if (_repositionPlayerAfterBuild)
-                PlacePlayerAfterBuild(startRoom);
+                PlacePlayerAfterBuild(startRoom, elevatorRoom);
 
             _contentManager?.ActivateAll(_lastUsedSeed);
 
@@ -510,6 +543,9 @@ namespace AfterAll.Environment
                         map[footprint.Prefab.name] = footprint.Prefab;
                 }
             }
+
+            if (_elevatorFootprint?.Prefab != null && !map.ContainsKey(_elevatorFootprint.Prefab.name))
+                map[_elevatorFootprint.Prefab.name] = _elevatorFootprint.Prefab;
 
             return map;
         }
@@ -968,7 +1004,7 @@ namespace AfterAll.Environment
             return best != null ? best : startRoom;
         }
 
-        private void PlacePlayerAfterBuild(RoomInstance startRoom)
+        private void PlacePlayerAfterBuild(RoomInstance startRoom, RoomInstance elevatorRoom)
         {
             Transform player = _player;
             if (player == null)
@@ -981,7 +1017,7 @@ namespace AfterAll.Environment
             if (player == null || startRoom == null)
                 return;
 
-            RoomInstance spawnRoom = PickSpawnRoom(startRoom);
+            RoomInstance spawnRoom = elevatorRoom != null ? elevatorRoom : PickSpawnRoom(startRoom);
             Vector3 spawnPosition = spawnRoom.GetSpawnPosition(_playerSpawnHeight);
 
             CharacterController controller = player.GetComponent<CharacterController>();

@@ -11,6 +11,7 @@ namespace AfterAll.Editor
         private const float GapWidthFallback = 1.3f;
 
         private readonly List<RoomFootprint> _library = new();
+        private RoomFootprint _elevatorFootprint;
         private LayoutPlan _plan;
         private int _inspectIndex;
         private int _seed = 12345;
@@ -124,7 +125,7 @@ namespace AfterAll.Editor
             }
 
             PaintGrowthConfig config = BuildConfig();
-            _plan = PaintGrowthPlanner.Generate(_library, _seed, config);
+            _plan = PaintGrowthPlanner.Generate(_library, _seed, config, _elevatorFootprint);
             LayoutSilhouetteReport silhouette = LayoutSilhouetteMetrics.Evaluate(_plan, _library);
             string softPass = LayoutSilhouetteMetrics.MeetsSoftClusterTargets(silhouette)
                 ? "soft-pass"
@@ -158,7 +159,7 @@ namespace AfterAll.Editor
             }
 
             Undo.RecordObject(spawner, "Set Paint Growth Seed");
-            spawner.ConfigurePaintGrowthFromEditor(_seed, BuildConfig(), _library.ToArray());
+            spawner.ConfigurePaintGrowthFromEditor(_seed, BuildConfig(), _library.ToArray(), _elevatorFootprint);
             EditorUtility.SetDirty(spawner);
             if (spawner.gameObject.scene.IsValid())
                 UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(spawner.gameObject.scene);
@@ -171,6 +172,7 @@ namespace AfterAll.Editor
         private void ReloadLibrary()
         {
             _library.Clear();
+            _elevatorFootprint = null;
             if (!AssetDatabase.IsValidFolder(FootprintFolder))
             {
                 _status = $"Missing folder {FootprintFolder}. Bake first.";
@@ -182,13 +184,23 @@ namespace AfterAll.Editor
             {
                 string path = AssetDatabase.GUIDToAssetPath(guid);
                 RoomFootprint footprint = AssetDatabase.LoadAssetAtPath<RoomFootprint>(path);
-                if (footprint != null)
-                    _library.Add(footprint);
+                if (footprint == null)
+                    continue;
+
+                // Elevator never joins the general pool — Generate() attaches it separately.
+                if (footprint.IsElevator)
+                {
+                    _elevatorFootprint ??= footprint;
+                    continue;
+                }
+
+                _library.Add(footprint);
             }
 
             _library.Sort((a, b) => string.CompareOrdinal(a.PrefabId, b.PrefabId));
             _inspectIndex = Mathf.Clamp(_inspectIndex, 0, Mathf.Max(0, _library.Count - 1));
-            _status = $"Loaded {_library.Count} footprints.";
+            _status = $"Loaded {_library.Count} footprints" +
+                       (_elevatorFootprint != null ? $" (+ elevator: {_elevatorFootprint.PrefabId})." : ".");
         }
 
         private string[] BuildInspectNames()
@@ -292,7 +304,9 @@ namespace AfterAll.Editor
                     continue;
 
                 Color fill;
-                if (i == 0)
+                if (i == _plan.elevatorIndex)
+                    fill = new Color(0.95f, 0.85f, 0.15f, 0.55f);
+                else if (i == 0)
                     fill = new Color(0.9f, 0.35f, 0.2f, 0.4f);
                 else if (i == _plan.exitIndex)
                     fill = new Color(0.85f, 0.25f, 0.75f, 0.4f);

@@ -73,7 +73,8 @@ namespace AfterAll.Environment
         public static LayoutPlan Generate(
             IReadOnlyList<RoomFootprint> library,
             int                          seed,
-            PaintGrowthConfig            config)
+            PaintGrowthConfig            config,
+            RoomFootprint                elevatorFootprint = null)
         {
             config.Clamp();
             if (config.gapPolicy.edgeMarginM <= 0f && config.gapPolicy.spanFraction <= 0f)
@@ -106,10 +107,27 @@ namespace AfterAll.Environment
                 Mathf.Max(MinClusterSize, config.targetRoomCount / spineNodes - 1),
                 MinClusterSize, MaxClusterSize);
 
-            // ── Seed first cluster with hub room ───────────────────────────────
+            // ── Seed first cluster with hub room (most doors wins) ──────────────
             RoomFootprint seedFp = PickHubSeed(library, usedCounts, rng);
             placed.Add(CreateRoom(seedFp, Vector2.zero, 0f));
             TrackUsed(usedCounts, seedFp);
+
+            // Reserve one of the hub's doors for the elevator so normal growth
+            // (FillCluster/GrowBranches/Bridge) never consumes it. Attached last.
+            int reservedElevatorWall = -1;
+            if (elevatorFootprint != null)
+            {
+                List<int> hubOpenWalls = CollectOpenDoorWallIndices(placed[0]);
+                if (hubOpenWalls.Count > 0)
+                {
+                    reservedElevatorWall = hubOpenWalls[rng.Next(hubOpenWalls.Count)];
+                    PlannedRoom hubRoom = placed[0];
+                    PlannedWall reservedWall = hubRoom.walls[reservedElevatorWall];
+                    reservedWall.isConnected = true; // temp reserve, unmarked before attach
+                    hubRoom.walls[reservedElevatorWall] = reservedWall;
+                    placed[0] = hubRoom;
+                }
+            }
 
             var currentCluster = new List<int> { 0 };
             Vector2 heading    = CardinalFromIndex(rng.Next(4));
@@ -208,6 +226,31 @@ namespace AfterAll.Environment
                 if (!currentCluster.Contains(extra)) currentCluster.Add(extra);
             }
 
+            // ── Attach elevator to its reserved hub door (last, after everything) ─
+            if (elevatorFootprint != null)
+            {
+                if (reservedElevatorWall >= 0)
+                {
+                    PlannedRoom hubRoom = placed[0];
+                    PlannedWall reservedWall = hubRoom.walls[reservedElevatorWall];
+                    reservedWall.isConnected = false; // un-reserve so TryGrowFrom can use it
+                    hubRoom.walls[reservedElevatorWall] = reservedWall;
+                    placed[0] = hubRoom;
+                }
+
+                var elevatorLibrary = new List<RoomFootprint> { elevatorFootprint };
+                List<int> forcedWalls = reservedElevatorWall >= 0
+                    ? new List<int> { reservedElevatorWall }
+                    : null;
+
+                if (TryGrowFrom(placed, 0, elevatorLibrary, rng, config.gapPolicy, plan,
+                        PrefabPickMode.Stub, WallPrefer.Any, Vector2.zero,
+                        out int elevatorIndex, ref failed, forcedWalls, usedCounts))
+                {
+                    plan.elevatorIndex = elevatorIndex;
+                }
+            }
+
             // ── Emit LayoutPlan ────────────────────────────────────────────────
             plan.exitIndex = PickExitIndex(placed);
             for (int i = 0; i < placed.Count; i++)
@@ -226,7 +269,8 @@ namespace AfterAll.Environment
             plan.notes =
                 $"HubCentric target={config.targetRoomCount}, placed={plan.PlacedCount}, " +
                 $"groups={groups}, pack={packed}, neck={necks}, stub={stubs}, turns={turns}, " +
-                $"exit={plan.exitIndex}, failed={failed}";
+                $"exit={plan.exitIndex}, failed={failed}, elevator={plan.elevatorIndex}" +
+                (elevatorFootprint != null && plan.elevatorIndex < 0 ? " (ATTACH FAILED)" : "");
             return plan;
         }
 

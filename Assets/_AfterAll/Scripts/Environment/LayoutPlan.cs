@@ -34,6 +34,7 @@ namespace AfterAll.Environment
         public int corridorRoomsPerBridge;
         public int stubBudget;
         public int exitIndex = -1;
+        public int elevatorIndex = -1;
         public bool randomGapOffset;
         public List<LayoutPlanPlacement> placements = new();
         public List<LayoutPlanConnection> connections = new();

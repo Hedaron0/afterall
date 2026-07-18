@@ -70,47 +70,30 @@ namespace AfterAll.Editor
 
             string[] guids = AssetDatabase.FindAssets("t:RoomFootprint", new[] { OutputFolder });
             var footprints = new List<RoomFootprint>();
-            foreach (string guid in guids)
-            {
-                RoomFootprint footprint = AssetDatabase.LoadAssetAtPath<RoomFootprint>(AssetDatabase.GUIDToAssetPath(guid));
-                if (footprint != null)
-                    footprints.Add(footprint);
-            }
-
-            Undo.RecordObject(spawner, "Assign Room Footprints");
-            spawner.SetSettlementFootprints(footprints.ToArray());
-            EditorUtility.SetDirty(spawner);
-            Debug.Log($"[RoomFootprintBaker] Assigned {footprints.Count} footprints to {spawner.name}.");
-        }
-
-        [MenuItem("AfterAll/Generation/Recompute Footprint Roles From Bounds")]
-        private static void RecomputeAllFootprintRoles()
-        {
-            // Kept as a no-op-ish refresh: roles are hidden; shapes are geometry-derived at plan time.
-            if (!AssetDatabase.IsValidFolder(OutputFolder))
-            {
-                Debug.LogWarning("[RoomFootprintBaker] Bake footprints first.");
-                return;
-            }
-
-            string[] guids = AssetDatabase.FindAssets("t:RoomFootprint", new[] { OutputFolder });
-            int updated = 0;
+            RoomFootprint elevatorFootprint = null;
             foreach (string guid in guids)
             {
                 RoomFootprint footprint = AssetDatabase.LoadAssetAtPath<RoomFootprint>(AssetDatabase.GUIDToAssetPath(guid));
                 if (footprint == null)
                     continue;
 
-                footprint.SetRole(RoomRole.Auto);
-                EditorUtility.SetDirty(footprint);
-                updated++;
-                Debug.Log(
-                    $"[RoomFootprintBaker] {footprint.PrefabId}: area={footprint.BoundsAreaM2:F0}m², " +
-                    $"corridorShape={footprint.IsCorridorShape}");
+                // Elevator never joins the general pool — RoomPoolSpawner attaches it separately.
+                if (footprint.IsElevator)
+                {
+                    elevatorFootprint ??= footprint;
+                    continue;
+                }
+
+                footprints.Add(footprint);
             }
 
-            AssetDatabase.SaveAssets();
-            Debug.Log($"[RoomFootprintBaker] Refreshed geometry tags on {updated} footprints.");
+            Undo.RecordObject(spawner, "Assign Room Footprints");
+            spawner.SetSettlementFootprints(footprints.ToArray());
+            if (elevatorFootprint != null)
+                spawner.SetElevatorFootprint(elevatorFootprint);
+            EditorUtility.SetDirty(spawner);
+            Debug.Log($"[RoomFootprintBaker] Assigned {footprints.Count} footprints to {spawner.name}" +
+                       (elevatorFootprint != null ? $", elevator={elevatorFootprint.PrefabId}." : "."));
         }
 
         private static bool TryBakePrefab(GameObject prefabAsset, string prefabPath, out string error)
@@ -223,7 +206,7 @@ namespace AfterAll.Editor
                 }
 
                 float area = Mathf.Max(0.5f, Mathf.Abs((boundsMax.x - boundsMin.x) * (boundsMax.y - boundsMin.y)));
-                asset.SetBakedData(prefabAsset, boundsMin, boundsMax, bakedWalls.ToArray(), gapWidth, RoomRole.Auto);
+                asset.SetBakedData(prefabAsset, boundsMin, boundsMax, bakedWalls.ToArray(), gapWidth);
                 EditorUtility.SetDirty(asset);
                 Debug.Log(
                     $"[RoomFootprintBaker] {prefabAsset.name}: walls={bakedWalls.Count}, " +
