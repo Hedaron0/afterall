@@ -1314,6 +1314,7 @@ MonoBehaviour:
   _openingMode: 0
   _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
   _frameChance: 0.35
+  _recessDepthM: 0.15
   _wallLengthM: 10
   _leftExtentM: 5
   _rightExtentM: 5

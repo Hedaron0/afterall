@@ -24,6 +24,15 @@ namespace AfterAll.Environment
         [SerializeField] private GameObject _framePrefab;
         [SerializeField, Range(0f, 1f)] private float _frameChance = 0.35f;
 
+        [Tooltip("Authored per-wall recess: pulls this wall's cut pieces inward (opposite outward normal) " +
+            "by this many meters, so a connecting room's coplanar wall doesn't z-fight with this one at the " +
+            "seam. 0 = no change (default for ordinary room-to-room walls). Set only on walls where one side " +
+            "of a specific connection needs to visually sit back from the other (e.g. the elevator entrance). " +
+            "RoomSocket.SnapRoom already leaves up to ~0.1m of natural slop between snapped walls, so this " +
+            "must exceed that (e.g. 0.15) to guarantee a real gap instead of accidentally landing exactly " +
+            "coplanar with the other side.")]
+        [SerializeField] private float _recessDepthM = 0f;
+
         [HideInInspector] [SerializeField] private float _wallLengthM;
         [HideInInspector] [SerializeField] private float _leftExtentM;
         [HideInInspector] [SerializeField] private float _rightExtentM;
@@ -38,6 +47,14 @@ namespace AfterAll.Environment
         private RoomSocket _socket;
 
         public float WallLengthMeters => _wallLengthM;
+
+        /// <summary>Meters this wall's cut pieces recede inward (opposite outward normal) at the seam.</summary>
+        public float RecessDepthM
+        {
+            get => _recessDepthM;
+            set => _recessDepthM = value;
+        }
+
         public WallOpeningMode OpeningMode => _openingMode;
         public bool UsesFullOpening =>
             _openingMode == WallOpeningMode.FullWall || _openingMode == WallOpeningMode.OpenEnd;
@@ -568,7 +585,12 @@ namespace AfterAll.Environment
                 _rightScaleAxis,
                 _rightExtentM > 0.0001f ? (_wallLengthM - d - effectiveGapWidth) / _rightExtentM : 0f);
 
-            UpdateSocketFromLiveGap(effectiveGapWidth);
+            // True gap center from seam + axis, not from wallLeft/wallRight.position — those pieces may be
+            // cosmetically recessed (see _recessDepthM), and the socket used to snap the connecting room
+            // into place must stay at the real doorway location, or the recess would drag that room's
+            // placement back with it and cancel itself out.
+            Vector3 trueGapCenter = _seamWorld + _axisWorld * ((gapLeftT + gapRightT) * 0.5f);
+            UpdateSocketFromLiveGap(effectiveGapWidth, trueGapCenter);
             TrySpawnFrame(effectiveGapWidth);
         }
 
@@ -641,10 +663,9 @@ namespace AfterAll.Environment
                 RebuildBaseline();
         }
 
-        /// <summary>Gap center = midpoint between split wall pivots (always correct world position).</summary>
-        private void UpdateSocketFromLiveGap(float openingWidth)
+        /// <summary>Gap center passed in by the caller — the true (un-recessed) seam position, not wallLeft/wallRight.position.</summary>
+        private void UpdateSocketFromLiveGap(float openingWidth, Vector3 center)
         {
-            Vector3 center = (wallLeft.position + wallRight.position) * 0.5f;
             center.y = GetWallFloorY();
 
             Vector3 outward = ComputeOutwardForward(center);
@@ -965,6 +986,8 @@ namespace AfterAll.Environment
         private void PlacePivot(Transform piece, float tMeters, int scaleAxis, float scaleFactor)
         {
             Vector3 worldPos = _seamWorld + _axisWorld * tMeters;
+            if (Mathf.Abs(_recessDepthM) > 0.0001f)
+                worldPos -= ComputeOutwardForward(worldPos) * _recessDepthM;
             piece.localPosition = transform.InverseTransformPoint(worldPos);
 
             Vector3 scale = piece.localScale;
