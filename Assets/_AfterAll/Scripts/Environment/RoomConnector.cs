@@ -499,14 +499,9 @@ namespace AfterAll.Environment
             if (parent.IsWallConnected(parentWall) || child.IsWallConnected(childWall))
                 return false;
 
-            // Cut both sides to the same width — otherwise each wall's own gapWidth field cuts
-            // independently, and once sockets snap together the mismatched cut edges coplanar-flicker
-            // at the doorway seam.
-            float sharedGapWidth = Mathf.Min(parentWall.EffectiveOpeningWidth, childWall.EffectiveOpeningWidth);
-
-            parent.OpenWall(parentWall, parentOffsetMeters, false, sharedGapWidth);
+            parent.OpenWall(parentWall, parentOffsetMeters, false);
             bool childFrame = spawnFrame && !childWall.UsesFullOpening;
-            child.OpenWall(childWall, childOffsetMeters, childFrame, sharedGapWidth);
+            child.OpenWall(childWall, childOffsetMeters, childFrame);
 
             if (!parentWall.TryGetSocket(out RoomSocket parentSocket) || !childWall.TryGetSocket(out RoomSocket childSocket))
             {

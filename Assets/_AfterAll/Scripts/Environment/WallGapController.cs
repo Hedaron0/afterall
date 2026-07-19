@@ -34,7 +34,6 @@ namespace AfterAll.Environment
         [HideInInspector] [SerializeField] private bool _baselineCached;
 
         private bool? _spawnFrameOverride;
-        private float? _gapWidthOverrideM;
         private GameObject _spawnedFrame;
         private RoomSocket _socket;
 
@@ -450,16 +449,10 @@ namespace AfterAll.Environment
             samples.Add(candidate);
         }
 
-        /// <summary>
-        /// <paramref name="gapWidthOverrideM"/> lets a connecting pair share one cut width (e.g. min of
-        /// both sides' EffectiveOpeningWidth) instead of each wall cutting to its own gapWidth field —
-        /// otherwise mismatched cut edges coplanar-flicker at the doorway seam once sockets snap together.
-        /// </summary>
-        public void ConfigureOpening(bool open, bool spawnFrame, float offsetMeters = 0f, float? gapWidthOverrideM = null)
+        public void ConfigureOpening(bool open, bool spawnFrame, float offsetMeters = 0f)
         {
             hasOpening = open;
             _spawnFrameOverride = spawnFrame;
-            _gapWidthOverrideM = gapWidthOverrideM;
             gapOffset = offsetMeters;
             randomizeOffset = false;
             ApplyGap();
@@ -742,8 +735,7 @@ namespace AfterAll.Environment
                 return effectiveGapWidth >= 0.05f;
             }
 
-            float width = _gapWidthOverrideM ?? gapWidth;
-            effectiveGapWidth = Mathf.Min(width, _wallLengthM - 0.05f);
+            effectiveGapWidth = Mathf.Min(gapWidth, _wallLengthM - 0.05f);
             if (effectiveGapWidth < 0.05f)
                 return false;
 

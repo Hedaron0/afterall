@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using AfterAll.Environment;
+using AfterAll.Player;
 using UnityEngine;
 
 namespace AfterAll.Run
@@ -18,6 +19,7 @@ namespace AfterAll.Run
     public class RunDirector : MonoBehaviour
     {
         [SerializeField] private RoomPoolSpawner _spawner;
+        [SerializeField] private PlayerMovement _playerMovement;
 
         [Header("Floor Budget")]
         [SerializeField, Min(8)] private int _baseRoomCount = 20;
@@ -46,6 +48,9 @@ namespace AfterAll.Run
         {
             if (_spawner == null)
                 _spawner = GetComponent<RoomPoolSpawner>();
+
+            if (_playerMovement == null)
+                _playerMovement = FindAnyObjectByType<PlayerMovement>();
         }
 
         private void OnEnable()
@@ -99,6 +104,10 @@ namespace AfterAll.Run
         /// <summary>Lets the button press anim/SFX/door-close play before the floor rebuild destroys the elevator.</summary>
         private IEnumerator TransitionRoutine(bool descending)
         {
+            // ClearLevelRoot destroys the floor out from under the player and Build() spans many
+            // frames before the new one lands — without this the player free-falls through the void
+            // and gets yanked back once the reposition/realignment finally runs.
+            FreezePlayer();
             CloseCurrentElevatorDoor();
 
             if (_transitionDelaySeconds > 0f)
@@ -108,14 +117,29 @@ namespace AfterAll.Run
             {
                 Depth++;
                 SpawnFloor();
+                // Unfrozen in HandleFloorReady once the new floor (and elevator hold-in-place
+                // realignment) finishes — SpawnFloor's Build() runs asynchronously.
             }
             else
             {
                 RunEnded?.Invoke();
                 ResetRunState();
+                UnfreezePlayer();
             }
 
             _transitionRoutine = null;
+        }
+
+        private void FreezePlayer()
+        {
+            if (_playerMovement != null)
+                _playerMovement.enabled = false;
+        }
+
+        private void UnfreezePlayer()
+        {
+            if (_playerMovement != null)
+                _playerMovement.enabled = true;
         }
 
         private void CloseCurrentElevatorDoor()
@@ -130,6 +154,8 @@ namespace AfterAll.Run
 
         private void HandleFloorReady(RoomInstance elevatorRoom)
         {
+            UnfreezePlayer();
+
             if (elevatorRoom == null)
                 return;
 
