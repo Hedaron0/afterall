@@ -49,3 +49,9 @@ MCP For Unity (v6) bridges this repo to the running Unity Editor. After any scri
 ## Vault (personal notes, outside this repo)
 
 `C:\Users\Harun\Documents\.Harun` — `Goals Dashboard.md` (current status = source of truth), `Daily Notes/YYYY-MM-DD.md` (raw log), `Game Dev Journey/Games/AfterAll — AI Context.md` (project context), `Game Dev Journey/Games/AfterAll — Core Design.md` (living gameplay/story design doc — read it when brainstorming or implementing core systems, append decisions with dates). Use `/standup` to read them; don't read the whole vault.
+
+## Code notes (per-system orientation, token-saving)
+
+Before touching a gameplay system, check `Game Dev Journey/Games/AfterAll — Code Notes Index.md` in the vault — it routes to the one or two per-system notes (`AfterAll — Code Notes — <System>.md`) that cover it: what each script does, how they connect, real gotchas. Read only the note(s) the task needs, not the whole set. These are a map, not a substitute for reading the actual code before editing — and they're manually maintained, so flag "should we update the note for this?" after a task changes a covered system meaningfully, especially before a session-end commit.
+
+**Staleness rule (non-negotiable):** a Code Note is a pointer, not ground truth. Before using a specific fact from one — a function/field name, a value, a described behavior — to actually make an edit, confirm it's still true by reading the real file first (Read/Grep, not memory of the note). It's fine to use notes freely for orientation/discussion; the read-before-edit check is required specifically at the moment you're about to write code based on what a note claims.
