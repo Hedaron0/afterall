@@ -268,6 +268,11 @@ namespace AfterAll.Environment
             if (!_hasEmission || _panel == null)
                 return;
 
+            // Play-mode script recompiles reload the domain and re-fire OnEnable (which re-registers
+            // with FluorescentLightManager and re-triggers ApplyTier) without re-running Awake, so this
+            // non-serialized field can be null here even though Awake always assigns it on first spawn.
+            _propertyBlock ??= new MaterialPropertyBlock();
+
             _panel.GetPropertyBlock(_propertyBlock);
 
             if (normalized <= 0.001f)

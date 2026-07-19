@@ -19,6 +19,8 @@ namespace AfterAll.Items
 
         private IItemReceiver[] _receivers;
 
+        public ItemDefinition Item => _item;
+
         public string Prompt
         {
             get

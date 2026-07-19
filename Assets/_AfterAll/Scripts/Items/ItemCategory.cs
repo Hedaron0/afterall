@@ -10,5 +10,9 @@ namespace AfterAll.Items
         KeyItem,
         Consumable,
         Ammo,
+
+        /// <summary>Carried loot (e.g. Echoes) — never occupies a hotbar slot, routes to a carry
+        /// receiver instead (elevator stash IItemReceiver lands in S3).</summary>
+        Loot,
     }
 }

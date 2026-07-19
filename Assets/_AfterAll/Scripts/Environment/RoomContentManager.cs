@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using AfterAll.Items;
 using UnityEngine;
 
 namespace AfterAll.Environment
@@ -52,10 +53,40 @@ namespace AfterAll.Environment
                 if (!usedPresetsPerPrefab.ContainsKey(prefabId))
                     usedPresetsPerPrefab[prefabId] = new HashSet<int>();
 
+                ApplyLootDepthWeighting(content, room.GraphDepth);
                 RoomContentActivation.Apply(content, _settings, roomSeed, room, usedPresetsPerPrefab[prefabId]);
             }
 
             RefreshOpenWalls();
+        }
+
+        /// <summary>
+        /// Thin pre-pass over RoomContentActivation: scales Loot-category (e.g. Echo) world-items in
+        /// the Random pool by how far this room sits from the hub/elevator (RoomInstance.GraphDepth),
+        /// so loot skews rarer/cheaper near the elevator and richer deep in the floor.
+        /// </summary>
+        private void ApplyLootDepthWeighting(Transform content, int graphDepth)
+        {
+            Transform randomPool = content.Find("Random");
+            if (randomPool == null)
+                return;
+
+            int depth = Mathf.Max(0, graphDepth);
+            float t = Mathf.Clamp01(depth / (float)_settings.LootChanceFarDepth);
+            float multiplier = Mathf.Lerp(_settings.LootChanceNearMultiplier, _settings.LootChanceFarMultiplier, t);
+
+            for (int i = 0; i < randomPool.childCount; i++)
+            {
+                Transform child = randomPool.GetChild(i);
+                if (!child.TryGetComponent(out RoomContentPickable pickable))
+                    continue;
+                if (!child.TryGetComponent(out WorldItem worldItem))
+                    continue;
+                if (worldItem.Item == null || worldItem.Item.Category != ItemCategory.Loot)
+                    continue;
+
+                pickable.SetRuntimeChanceMultiplier(multiplier);
+            }
         }
 
         private void RefreshOpenWalls()
