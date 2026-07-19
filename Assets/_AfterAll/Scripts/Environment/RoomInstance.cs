@@ -71,10 +71,15 @@ namespace AfterAll.Environment
 
         public void OpenWall(WallGapController wall, float offsetMeters, bool spawnFrame)
         {
+            OpenWall(wall, offsetMeters, spawnFrame, null);
+        }
+
+        public void OpenWall(WallGapController wall, float offsetMeters, bool spawnFrame, float? gapWidthOverrideM)
+        {
             if (wall == null)
                 return;
 
-            wall.ConfigureOpening(true, spawnFrame, offsetMeters);
+            wall.ConfigureOpening(true, spawnFrame, offsetMeters, gapWidthOverrideM);
         }
 
         public bool IsWallConnected(WallGapController wall) => _connectedWalls.Contains(wall);

@@ -266,6 +266,12 @@ namespace AfterAll.Environment
                 yield break;
             }
 
+            // Cache the outgoing elevator's world pose before ClearLevelRoot destroys it, so the new
+            // floor's elevator can be rigidly re-aligned onto it (player never sees a teleport).
+            bool holdElevatorInPlace = CurrentElevatorRoom != null;
+            Vector3 previousElevatorWorldPos = holdElevatorInPlace ? CurrentElevatorRoom.transform.position : Vector3.zero;
+            float previousElevatorWorldYawDeg = holdElevatorInPlace ? CurrentElevatorRoom.transform.eulerAngles.y : 0f;
+
             ClearLevelRoot();
             _connector.ResetStats();
             InitializeRng();
@@ -423,11 +429,19 @@ namespace AfterAll.Environment
 
             RoomInstance startRoom = hub;
             roomsByIndex.TryGetValue(plan.elevatorIndex, out RoomInstance elevatorRoom);
+
+            holdElevatorInPlace &= elevatorRoom != null;
+            if (holdElevatorInPlace)
+                AlignLevelRootToElevator(elevatorRoom, previousElevatorWorldPos, previousElevatorWorldYawDeg);
+
             CurrentElevatorRoom = elevatorRoom;
             RoomConnector.ConnectionStats stats = _connector.GetStats();
             (ReachabilityAuditResult reachability, int finalPlacedCount) = RunReachabilityAudit(startRoom);
             int postBuildOverlaps = ValidatePlacedRoomOverlaps();
-            if (_repositionPlayerAfterBuild)
+            // The elevator was just rigidly re-aligned onto the player's current world position —
+            // teleporting the player onto it here would undo that and snap them to the new layout's
+            // arbitrary generation pose instead.
+            if (_repositionPlayerAfterBuild && !holdElevatorInPlace)
                 PlacePlayerAfterBuild(startRoom, elevatorRoom);
 
             _contentManager?.ActivateAll(_lastUsedSeed);
@@ -464,6 +478,22 @@ namespace AfterAll.Environment
 
             _buildRoutine = null;
             FloorReady?.Invoke(elevatorRoom);
+        }
+
+        /// <summary>
+        /// Rigidly moves the whole level (LevelRoot and everything under it) so the freshly-built
+        /// elevator lands exactly on the previous floor's elevator world pose — the player stays put
+        /// and the level shifts to meet them instead of the elevator teleporting.
+        /// </summary>
+        private void AlignLevelRootToElevator(RoomInstance elevatorRoom, Vector3 targetWorldPos, float targetWorldYawDeg)
+        {
+            Transform root = _connector.LevelRoot;
+            Vector3 pivot = elevatorRoom.transform.position;
+
+            float deltaYaw = Mathf.DeltaAngle(elevatorRoom.transform.eulerAngles.y, targetWorldYawDeg);
+            root.RotateAround(pivot, Vector3.up, deltaYaw);
+
+            root.position += targetWorldPos - elevatorRoom.transform.position;
         }
 
         private static void AlignRoomWalkableFloorToWorldY(RoomInstance room, float targetWalkableY)

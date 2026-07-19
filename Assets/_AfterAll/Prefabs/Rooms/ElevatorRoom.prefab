@@ -414,8 +414,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Run.ElevatorPanel
   _mode: 1
-  _recessDistanceM: 0.02
+  _recessLocalDirection: {x: 0, y: 0, z: -1}
+  _recessDistanceM: 1
   _recessDurationS: 0.15
+  _pressClip: {fileID: 8300000, guid: 6d6177d775f1a274481c259b3471de83, type: 3}
+  _pressVolume: 0.7
 --- !u!1 &1582978020934583298
 GameObject:
   m_ObjectHideFlags: 0
@@ -845,6 +848,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8088252029274510947}
   - component: {fileID: 1604680646573873849}
+  - component: {fileID: 4319113149987170803}
   m_Layer: 0
   m_Name: ElevatorRoom
   m_TagString: Untagged
@@ -888,6 +892,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7c4e9f2a1b8d4635e0f9a2b3c4d5e6f7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomInstance
+--- !u!114 &4319113149987170803
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2699384044147549230}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f5dbc958ed2d94440b3fa6c5eeb1446f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Run.ElevatorDoorSeal
+  _doorObject: {fileID: 4308300786365863424}
 --- !u!1 &2989714499704988721
 GameObject:
   m_ObjectHideFlags: 0
@@ -1784,8 +1801,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Run.ElevatorPanel
   _mode: 0
-  _recessDistanceM: 0.02
+  _recessLocalDirection: {x: 0, y: 0, z: -1}
+  _recessDistanceM: 1
   _recessDurationS: 0.15
+  _pressClip: {fileID: 8300000, guid: 6d6177d775f1a274481c259b3471de83, type: 3}
+  _pressVolume: 0.7
 --- !u!1 &7088153190230969457
 GameObject:
   m_ObjectHideFlags: 0

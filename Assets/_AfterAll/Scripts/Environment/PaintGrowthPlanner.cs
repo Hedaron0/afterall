@@ -506,6 +506,26 @@ namespace AfterAll.Environment
             Dictionary<string, int>      usedCounts,
             System.Random                rng)
         {
+            // First pass: find the best door count among eligible candidates, so connectivity sets
+            // a qualifying bar without dominating every pick outright (doors*200 used to bury area/rng
+            // entirely, so the same highest-door footprint always won as hub).
+            int maxDoors = 0;
+            for (int i = 0; i < library.Count; i++)
+            {
+                RoomFootprint fp = library[i];
+                if (fp == null || fp.IsCorridorShape) continue;
+
+                int used     = usedCounts.GetValueOrDefault(fp.PrefabId, 0);
+                int maxReuse = GetMaxReuse(fp);
+                if (used >= maxReuse) continue;
+
+                maxDoors = Mathf.Max(maxDoors, CountDoorWalls(fp));
+            }
+
+            // Qualify anything within one door of the best — still plenty of branching room for hub
+            // growth — then let area + rng decide among the qualifying set for real variety.
+            int doorThreshold = Mathf.Max(1, maxDoors - 1);
+
             RoomFootprint best      = null;
             float         bestScore = -1f;
 
@@ -518,9 +538,10 @@ namespace AfterAll.Environment
                 int maxReuse = GetMaxReuse(fp);
                 if (used >= maxReuse) continue;
 
-                int   doors = CountDoorWalls(fp);
-                float score = doors * 200f + fp.BoundsAreaM2 * 0.01f
-                              + (float)rng.NextDouble() * 30f;
+                int doors = CountDoorWalls(fp);
+                if (doors < doorThreshold) continue;
+
+                float score = fp.BoundsAreaM2 * 0.01f + (float)rng.NextDouble() * 300f;
                 if (score > bestScore) { bestScore = score; best = fp; }
             }
 
