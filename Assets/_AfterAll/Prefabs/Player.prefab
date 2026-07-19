@@ -83,6 +83,7 @@ GameObject:
   - component: {fileID: 8993875248388473014}
   - component: {fileID: 4654868296766625139}
   - component: {fileID: 5829538087705173659}
+  - component: {fileID: 7005865277855055412}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -408,6 +409,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Items.ItemHolder
   _inventory: {fileID: 7647901948430078134}
   _handAnchor: {fileID: 8056309705918856385}
+--- !u!114 &7005865277855055412
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7750897326745617339}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89d86c6ff788f3e48acb1b222b7a5980, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Items.Loot.EchoPocket
 --- !u!1 &8384812459786235066
 GameObject:
   m_ObjectHideFlags: 0

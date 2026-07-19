@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 70944aebef8d252479027157870b0b01, type: 3}
   m_Name: NewEcho
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Items.Loot.EchoDefinition
-  _item: {fileID: 0}
+  _item: {fileID: 11400000, guid: 2e0ac6a014543704b91ff9925c8f17d4, type: 2}
   _value: 10
-  _sizeClass: 0
+  _sizeClass: 1

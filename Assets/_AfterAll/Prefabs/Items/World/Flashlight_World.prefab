@@ -541,6 +541,7 @@ GameObject:
   - component: {fileID: 327098288162539692}
   - component: {fileID: 7766554433221100}
   - component: {fileID: 7766554433221101}
+  - component: {fileID: -1596682448201419335}
   m_Layer: 0
   m_Name: Flashlight_World
   m_TagString: Untagged
@@ -614,6 +615,19 @@ MonoBehaviour:
   _selectOnPickup: 1
   _amount: 1
   _pickupVolume: 0.55
+--- !u!114 &-1596682448201419335
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8378822913778105135}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20aaaab00520d3747a63dde63f2576dc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomContentPickable
+  _spawnChance: 1
 --- !u!1 &9163349891872744636
 GameObject:
   m_ObjectHideFlags: 0

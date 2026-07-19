@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Echo
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Items.ItemDefinition
   _displayName: Echo
-  _category: 0
+  _category: 4
   _icon: {fileID: 0}
   _heldPrefab: {fileID: 0}
   _slotColor: {r: 0.85, g: 0.85, b: 0.85, a: 1}
-  _equipSound: {fileID: 0}
-  _pickupSound: {fileID: 0}
+  _equipSound: {fileID: 8300000, guid: f4db3d31b680f614ebf9335216fa769a, type: 3}
+  _pickupSound: {fileID: 8300000, guid: f4db3d31b680f614ebf9335216fa769a, type: 3}
   _pickupPrompt: Pick up
