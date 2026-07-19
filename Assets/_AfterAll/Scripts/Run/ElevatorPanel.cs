@@ -20,8 +20,14 @@ namespace AfterAll.Run
         [SerializeField] private Mode _mode = Mode.Down;
 
         [Header("Button Press")]
+        [Tooltip("Local-space direction the button moves on press (into the panel). Normalized at use.")]
+        [SerializeField] private Vector3 _recessLocalDirection = Vector3.back;
         [SerializeField] private float _recessDistanceM = 0.02f;
         [SerializeField] private float _recessDurationS = 0.15f;
+
+        [Header("Press SFX")]
+        [SerializeField] private AudioClip _pressClip;
+        [SerializeField, Range(0f, 1f)] private float _pressVolume = 0.7f;
 
         private RunDirector _runDirector;
         private Vector3 _restLocalPos;
@@ -47,6 +53,7 @@ namespace AfterAll.Run
                 return;
 
             PlayPressAnim();
+            PlayPressSfx();
 
             if (_mode == Mode.Down)
             {
@@ -68,9 +75,15 @@ namespace AfterAll.Run
             _pressRoutine = StartCoroutine(PressRoutine());
         }
 
+        private void PlayPressSfx()
+        {
+            if (_pressClip != null)
+                AudioSource.PlayClipAtPoint(_pressClip, transform.position, _pressVolume);
+        }
+
         private IEnumerator PressRoutine()
         {
-            Vector3 pressedLocalPos = _restLocalPos - new Vector3(0f, 0f, _recessDistanceM);
+            Vector3 pressedLocalPos = _restLocalPos - _recessLocalDirection.normalized * _recessDistanceM;
             float half = _recessDurationS * 0.5f;
 
             float t = 0f;

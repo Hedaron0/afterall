@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using AfterAll.Environment;
 using UnityEngine;
 
@@ -27,7 +28,12 @@ namespace AfterAll.Run
         [SerializeField] private bool _useFixedRunSeed;
         [SerializeField] private int _fixedRunSeed = 12345;
 
+        [Header("Elevator Transition")]
+        [Tooltip("Delay between the button press (anim + SFX + door close) and the floor rebuild, so the press is visible before ClearLevelRoot tears the elevator down.")]
+        [SerializeField, Min(0f)] private float _transitionDelaySeconds = 1.0f;
+
         private System.Random _seedRng;
+        private Coroutine _transitionRoutine;
 
         public int Depth { get; private set; }
         public RunState State { get; private set; } = RunState.InElevator;
@@ -40,6 +46,18 @@ namespace AfterAll.Run
         {
             if (_spawner == null)
                 _spawner = GetComponent<RoomPoolSpawner>();
+        }
+
+        private void OnEnable()
+        {
+            if (_spawner != null)
+                _spawner.FloorReady += HandleFloorReady;
+        }
+
+        private void OnDisable()
+        {
+            if (_spawner != null)
+                _spawner.FloorReady -= HandleFloorReady;
         }
 
         private void Start() => BeginRun();
@@ -63,15 +81,60 @@ namespace AfterAll.Run
         /// <summary>Descend: current floor's progress is discarded, a new deeper floor is generated.</summary>
         public void GoDown()
         {
-            Depth++;
-            SpawnFloor();
+            if (_transitionRoutine != null)
+                return;
+
+            _transitionRoutine = StartCoroutine(TransitionRoutine(descending: true));
         }
 
         /// <summary>Extract: run ends successfully. Carried loot is kept — stash/inventory hookup lands with the loot system.</summary>
         public void GoUp()
         {
-            RunEnded?.Invoke();
-            ResetRunState();
+            if (_transitionRoutine != null)
+                return;
+
+            _transitionRoutine = StartCoroutine(TransitionRoutine(descending: false));
+        }
+
+        /// <summary>Lets the button press anim/SFX/door-close play before the floor rebuild destroys the elevator.</summary>
+        private IEnumerator TransitionRoutine(bool descending)
+        {
+            CloseCurrentElevatorDoor();
+
+            if (_transitionDelaySeconds > 0f)
+                yield return new WaitForSeconds(_transitionDelaySeconds);
+
+            if (descending)
+            {
+                Depth++;
+                SpawnFloor();
+            }
+            else
+            {
+                RunEnded?.Invoke();
+                ResetRunState();
+            }
+
+            _transitionRoutine = null;
+        }
+
+        private void CloseCurrentElevatorDoor()
+        {
+            RoomInstance elevator = _spawner != null ? _spawner.CurrentElevatorRoom : null;
+            if (elevator == null)
+                return;
+
+            ElevatorDoorSeal seal = elevator.GetComponentInChildren<ElevatorDoorSeal>(true);
+            seal?.Close();
+        }
+
+        private void HandleFloorReady(RoomInstance elevatorRoom)
+        {
+            if (elevatorRoom == null)
+                return;
+
+            ElevatorDoorSeal seal = elevatorRoom.GetComponentInChildren<ElevatorDoorSeal>(true);
+            seal?.Open();
         }
 
         /// <summary>Player died: run resets fully. Carried + stash loot is lost — meta progression persists elsewhere.</summary>

@@ -89,6 +89,12 @@ namespace AfterAll.Environment
         public int LastUsedSeed => _lastUsedSeed;
         public int RoomCount => _roomCount;
 
+        /// <summary>The elevator room of the most recently completed build (null between ClearLevelRoot and rebuild).</summary>
+        public RoomInstance CurrentElevatorRoom { get; private set; }
+
+        /// <summary>Fired once a floor finishes building, with the new elevator room (may be null if the plan has none).</summary>
+        public event Action<RoomInstance> FloorReady;
+
         /// <summary>Runtime entry point for the run loop: generate a new floor with a fresh seed/budget; player spawns in the attached elevator room.</summary>
         public void BeginNewFloor(int seed, int roomCount)
         {
@@ -417,6 +423,7 @@ namespace AfterAll.Environment
 
             RoomInstance startRoom = hub;
             roomsByIndex.TryGetValue(plan.elevatorIndex, out RoomInstance elevatorRoom);
+            CurrentElevatorRoom = elevatorRoom;
             RoomConnector.ConnectionStats stats = _connector.GetStats();
             (ReachabilityAuditResult reachability, int finalPlacedCount) = RunReachabilityAudit(startRoom);
             int postBuildOverlaps = ValidatePlacedRoomOverlaps();
@@ -456,6 +463,7 @@ namespace AfterAll.Environment
             Debug.Log(summary.ToString());
 
             _buildRoutine = null;
+            FloorReady?.Invoke(elevatorRoom);
         }
 
         private static void AlignRoomWalkableFloorToWorldY(RoomInstance room, float targetWalkableY)
