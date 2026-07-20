@@ -1,14 +1,17 @@
 using System;
 using System.Collections;
 using AfterAll.Environment;
+using AfterAll.Items.Loot;
+using AfterAll.Meta;
 using AfterAll.Player;
 using UnityEngine;
 
 namespace AfterAll.Run
 {
     /// <summary>
-    /// M1 run-loop skeleton: elevator floor → explore → DOWN (deeper floor) or UP (extract, run ends).
-    /// No entities/loot/stash yet — extract and death paths are stubbed for the systems that will own them.
+    /// Run-loop authority: elevator floor → explore → DOWN (deeper floor) or UP (extract, run ends).
+    /// Extract banks EchoPocket + BulkyCarrier + whatever's resting in ElevatorStashVolume to
+    /// MetaProgress; death clears all three unbanked.
     /// </summary>
     public enum RunState
     {
@@ -20,6 +23,12 @@ namespace AfterAll.Run
     {
         [SerializeField] private RoomPoolSpawner _spawner;
         [SerializeField] private PlayerMovement _playerMovement;
+        [SerializeField] private EchoPocket _echoPocket;
+        [SerializeField] private BulkyCarrier _bulkyCarrier;
+
+        [Header("Loot")]
+        [Tooltip("Every EchoDefinition asset in the game. Forces them to load so EchoDefinition.TryGetFor can resolve value/size class — see EchoDefinition.RegisterAll.")]
+        [SerializeField] private EchoDefinition[] _knownEchoDefinitions;
 
         [Header("Floor Budget")]
         [SerializeField, Min(8)] private int _baseRoomCount = 20;
@@ -46,11 +55,19 @@ namespace AfterAll.Run
 
         private void Awake()
         {
+            EchoDefinition.RegisterAll(_knownEchoDefinitions);
+
             if (_spawner == null)
                 _spawner = GetComponent<RoomPoolSpawner>();
 
             if (_playerMovement == null)
                 _playerMovement = FindAnyObjectByType<PlayerMovement>();
+
+            if (_echoPocket == null)
+                _echoPocket = FindAnyObjectByType<EchoPocket>();
+
+            if (_bulkyCarrier == null)
+                _bulkyCarrier = FindAnyObjectByType<BulkyCarrier>();
         }
 
         private void OnEnable()
@@ -92,7 +109,7 @@ namespace AfterAll.Run
             _transitionRoutine = StartCoroutine(TransitionRoutine(descending: true));
         }
 
-        /// <summary>Extract: run ends successfully. Carried loot is kept — stash/inventory hookup lands with the loot system.</summary>
+        /// <summary>Extract: run ends successfully, EchoPocket contents are banked to MetaProgress.</summary>
         public void GoUp()
         {
             if (_transitionRoutine != null)
@@ -122,6 +139,15 @@ namespace AfterAll.Run
             }
             else
             {
+                int banked = 0;
+                if (_echoPocket != null) banked += _echoPocket.Bank();
+                if (_bulkyCarrier != null) banked += _bulkyCarrier.Bank();
+
+                ElevatorStashVolume stash = GetCurrentElevatorStashVolume();
+                if (stash != null) banked += stash.Collect();
+
+                MetaProgress.AddBanked(banked);
+
                 RunEnded?.Invoke();
                 ResetRunState();
                 UnfreezePlayer();
@@ -152,6 +178,15 @@ namespace AfterAll.Run
             seal?.Close();
         }
 
+        /// <summary>ElevatorStashVolume lives on the per-floor elevator instance, so it must be
+        /// re-resolved each time rather than cached — ClearLevelRoot destroys/recreates it on every
+        /// floor change. Public so UI (running value display) can read CurrentValue live.</summary>
+        public ElevatorStashVolume GetCurrentElevatorStashVolume()
+        {
+            RoomInstance elevator = _spawner != null ? _spawner.CurrentElevatorRoom : null;
+            return elevator != null ? elevator.GetComponentInChildren<ElevatorStashVolume>(true) : null;
+        }
+
         private void HandleFloorReady(RoomInstance elevatorRoom)
         {
             UnfreezePlayer();
@@ -166,6 +201,9 @@ namespace AfterAll.Run
         /// <summary>Player died: run resets fully. Carried + stash loot is lost — meta progression persists elsewhere.</summary>
         public void OnPlayerDied()
         {
+            _echoPocket?.Clear();
+            _bulkyCarrier?.Clear();
+            GetCurrentElevatorStashVolume()?.ClearOnDeath();
             RunFailed?.Invoke();
             ResetRunState();
         }

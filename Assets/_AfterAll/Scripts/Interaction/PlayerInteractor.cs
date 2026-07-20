@@ -1,3 +1,4 @@
+using AfterAll.Player;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -13,6 +14,7 @@ namespace AfterAll.Interaction
         public bool HasInteractableTarget { get; private set; }
 
         private Camera _camera;
+        private PlayerLook _look;
         private IInteractable _currentInteractable;
 
         private void Awake()
@@ -20,7 +22,16 @@ namespace AfterAll.Interaction
             _camera = GetComponentInChildren<Camera>();
             if (_camera == null)
                 Debug.LogWarning("[AfterAll] PlayerInteractor needs a Camera on a child object.");
+
+            _look = GetComponent<PlayerLook>();
         }
+
+        /// <summary>Pitch+yaw only, no strafe-roll/camera-bob sway — see PlayerLook.Pitch. Falls
+        /// back to the raw camera forward if PlayerLook isn't present (e.g. isolated test rigs).</summary>
+        private Vector3 AimDirection() =>
+            _look != null
+                ? (transform.rotation * Quaternion.AngleAxis(_look.Pitch, Vector3.right)) * Vector3.forward
+                : _camera.transform.forward;
 
         private void OnEnable()  => interactAction.action.Enable();
         private void OnDisable() => interactAction.action.Disable();
@@ -34,7 +45,7 @@ namespace AfterAll.Interaction
             if (_camera == null)
                 return;
 
-            Ray ray = new Ray(_camera.transform.position, _camera.transform.forward);
+            Ray ray = new Ray(_camera.transform.position, AimDirection());
             if (Physics.Raycast(
                 ray,
                 out RaycastHit hit,

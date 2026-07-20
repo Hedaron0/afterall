@@ -1,5 +1,6 @@
 using AfterAll.Inventories;
 using AfterAll.Interaction;
+using AfterAll.Items.Loot;
 using AfterAll.UI;
 using UnityEngine;
 
@@ -7,6 +8,9 @@ namespace AfterAll.Items
 {
     /// <summary>
     /// Generic world pickup. Routes items to hotbar or any IItemReceiver on the player.
+    /// Bulky Loot items are special-cased to BulkyCarrier's physical grab instead — they stay
+    /// live in the world (re-parented/spring-held, not deactivated) rather than being consumed
+    /// into abstract inventory data. See AfterAll.Items.Loot.BulkyCarrier.
     /// </summary>
     public sealed class WorldItem : MonoBehaviour, IInteractable
     {
@@ -18,6 +22,7 @@ namespace AfterAll.Items
         [SerializeField] private float _pickupVolume = 0.55f;
 
         private IItemReceiver[] _receivers;
+        private BulkyCarrier _bulkyCarrier;
 
         public ItemDefinition Item => _item;
 
@@ -27,6 +32,9 @@ namespace AfterAll.Items
             {
                 if (_item == null)
                     return string.Empty;
+
+                if (IsBulkyLoot() && _bulkyCarrier != null)
+                    return _bulkyCarrier.IsCarrying ? "Hands full" : _item.PickupPrompt;
 
                 if (!CanPickUp())
                     return _fullPromptText;
@@ -40,12 +48,25 @@ namespace AfterAll.Items
             if (_inventory == null)
                 _inventory = FindAnyObjectByType<Inventory>();
 
+            _bulkyCarrier = FindAnyObjectByType<BulkyCarrier>();
+
             CacheReceivers();
         }
 
         public void Interact()
         {
-            if (_item == null || _inventory == null)
+            if (_item == null)
+                return;
+
+            if (IsBulkyLoot())
+            {
+                // Grabbed object stays live in the world (BulkyCarrier holds it directly) —
+                // no SetActive(false)/pickup sound-and-vanish like the abstract pickup path below.
+                _bulkyCarrier?.TryGrab(this);
+                return;
+            }
+
+            if (_inventory == null)
                 return;
 
             if (!TryPickUp())
@@ -62,6 +83,12 @@ namespace AfterAll.Items
 
             gameObject.SetActive(false);
         }
+
+        private bool IsBulkyLoot() =>
+            _item != null &&
+            _item.Category == ItemCategory.Loot &&
+            EchoDefinition.TryGetFor(_item, out EchoDefinition def) &&
+            def.SizeClass == EchoSizeClass.Bulky;
 
         private void CacheReceivers()
         {

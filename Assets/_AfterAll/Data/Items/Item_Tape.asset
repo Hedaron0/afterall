@@ -10,12 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e7a1b2c3d4e5f6789012345678abcdef, type: 3}
-  m_Name: Echo
+  m_Name: Item_Tape
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Items.ItemDefinition
-  _displayName: Echo
+  _displayName: Tape
   _category: 4
   _icon: {fileID: 0}
   _heldPrefab: {fileID: 0}
+  _worldPickupPrefab: {fileID: 3738052204126800097, guid: aaf4d25ca71671a49bafcff311fded17, type: 3}
   _slotColor: {r: 0.85, g: 0.85, b: 0.85, a: 1}
   _equipSound: {fileID: 8300000, guid: f4db3d31b680f614ebf9335216fa769a, type: 3}
   _pickupSound: {fileID: 8300000, guid: f4db3d31b680f614ebf9335216fa769a, type: 3}

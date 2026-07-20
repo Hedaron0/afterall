@@ -22,6 +22,11 @@ namespace AfterAll.Player
 
         private float _pitch;
         private float _currentRoll;
+
+        /// <summary>Pure look pitch, no strafe-roll or camera-bob coupling — use this for gameplay
+        /// aim direction (e.g. PlayerInteractor's raycast), never cameraPivot.transform.forward
+        /// directly, which drifts off-crosshair when roll and pitch combine (see PR notes 2026-07-20).</summary>
+        public float Pitch => _pitch;
         private Vector2 _currentDelta;
         private Vector2 _targetDelta;
 

@@ -29,15 +29,10 @@ namespace AfterAll.Items.Flashlight
             ResolveLookAction();
         }
 
-        private void OnEnable()
-        {
-            _lookAction?.Enable();
-        }
-
-        private void OnDisable()
-        {
-            _lookAction?.Disable();
-        }
+        // No Enable()/Disable() here on purpose: _lookAction is the *same* shared "Look" action
+        // PlayerLook owns and enables once at startup. This script only reads it — disabling it
+        // on OnDisable (e.g. when ItemHolder destroys this held instance on a hotbar switch) used
+        // to kill camera look globally with nothing left to re-enable it (bug found 2026-07-20).
 
         private void LateUpdate()
         {

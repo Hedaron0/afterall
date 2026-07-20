@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -64,7 +65,31 @@ namespace AfterAll.Player
         private bool    _wasGrounded;
         private Vector2 _mobileMove;
 
+        // Multiplicative top-speed modifiers keyed by whoever applied them (e.g. bulky-carry
+        // penalty, future augments) so unrelated systems can't clobber each other's effect.
+        private readonly Dictionary<object, float> _speedModifiers = new();
+        private readonly HashSet<object> _sprintBlockers = new();
+
         public void SetMobileMove(Vector2 input) => _mobileMove = input;
+
+        public void SetSpeedModifier(object source, float multiplier) => _speedModifiers[source] = multiplier;
+
+        public void ClearSpeedModifier(object source) => _speedModifiers.Remove(source);
+
+        /// <summary>e.g. BulkyCarrier blocks sprint while hauling a bulky Echo.</summary>
+        public void SetSprintBlocked(object source, bool blocked)
+        {
+            if (blocked) _sprintBlockers.Add(source);
+            else _sprintBlockers.Remove(source);
+        }
+
+        private float GetSpeedModifierMultiplier()
+        {
+            float multiplier = 1f;
+            foreach (float m in _speedModifiers.Values)
+                multiplier *= m;
+            return multiplier;
+        }
 
         private void Awake()
         {
@@ -113,7 +138,8 @@ namespace AfterAll.Player
             bool mobileSprint = AfterAll.UI.MobileSprintBridge.WantsSprint;
             bool wantSprint   = !IsCrouching
                 && (pcSprint || mobileSprint)
-                && (_stamina == null || _stamina.CanSprint);
+                && (_stamina == null || _stamina.CanSprint)
+                && _sprintBlockers.Count == 0;
 
             SprintT = Mathf.MoveTowards(SprintT, wantSprint ? 1f : 0f, sprintAcceleration * Time.deltaTime);
 
@@ -124,6 +150,7 @@ namespace AfterAll.Player
             float topSpeed = IsCrouching
                 ? crouchSpeed
                 : Mathf.Lerp(moveSpeed, sprintSpeed, SprintT);
+            topSpeed *= GetSpeedModifierMultiplier();
 
             Vector2 input = AfterAll.UI.MobileInput.IsActive
                 ? _mobileMove

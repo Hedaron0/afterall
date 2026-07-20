@@ -9,6 +9,7 @@ namespace AfterAll.Items
         [SerializeField] private ItemCategory _category = ItemCategory.Hotbar;
         [SerializeField] private Sprite _icon;
         [SerializeField] private GameObject _heldPrefab;
+        [SerializeField] private GameObject _worldPickupPrefab;
         [SerializeField] private Color _slotColor = new(0.85f, 0.85f, 0.85f, 1f);
         [SerializeField] private AudioClip _equipSound;
         [SerializeField] private AudioClip _pickupSound;
@@ -18,6 +19,9 @@ namespace AfterAll.Items
         public ItemCategory Category => _category;
         public Sprite Icon => _icon;
         public GameObject HeldPrefab => _heldPrefab;
+
+        /// <summary>Prefab to spawn when this item is dropped back into the world (e.g. BulkyCarrier.TryDrop). Optional.</summary>
+        public GameObject WorldPickupPrefab => _worldPickupPrefab;
         public Color SlotColor => _slotColor;
         public AudioClip EquipSound => _equipSound;
         public AudioClip PickupSound => _pickupSound;
