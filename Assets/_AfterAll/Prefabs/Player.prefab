@@ -423,6 +423,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Items.Loot.EchoPocket
   _slotCount: 4
+  _flushAllAction: {fileID: 294101062485741028, guid: 052faaac586de48259a63d0c4782560b, type: 3}
 --- !u!114 &2607432690555639819
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -438,7 +439,8 @@ MonoBehaviour:
   _speedMultiplier: 0.6
   _dropDistance: 1.5
   _dropGroundCheckHeight: 1
-  dropAction: {fileID: 0}
+  throwAction: {fileID: 1120369429361536294, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  dropAction: {fileID: 5315900165884744931, guid: 052faaac586de48259a63d0c4782560b, type: 3}
 --- !u!1 &8384812459786235066
 GameObject:
   m_ObjectHideFlags: 0

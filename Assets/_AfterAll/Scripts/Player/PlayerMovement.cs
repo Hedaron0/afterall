@@ -212,9 +212,19 @@ namespace AfterAll.Player
 
         private bool CeilingCheck()
         {
+            // Require exactly standHeight of clearance: the cast sphere's top must be able to
+            // reach the standing capsule's top, no further. Triggers (stash volumes, exit
+            // triggers) must never count as a ceiling.
             float radius = _controller.radius * 0.9f;
-            Vector3 origin = transform.position + Vector3.up * (crouchHeight + 0.05f);
-            return Physics.SphereCast(origin, radius, Vector3.up, out _, _standHeight - crouchHeight);
+            float originY = crouchHeight + 0.05f;
+            Vector3 origin = transform.position + Vector3.up * originY;
+            float castDistance = _standHeight - radius - originY;
+            if (castDistance <= 0f)
+                return false;
+
+            return Physics.SphereCast(
+                origin, radius, Vector3.up, out _, castDistance,
+                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
         }
 
         private void UpdateFootsteps(float distanceMoved, float stepDist)
@@ -244,6 +254,11 @@ namespace AfterAll.Player
             AudioClip clip = _footstepClips[_nextClipIndex % _footstepClips.Length];
             _nextClipIndex++;
             _footstepSource.PlayOneShot(clip, _footstepVolume);
+
+            // S4: every audible step feeds the hunter. Crouch steps are near-silent by design
+            // (stealth option), walk is moderate, sprint carries across rooms.
+            float noiseRadius = IsCrouching ? 2f : (SprintT > 0.01f ? 16f : 8f);
+            Entities.NoiseEvents.Report(transform.position, noiseRadius);
         }
     }
 }

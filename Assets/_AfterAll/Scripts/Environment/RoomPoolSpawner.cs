@@ -92,6 +92,11 @@ namespace AfterAll.Environment
         /// <summary>The elevator room of the most recently completed build (null between ClearLevelRoot and rebuild).</summary>
         public RoomInstance CurrentElevatorRoom { get; private set; }
 
+        /// <summary>The elevator cabin kept alive across floor rebuilds. Adopted from the first
+        /// build and reparented out of LevelRoot so ClearLevelRoot never destroys it — the player
+        /// rides it while floors are torn down and rebuilt around it.</summary>
+        private RoomInstance _persistentElevator;
+
         /// <summary>Fired once a floor finishes building, with the new elevator room (may be null if the plan has none).</summary>
         public event Action<RoomInstance> FloorReady;
 
@@ -266,12 +271,6 @@ namespace AfterAll.Environment
                 yield break;
             }
 
-            // Cache the outgoing elevator's world pose before ClearLevelRoot destroys it, so the new
-            // floor's elevator can be rigidly re-aligned onto it (player never sees a teleport).
-            bool holdElevatorInPlace = CurrentElevatorRoom != null;
-            Vector3 previousElevatorWorldPos = holdElevatorInPlace ? CurrentElevatorRoom.transform.position : Vector3.zero;
-            float previousElevatorWorldYawDeg = holdElevatorInPlace ? CurrentElevatorRoom.transform.eulerAngles.y : 0f;
-
             ClearLevelRoot();
             _connector.ResetStats();
             InitializeRng();
@@ -299,6 +298,20 @@ namespace AfterAll.Environment
                 yield break;
             }
 
+            // Rebuilds keep the previous floor's cabin alive (it lives outside LevelRoot), so the
+            // whole new layout must be rigidly pre-aligned to land its elevator placement exactly
+            // on the cabin BEFORE anything spawns — the player standing inside never sees the
+            // floor build displaced and then snap into place.
+            bool reuseElevatorCabin = _persistentElevator != null
+                && plan.elevatorIndex > 0
+                && plan.elevatorIndex < plan.placements.Count;
+            if (_persistentElevator != null && !reuseElevatorCabin)
+                Debug.LogError(
+                    "[RoomPoolSpawner] Plan has no elevator placement — the persistent cabin can't " +
+                    "be re-attached and the new floor will be unreachable from it.");
+            if (reuseElevatorCabin)
+                AlignLevelRootToPersistentElevator(plan);
+
             LayoutPlanPlacement hubPlacement = plan.placements[0];
             if (!prefabById.TryGetValue(hubPlacement.prefabId, out GameObject hubPrefab) || hubPrefab == null)
             {
@@ -322,6 +335,18 @@ namespace AfterAll.Environment
             validationTotals.duplicateDirectionCount += hubValidation.duplicateDirectionCount;
             roomsByIndex[0] = hub;
             _placedRoomCount = 1;
+
+            if (reuseElevatorCabin)
+            {
+                // Pre-seed the cabin as an already-placed room: the connection loop's
+                // childAlreadyPlaced path then links it to the new hub without snapping or
+                // re-instantiating it. Its doorway is deterministic (single doorValid wall,
+                // non-random gap offsets), so the existing opening already matches the plan —
+                // only the connection bookkeeping from the destroyed floor must be cleared.
+                _persistentElevator.ResetConnections();
+                roomsByIndex[plan.elevatorIndex] = _persistentElevator;
+                _placedRoomCount = roomsByIndex.Count;
+            }
 
             if (_spawnDelaySeconds > 0f)
                 yield return new WaitForSeconds(_spawnDelaySeconds);
@@ -430,18 +455,18 @@ namespace AfterAll.Environment
             RoomInstance startRoom = hub;
             roomsByIndex.TryGetValue(plan.elevatorIndex, out RoomInstance elevatorRoom);
 
-            holdElevatorInPlace &= elevatorRoom != null;
-            if (holdElevatorInPlace)
-                AlignLevelRootToElevator(elevatorRoom, previousElevatorWorldPos, previousElevatorWorldYawDeg);
+            if (reuseElevatorCabin && elevatorRoom != null && elevatorRoom.ConnectedRooms.Count == 0)
+                Debug.LogError(
+                    "[RoomPoolSpawner] Persistent cabin failed to re-connect to the new hub — its " +
+                    "doorway leads nowhere. Wall pairing or gap-offset determinism broke.");
 
             CurrentElevatorRoom = elevatorRoom;
             RoomConnector.ConnectionStats stats = _connector.GetStats();
             (ReachabilityAuditResult reachability, int finalPlacedCount) = RunReachabilityAudit(startRoom);
             int postBuildOverlaps = ValidatePlacedRoomOverlaps();
-            // The elevator was just rigidly re-aligned onto the player's current world position —
-            // teleporting the player onto it here would undo that and snap them to the new layout's
-            // arbitrary generation pose instead.
-            if (_repositionPlayerAfterBuild && !holdElevatorInPlace)
+            // On rebuilds the layout was pre-aligned onto the cabin the player is standing in —
+            // teleporting the player here would snap them away from it.
+            if (_repositionPlayerAfterBuild && !reuseElevatorCabin)
                 PlacePlayerAfterBuild(startRoom, elevatorRoom);
 
             _contentManager?.ActivateAll(_lastUsedSeed);
@@ -476,24 +501,37 @@ namespace AfterAll.Environment
                 $"Overlap={stats.overlapRejected}.");
             Debug.Log(summary.ToString());
 
+            // First build with an elevator: adopt the cabin as persistent. It leaves LevelRoot so
+            // ClearLevelRoot never destroys it; every later floor is pre-aligned onto it instead.
+            if (elevatorRoom != null && _persistentElevator == null)
+            {
+                _persistentElevator = elevatorRoom;
+                elevatorRoom.transform.SetParent(null, worldPositionStays: true);
+            }
+
             _buildRoutine = null;
             FloorReady?.Invoke(elevatorRoom);
         }
 
         /// <summary>
-        /// Rigidly moves the whole level (LevelRoot and everything under it) so the freshly-built
-        /// elevator lands exactly on the previous floor's elevator world pose — the player stays put
-        /// and the level shifts to meet them instead of the elevator teleporting.
+        /// Rigidly poses LevelRoot BEFORE any room spawns so the plan's elevator placement lands
+        /// exactly on the persistent cabin's current world pose. Plan space == LevelRoot local
+        /// space (the hub spawns at local zero with its plan yaw), so the root transform that maps
+        /// the planned elevator pose onto the cabin is computable straight from plan data.
         /// </summary>
-        private void AlignLevelRootToElevator(RoomInstance elevatorRoom, Vector3 targetWorldPos, float targetWorldYawDeg)
+        private void AlignLevelRootToPersistentElevator(LayoutPlan plan)
         {
             Transform root = _connector.LevelRoot;
-            Vector3 pivot = elevatorRoom.transform.position;
+            LayoutPlanPlacement elevator = plan.placements[plan.elevatorIndex];
+            Transform cabin = _persistentElevator.transform;
 
-            float deltaYaw = Mathf.DeltaAngle(elevatorRoom.transform.eulerAngles.y, targetWorldYawDeg);
-            root.RotateAround(pivot, Vector3.up, deltaYaw);
-
-            root.position += targetWorldPos - elevatorRoom.transform.position;
+            float deltaYaw = Mathf.DeltaAngle(elevator.yawDegrees, cabin.eulerAngles.y);
+            Quaternion rootRotation = Quaternion.Euler(0f, deltaYaw, 0f);
+            Vector3 planLocal = new Vector3(elevator.positionXZ.x, 0f, elevator.positionXZ.y);
+            Vector3 rotatedOffset = rootRotation * planLocal;
+            root.SetPositionAndRotation(
+                new Vector3(cabin.position.x - rotatedOffset.x, root.position.y, cabin.position.z - rotatedOffset.z),
+                rootRotation);
         }
 
         private static void AlignRoomWalkableFloorToWorldY(RoomInstance room, float targetWalkableY)

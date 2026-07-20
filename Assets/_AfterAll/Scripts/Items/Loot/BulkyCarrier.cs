@@ -139,6 +139,10 @@ namespace AfterAll.Items.Loot
             Carried = worldItem.Item;
             _heldWorldItem = worldItem;
             _heldBody = rb;
+            // Once grabbed, the item belongs to the player, not the floor: floor-spawned items are
+            // parented under their room, and ClearLevelRoot would destroy them out of the player's
+            // hands (or out of the elevator stash) on the next floor rebuild.
+            _heldBody.transform.SetParent(null, worldPositionStays: true);
             _heldBody.useGravity = false;
             _heldBody.linearVelocity = Vector3.zero;
             _heldBody.angularVelocity = Vector3.zero;
@@ -175,6 +179,8 @@ namespace AfterAll.Items.Loot
             _heldBody.AddTorque(randomSpinAxis * _throwSpinImpulse, ForceMode.Impulse);
 
             GameFeedbackUI.Show($"{Carried.DisplayName} thrown.");
+            // S4: hurling a bulky object is loud — the hunter hears it across several rooms.
+            Entities.NoiseEvents.Report(transform.position, 14f);
             ReleaseHeld();
             return true;
         }

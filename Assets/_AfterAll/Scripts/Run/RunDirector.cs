@@ -52,6 +52,8 @@ namespace AfterAll.Run
         public event Action<int> DepthChanged;
         public event Action RunEnded;
         public event Action RunFailed;
+        /// <summary>Fired when the player first leaves the elevator on a floor (S4: hunter spawn).</summary>
+        public event Action ExploreStarted;
 
         private void Awake()
         {
@@ -98,6 +100,7 @@ namespace AfterAll.Run
                 return;
 
             State = RunState.Exploring;
+            ExploreStarted?.Invoke();
         }
 
         /// <summary>Descend: current floor's progress is discarded, a new deeper floor is generated.</summary>
@@ -198,7 +201,9 @@ namespace AfterAll.Run
             seal?.Open();
         }
 
-        /// <summary>Player died: run resets fully. Carried + stash loot is lost — meta progression persists elsewhere.</summary>
+        /// <summary>Player died: run resets fully. Carried + stash loot is lost — meta progression
+        /// persists elsewhere. The player wakes up back in the (persistent) cabin at depth 0 with a
+        /// freshly generated floor behind the closed door.</summary>
         public void OnPlayerDied()
         {
             _echoPocket?.Clear();
@@ -206,6 +211,28 @@ namespace AfterAll.Run
             GetCurrentElevatorStashVolume()?.ClearOnDeath();
             RunFailed?.Invoke();
             ResetRunState();
+
+            TeleportPlayerToCabin();
+            FreezePlayer();
+            CloseCurrentElevatorDoor();
+            BeginRun();
+            // Unfrozen (and door reopened) by HandleFloorReady once the depth-0 floor lands.
+        }
+
+        private void TeleportPlayerToCabin()
+        {
+            RoomInstance cabin = _spawner != null ? _spawner.CurrentElevatorRoom : null;
+            if (cabin == null || _playerMovement == null)
+                return;
+
+            Vector3 spawnPos = cabin.GetSpawnPosition(1.0f);
+            Transform playerTransform = _playerMovement.transform;
+            CharacterController controller = _playerMovement.GetComponent<CharacterController>();
+            if (controller != null)
+                controller.enabled = false;
+            playerTransform.position = spawnPos;
+            if (controller != null)
+                controller.enabled = true;
         }
 
         private void SpawnFloor()

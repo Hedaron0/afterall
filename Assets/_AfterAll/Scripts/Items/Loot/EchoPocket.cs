@@ -141,6 +141,8 @@ namespace AfterAll.Items.Loot
             Vector3 spawnPos = (_camera != null ? _camera.transform.position : transform.position) + forward * _flushSpawnDistance;
 
             GameObject spawned = Instantiate(prefab, spawnPos, Quaternion.identity);
+            // S4: each flushed toss is audible (Q-flush spits items one at a time).
+            Entities.NoiseEvents.Report(spawnPos, 8f);
             if (spawned.TryGetComponent(out Rigidbody rb))
             {
                 rb.AddForce(forward * _flushThrowImpulse, ForceMode.Impulse);

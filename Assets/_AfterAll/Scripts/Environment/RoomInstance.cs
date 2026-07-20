@@ -112,6 +112,25 @@ namespace AfterAll.Environment
                 _connectedRooms.Add(neighbor);
         }
 
+        /// <summary>
+        /// Clears all connection bookkeeping (connected walls, neighbors, socket flags) WITHOUT
+        /// touching wall meshes. Used on the persistent elevator cabin before each floor rebuild:
+        /// its old neighbors are destroyed with the floor, but its doorway geometry stays valid
+        /// and gets re-linked to the new hub by the normal ApplyPlannedConnection path.
+        /// </summary>
+        public void ResetConnections()
+        {
+            foreach (WallGapController wall in _connectedWalls)
+            {
+                if (wall != null && wall.TryGetSocket(out RoomSocket socket))
+                    socket.IsConnected = false;
+            }
+
+            _connectedWalls.Clear();
+            _wallNeighbors.Clear();
+            _connectedRooms.Clear();
+        }
+
         public void UnlinkNeighbor(RoomInstance neighbor)
         {
             if (neighbor == null)
@@ -135,6 +154,38 @@ namespace AfterAll.Environment
                 if (wall.TryGetSocket(out RoomSocket socket))
                     socket.IsConnected = false;
             }
+        }
+
+        /// <summary>World position of the doorway (socket) leading to a directly-connected
+        /// neighbor. False if the rooms aren't neighbors or the socket is missing.</summary>
+        public bool TryGetDoorwayTo(RoomInstance neighbor, out Vector3 doorWorldPos)
+        {
+            doorWorldPos = default;
+            if (neighbor == null)
+                return false;
+
+            foreach (KeyValuePair<WallGapController, RoomInstance> entry in _wallNeighbors)
+            {
+                if (entry.Value != neighbor || entry.Key == null)
+                    continue;
+
+                if (entry.Key.TryGetSocket(out RoomSocket socket) && socket != null)
+                {
+                    doorWorldPos = socket.transform.position;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>True when the XZ of a world point falls inside this room's footprint bounds
+        /// (Y ignored — floors are flat and height-aligned). Used for point→room lookups.</summary>
+        public bool ContainsPointXZ(Vector3 worldPos)
+        {
+            Bounds bounds = GetWorldBounds();
+            return worldPos.x >= bounds.min.x && worldPos.x <= bounds.max.x
+                && worldPos.z >= bounds.min.z && worldPos.z <= bounds.max.z;
         }
 
         public IEnumerable<WallGapController> GetOpenUnconnectedWalls()

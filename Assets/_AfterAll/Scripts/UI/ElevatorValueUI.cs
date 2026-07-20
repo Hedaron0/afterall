@@ -15,8 +15,10 @@ namespace AfterAll.UI
     /// </summary>
     public class ElevatorValueUI : MonoBehaviour
     {
-        [SerializeField] private TextMeshProUGUI _valueText;
+        [SerializeField] private TMP_Text _valueText;
         [SerializeField] private string _format = "Value: {0}";
+        [Tooltip("On: text only shows while RunState == InElevator (HUD placeholder behavior). Off: always on — for the in-world LCD prop.")]
+        [SerializeField] private bool _onlyWhileInElevator = true;
         [SerializeField] private RunDirector _runDirector;
         [SerializeField] private EchoPocket _pocket;
         [SerializeField] private BulkyCarrier _carrier;
@@ -33,7 +35,7 @@ namespace AfterAll.UI
             if (_valueText == null || _runDirector == null)
                 return;
 
-            bool show = _runDirector.State == RunState.InElevator;
+            bool show = !_onlyWhileInElevator || _runDirector.State == RunState.InElevator;
             if (_valueText.enabled != show)
                 _valueText.enabled = show;
 
