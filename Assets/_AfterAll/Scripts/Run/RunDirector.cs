@@ -121,13 +121,14 @@ namespace AfterAll.Run
             _transitionRoutine = StartCoroutine(TransitionRoutine(descending: false));
         }
 
-        /// <summary>Lets the button press anim/SFX/door-close play before the floor rebuild destroys the elevator.</summary>
+        /// <summary>Lets the button press anim/SFX/door-close play before the floor rebuild destroys everything outside the (persistent) cabin.</summary>
         private IEnumerator TransitionRoutine(bool descending)
         {
-            // ClearLevelRoot destroys the floor out from under the player and Build() spans many
-            // frames before the new one lands — without this the player free-falls through the void
-            // and gets yanked back once the reposition/realignment finally runs.
-            FreezePlayer();
+            // The cabin itself is never destroyed and never moves (RoomPoolSpawner re-aligns the
+            // REST of the level onto it, not the other way around) — only the door needs to
+            // close, sealing the player inside real, solid ground while the new floor assembles
+            // around it. No movement freeze needed anymore now that free-fall-through-the-void
+            // can't happen (that was the old pre-persistent-cabin risk this used to guard against).
             CloseCurrentElevatorDoor();
 
             if (_transitionDelaySeconds > 0f)
@@ -137,8 +138,8 @@ namespace AfterAll.Run
             {
                 Depth++;
                 SpawnFloor();
-                // Unfrozen in HandleFloorReady once the new floor (and elevator hold-in-place
-                // realignment) finishes — SpawnFloor's Build() runs asynchronously.
+                // Door reopens in HandleFloorReady once the new floor finishes building —
+                // SpawnFloor's Build() runs asynchronously across several frames.
             }
             else
             {
@@ -159,10 +160,9 @@ namespace AfterAll.Run
 
                 RunEnded?.Invoke();
                 // Interim economy (no shop yet, Core Design §7): extract just starts a fresh
-                // depth-0 run. BeginRun()'s SpawnFloor keeps the player frozen behind the
-                // already-closed door until HandleFloorReady's FloorReady fires — same sequencing
-                // GoDown uses, so extract no longer leaves the player standing in the stale floor
-                // with nothing visibly happening.
+                // depth-0 run behind the already-closed door, same sequencing GoDown uses — so
+                // extract no longer leaves the player standing in the stale floor with nothing
+                // visibly happening. Player can move freely inside the cabin the whole time.
                 BeginRun();
             }
 

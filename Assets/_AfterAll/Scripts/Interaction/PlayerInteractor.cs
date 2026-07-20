@@ -1,3 +1,4 @@
+using AfterAll.Items.Loot;
 using AfterAll.Player;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -15,6 +16,7 @@ namespace AfterAll.Interaction
 
         private Camera _camera;
         private PlayerLook _look;
+        private BulkyCarrier _bulkyCarrier;
         private IInteractable _currentInteractable;
 
         private void Awake()
@@ -24,6 +26,7 @@ namespace AfterAll.Interaction
                 Debug.LogWarning("[AfterAll] PlayerInteractor needs a Camera on a child object.");
 
             _look = GetComponent<PlayerLook>();
+            _bulkyCarrier = GetComponent<BulkyCarrier>();
         }
 
         /// <summary>Pitch+yaw only, no strafe-roll/camera-bob sway — see PlayerLook.Pitch. Falls
@@ -56,8 +59,14 @@ namespace AfterAll.Interaction
                 interactableMask,
                 QueryTriggerInteraction.Ignore))
             {
+                // A carried Bulky item sits right in front of the camera — the ray hits its own
+                // collider, which would otherwise show a crosshair/prompt for re-grabbing the
+                // thing already in your hands.
+                bool isHeldItem = _bulkyCarrier != null && _bulkyCarrier.IsCarrying &&
+                    hit.collider.GetComponentInParent<AfterAll.Items.WorldItem>() == _bulkyCarrier.HeldWorldItem;
+
                 // Collider is on the door model; Door script sits on the root.
-                IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
+                IInteractable interactable = isHeldItem ? null : hit.collider.GetComponentInParent<IInteractable>();
                 if (interactable != null)
                 {
                     HasInteractableTarget = true;

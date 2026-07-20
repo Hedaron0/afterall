@@ -57,6 +57,11 @@ namespace AfterAll.Items.Loot
         public ItemDefinition Carried { get; private set; }
         public bool IsCarrying => Carried != null;
 
+        /// <summary>The world object currently held, if any — lets PlayerInteractor ignore it
+        /// (it sits right in front of the camera, so the interact ray hits it and would otherwise
+        /// show a crosshair/prompt for re-grabbing the thing already in your hands).</summary>
+        public WorldItem HeldWorldItem => _heldWorldItem;
+
         private void Awake()
         {
             _movement = GetComponent<PlayerMovement>();

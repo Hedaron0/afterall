@@ -12,14 +12,19 @@ namespace AfterAll.Run
     /// the bank total automatically. Walk in, drop it anywhere inside (Harun sizes the collider
     /// to cover the elevator's interior floor), it's counted; carry it back out and it isn't.
     /// This naturally covers a BulkyCarrier-held item too — it stays a live Rigidbody+Collider
-    /// while carried, so it enters/exits _contained exactly when its own collider crosses the
-    /// boundary (holding it out through the doorway doesn't count it; pushing it fully inside
-    /// does). Don't also add BulkyCarrier.PeekValue() anywhere — that would double-count it.
+    /// while carried, so it's counted exactly when its own collider is inside the cabin (holding
+    /// it out through the doorway doesn't count it; pushing it fully inside does). Don't also add
+    /// BulkyCarrier.PeekValue() anywhere — that would double-count it.
+    /// CurrentValue/PlayerInside are recomputed from a fresh Physics.OverlapBox sweep every
+    /// frame rather than tracked incrementally via OnTriggerEnter/Exit — repeated grab/throw
+    /// cycles on the same item desynced the incremental HashSet (2026-07-21: exactly that caused
+    /// a value-doubling exploit). A same-frame ground-truth sweep can't drift.
     /// </summary>
     [RequireComponent(typeof(Collider))]
     public class ElevatorStashVolume : MonoBehaviour
     {
-        private readonly HashSet<WorldItem> _contained = new();
+        private Collider _volume;
+        private readonly Collider[] _overlapBuffer = new Collider[64];
 
         public int CurrentValue { get; private set; }
 
@@ -29,65 +34,25 @@ namespace AfterAll.Run
 
         private void Awake()
         {
-            GetComponent<Collider>().isTrigger = true;
+            _volume = GetComponent<Collider>();
+            _volume.isTrigger = true;
         }
 
-        private void OnTriggerEnter(Collider other)
-        {
-            if (other.GetComponentInParent<PlayerMovement>() != null)
-            {
-                PlayerInside = true;
-                return;
-            }
-
-            WorldItem item = other.GetComponentInParent<WorldItem>();
-            if (item != null && IsLoot(item) && _contained.Add(item))
-                Recalculate();
-        }
-
-        private void OnTriggerExit(Collider other)
-        {
-            if (other.GetComponentInParent<PlayerMovement>() != null)
-            {
-                PlayerInside = false;
-                return;
-            }
-
-            WorldItem item = other.GetComponentInParent<WorldItem>();
-            if (item != null && _contained.Remove(item))
-                Recalculate();
-        }
-
-        /// <summary>Drains the counted value for banking. Does not touch the physical objects — call from RunDirector.GoUp() right before the floor/run resets them.</summary>
-        public int Collect()
-        {
-            int total = CurrentValue;
-            _contained.Clear();
-            CurrentValue = 0;
-            return total;
-        }
+        private void Update() => Recalculate();
 
         /// <summary>
         /// Extract, interim economy (no shop yet — Core Design §5.6/§7): totals AND physically
-        /// destroys every Loot WorldItem currently inside the cabin, not just the trigger-tracked
-        /// set. A fresh physics sweep (not _contained) so a BulkyCarrier item released the same
-        /// frame extract is pressed — before its own OnTriggerEnter has fired — is still caught.
-        /// Once the Uncanny Shop exists this becomes "move to shop inventory" instead of destroy.
+        /// destroys every Loot WorldItem currently inside the cabin. Once the Uncanny Shop exists
+        /// this becomes "move to shop inventory" instead of destroy.
         /// </summary>
         public int CollectAndDestroyAll()
         {
-            Collider volume = GetComponent<Collider>();
-            Bounds bounds = volume.bounds;
-            Collider[] hits = Physics.OverlapBox(
-                bounds.center, bounds.extents, Quaternion.identity,
-                ~0, QueryTriggerInteraction.Ignore);
-
             int total = 0;
-            var destroyed = new HashSet<WorldItem>();
-            foreach (Collider hit in hits)
+            var seen = new HashSet<WorldItem>();
+            foreach (Collider hit in Overlap())
             {
                 WorldItem item = hit.GetComponentInParent<WorldItem>();
-                if (item == null || !IsLoot(item) || !destroyed.Add(item))
+                if (item == null || !IsLoot(item) || !seen.Add(item))
                     continue;
 
                 if (EchoDefinition.TryGetFor(item.Item, out EchoDefinition def))
@@ -96,28 +61,48 @@ namespace AfterAll.Run
                 Destroy(item.gameObject);
             }
 
-            _contained.Clear();
             CurrentValue = 0;
             return total;
         }
 
         /// <summary>Loses the running count without banking it. Call on player death.</summary>
-        public void ClearOnDeath()
-        {
-            _contained.Clear();
-            CurrentValue = 0;
-        }
+        public void ClearOnDeath() => CurrentValue = 0;
 
         private void Recalculate()
         {
             int total = 0;
-            foreach (WorldItem item in _contained)
+            bool playerInside = false;
+            var seen = new HashSet<WorldItem>();
+
+            foreach (Collider hit in Overlap())
             {
-                if (item != null && item.Item != null && EchoDefinition.TryGetFor(item.Item, out EchoDefinition def))
+                if (!playerInside && hit.GetComponentInParent<PlayerMovement>() != null)
+                {
+                    playerInside = true;
+                    continue;
+                }
+
+                WorldItem item = hit.GetComponentInParent<WorldItem>();
+                if (item == null || !IsLoot(item) || !seen.Add(item))
+                    continue;
+
+                if (EchoDefinition.TryGetFor(item.Item, out EchoDefinition def))
                     total += def.Value;
             }
 
             CurrentValue = total;
+            PlayerInside = playerInside;
+        }
+
+        private IEnumerable<Collider> Overlap()
+        {
+            Bounds bounds = _volume.bounds;
+            int count = Physics.OverlapBoxNonAlloc(
+                bounds.center, bounds.extents, _overlapBuffer, Quaternion.identity,
+                ~0, QueryTriggerInteraction.Ignore);
+
+            for (int i = 0; i < count; i++)
+                yield return _overlapBuffer[i];
         }
 
         private static bool IsLoot(WorldItem item) =>

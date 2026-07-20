@@ -639,7 +639,14 @@ namespace AfterAll.Environment
 
         private int ValidatePlacedRoomOverlaps()
         {
-            RoomInstance[] rooms = _connector.LevelRoot.GetComponentsInChildren<RoomInstance>();
+            RoomInstance[] levelRootRooms = _connector.LevelRoot.GetComponentsInChildren<RoomInstance>();
+            // The persistent cabin lives outside LevelRoot from the second floor onward
+            // (RoomPoolSpawner.Build reparents it out so ClearLevelRoot can't destroy it) — without
+            // adding it back in here, every rebuild after the first silently stops checking new
+            // rooms against the elevator at all.
+            RoomInstance[] rooms = _persistentElevator != null && !levelRootRooms.Contains(_persistentElevator)
+                ? levelRootRooms.Append(_persistentElevator).ToArray()
+                : levelRootRooms;
             int overlapPairs = 0;
 
             for (int i = 0; i < rooms.Length; i++)
