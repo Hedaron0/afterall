@@ -143,17 +143,27 @@ namespace AfterAll.Run
             else
             {
                 int banked = 0;
-                if (_echoPocket != null) banked += _echoPocket.Bank();
-                if (_bulkyCarrier != null) banked += _bulkyCarrier.Bank();
+                if (_echoPocket != null)
+                    banked += _echoPocket.Bank(); // abstract pocket value — no physical object to sweep
+
+                // Releases the held object in place (gravity restored) but its value is NOT added
+                // here: the stash sweep below counts every physical Loot item in the cabin,
+                // including this one, so adding Bank()'s return too would double-count it.
+                _bulkyCarrier?.Bank();
 
                 ElevatorStashVolume stash = GetCurrentElevatorStashVolume();
-                if (stash != null) banked += stash.Collect();
+                if (stash != null)
+                    banked += stash.CollectAndDestroyAll();
 
                 MetaProgress.AddBanked(banked);
 
                 RunEnded?.Invoke();
-                ResetRunState();
-                UnfreezePlayer();
+                // Interim economy (no shop yet, Core Design §7): extract just starts a fresh
+                // depth-0 run. BeginRun()'s SpawnFloor keeps the player frozen behind the
+                // already-closed door until HandleFloorReady's FloorReady fires — same sequencing
+                // GoDown uses, so extract no longer leaves the player standing in the stale floor
+                // with nothing visibly happening.
+                BeginRun();
             }
 
             _transitionRoutine = null;

@@ -46,6 +46,40 @@ namespace AfterAll.Run
             return total;
         }
 
+        /// <summary>
+        /// Extract, interim economy (no shop yet — Core Design §5.6/§7): totals AND physically
+        /// destroys every Loot WorldItem currently inside the cabin, not just the trigger-tracked
+        /// set. A fresh physics sweep (not _contained) so a BulkyCarrier item released the same
+        /// frame extract is pressed — before its own OnTriggerEnter has fired — is still caught.
+        /// Once the Uncanny Shop exists this becomes "move to shop inventory" instead of destroy.
+        /// </summary>
+        public int CollectAndDestroyAll()
+        {
+            Collider volume = GetComponent<Collider>();
+            Bounds bounds = volume.bounds;
+            Collider[] hits = Physics.OverlapBox(
+                bounds.center, bounds.extents, Quaternion.identity,
+                ~0, QueryTriggerInteraction.Ignore);
+
+            int total = 0;
+            var destroyed = new HashSet<WorldItem>();
+            foreach (Collider hit in hits)
+            {
+                WorldItem item = hit.GetComponentInParent<WorldItem>();
+                if (item == null || !IsLoot(item) || !destroyed.Add(item))
+                    continue;
+
+                if (EchoDefinition.TryGetFor(item.Item, out EchoDefinition def))
+                    total += def.Value;
+
+                Destroy(item.gameObject);
+            }
+
+            _contained.Clear();
+            CurrentValue = 0;
+            return total;
+        }
+
         /// <summary>Loses the running count without banking it. Call on player death.</summary>
         public void ClearOnDeath()
         {

@@ -45,13 +45,16 @@ namespace AfterAll.Interaction
             if (_camera == null)
                 return;
 
+            // Trigger volumes (ElevatorStashVolume, ElevatorExitTrigger, etc.) must never occlude
+            // the interact ray — a stash volume covering the elevator floor was silently blocking
+            // pickup of anything resting inside it.
             Ray ray = new Ray(_camera.transform.position, AimDirection());
             if (Physics.Raycast(
                 ray,
                 out RaycastHit hit,
                 interactRange,
                 interactableMask,
-                QueryTriggerInteraction.Collide))
+                QueryTriggerInteraction.Ignore))
             {
                 // Collider is on the door model; Door script sits on the root.
                 IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();

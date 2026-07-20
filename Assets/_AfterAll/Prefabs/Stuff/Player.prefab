@@ -410,6 +410,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Items.ItemHolder
   _inventory: {fileID: 7647901948430078134}
   _handAnchor: {fileID: 8056309705918856385}
+  _throwAction: {fileID: 5315900165884744931, guid: 052faaac586de48259a63d0c4782560b, type: 3}
 --- !u!114 &7005865277855055412
 MonoBehaviour:
   m_ObjectHideFlags: 0
