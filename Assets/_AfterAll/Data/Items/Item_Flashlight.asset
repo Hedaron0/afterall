@@ -16,6 +16,7 @@ MonoBehaviour:
   _category: 0
   _icon: {fileID: 0}
   _heldPrefab: {fileID: 8378822913778105135, guid: ba740899191b18d4aa5e634d69d4db1e, type: 3}
+  _worldPickupPrefab: {fileID: 8378822913778105135, guid: dd112233445566778899aabbccdd1122, type: 3}
   _slotColor: {r: 0.75, g: 0.82, b: 0.95, a: 1}
   _equipSound: {fileID: 8300000, guid: e04219b4bbe9b4b4ca95b1ed35863da1, type: 3}
   _pickupSound: {fileID: 8300000, guid: 98539e1f67df67940b82a274d8965806, type: 3}

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using AfterAll.Items;
 using AfterAll.Items.Loot;
+using AfterAll.Player;
 using UnityEngine;
 
 namespace AfterAll.Run
@@ -10,6 +11,10 @@ namespace AfterAll.Run
     /// ElevatorStash): any Loot WorldItem physically resting inside this trigger counts toward
     /// the bank total automatically. Walk in, drop it anywhere inside (Harun sizes the collider
     /// to cover the elevator's interior floor), it's counted; carry it back out and it isn't.
+    /// This naturally covers a BulkyCarrier-held item too — it stays a live Rigidbody+Collider
+    /// while carried, so it enters/exits _contained exactly when its own collider crosses the
+    /// boundary (holding it out through the doorway doesn't count it; pushing it fully inside
+    /// does). Don't also add BulkyCarrier.PeekValue() anywhere — that would double-count it.
     /// </summary>
     [RequireComponent(typeof(Collider))]
     public class ElevatorStashVolume : MonoBehaviour
@@ -18,6 +23,10 @@ namespace AfterAll.Run
 
         public int CurrentValue { get; private set; }
 
+        /// <summary>True while the player's own collider is inside the cabin — gates counting
+        /// abstractly-carried (EchoPocket) value, which has no physical presence to sweep.</summary>
+        public bool PlayerInside { get; private set; }
+
         private void Awake()
         {
             GetComponent<Collider>().isTrigger = true;
@@ -25,6 +34,12 @@ namespace AfterAll.Run
 
         private void OnTriggerEnter(Collider other)
         {
+            if (other.GetComponentInParent<PlayerMovement>() != null)
+            {
+                PlayerInside = true;
+                return;
+            }
+
             WorldItem item = other.GetComponentInParent<WorldItem>();
             if (item != null && IsLoot(item) && _contained.Add(item))
                 Recalculate();
@@ -32,6 +47,12 @@ namespace AfterAll.Run
 
         private void OnTriggerExit(Collider other)
         {
+            if (other.GetComponentInParent<PlayerMovement>() != null)
+            {
+                PlayerInside = false;
+                return;
+            }
+
             WorldItem item = other.GetComponentInParent<WorldItem>();
             if (item != null && _contained.Remove(item))
                 Recalculate();
