@@ -279,10 +279,21 @@ namespace AfterAll.Environment
 
             PaintGrowthConfig config = BuildConfig();
             LayoutPlan plan = PaintGrowthPlanner.Generate(library, _lastUsedSeed, config, _elevatorFootprint);
+            _lastUsedSeed = plan.seed; // reflect the seed that actually produced this plan (may have been reseeded)
 
             Debug.Log(
                 $"[RoomPoolSpawner] PaintGrowth Seed={_lastUsedSeed}, TargetRooms={config.targetRoomCount}, " +
                 $"Placed={plan.PlacedCount}. {plan.notes}");
+
+            if (_elevatorFootprint != null && plan.elevatorIndex < 0)
+            {
+                Debug.LogError(
+                    "[RoomPoolSpawner] Elevator attach failed even after the planner's internal " +
+                    "reseed attempts — refusing to build this floor (the persistent cabin can't be " +
+                    $"correlated with the generated rooms). {plan.notes}");
+                _buildRoutine = null;
+                yield break;
+            }
 
             yield return null;
 
@@ -302,13 +313,11 @@ namespace AfterAll.Environment
             // whole new layout must be rigidly pre-aligned to land its elevator placement exactly
             // on the cabin BEFORE anything spawns — the player standing inside never sees the
             // floor build displaced and then snap into place.
+            // elevatorIndex < 0 already aborted the build above, so whenever a persistent
+            // cabin exists the plan is guaranteed to have a valid elevator placement here.
             bool reuseElevatorCabin = _persistentElevator != null
                 && plan.elevatorIndex > 0
                 && plan.elevatorIndex < plan.placements.Count;
-            if (_persistentElevator != null && !reuseElevatorCabin)
-                Debug.LogError(
-                    "[RoomPoolSpawner] Plan has no elevator placement — the persistent cabin can't " +
-                    "be re-attached and the new floor will be unreachable from it.");
             if (reuseElevatorCabin)
                 AlignLevelRootToPersistentElevator(plan);
 
@@ -668,8 +677,15 @@ namespace AfterAll.Environment
                     float area = RoomConnector.ComputeXZOverlapArea(
                         a.GetFloorFootprintBounds(),
                         b.GetFloorFootprintBounds());
-                    Debug.LogWarning(
-                        $"[RoomPoolSpawner] Post-build floor overlap: {a.name} <-> {b.name} (area={area:F2}m2)");
+                    // The elevator-attach guard in BuildPaintGrowthRoutine makes this pairing
+                    // structurally impossible now — an occurrence here means that guard regressed.
+                    bool involvesElevator = a == _persistentElevator || b == _persistentElevator;
+                    string message =
+                        $"[RoomPoolSpawner] Post-build floor overlap: {a.name} <-> {b.name} (area={area:F2}m2)";
+                    if (involvesElevator)
+                        Debug.LogError(message);
+                    else
+                        Debug.LogWarning(message);
                 }
             }
 

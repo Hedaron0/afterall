@@ -44,9 +44,12 @@ namespace AfterAll.Entities
         [SerializeField, Min(0f)] private float _loseSightGraceSeconds = 1.5f;
         [SerializeField, Min(0.2f)] private float _killDistance = 1.1f;
 
+        private const float MoveSkinWidth = 0.05f;
+
         private readonly List<Vector3> _path = new();
         private State _state = State.Patrol;
         private PlayerMovement _player;
+        private CapsuleCollider _capsule;
         private int _pathIndex;
         private Vector3 _investigateTarget;
         private float _lingerUntil;
@@ -60,6 +63,7 @@ namespace AfterAll.Entities
             if (_runDirector == null)
                 _runDirector = FindAnyObjectByType<RunDirector>();
             _player = FindAnyObjectByType<PlayerMovement>();
+            _capsule = GetComponent<CapsuleCollider>();
         }
 
         private void OnEnable()
@@ -198,10 +202,54 @@ namespace AfterAll.Entities
             }
 
             Vector3 dir = to.normalized;
-            transform.position += dir * (speed * Time.deltaTime);
+            transform.position += ResolveWallSlide(dir, speed * Time.deltaTime);
             Quaternion look = Quaternion.LookRotation(dir, Vector3.up);
             transform.rotation = Quaternion.RotateTowards(transform.rotation, look, _turnSpeedDeg * Time.deltaTime);
             return true;
+        }
+
+        /// <summary>
+        /// Straight-line waypoint movement has no other collision source (no Rigidbody/
+        /// CharacterController), so without this a room's own walls never stop the hunter.
+        /// Sweeps a single sphere at chest height (deliberately NOT a full bottom-to-top
+        /// capsule — that grazes floor-mesh geometry at near-zero distance and reports a
+        /// permanent false "wall" hit) and clips/slides against whatever it finds, other
+        /// than the player, which the kill-distance check already handles separately.
+        /// </summary>
+        private Vector3 ResolveWallSlide(Vector3 dir, float distance)
+        {
+            if (_capsule == null)
+                return dir * distance;
+
+            float scaleXZ = Mathf.Max(transform.lossyScale.x, transform.lossyScale.z);
+            float radius = _capsule.radius * scaleXZ;
+            Vector3 origin = transform.TransformPoint(_capsule.center) + Vector3.up * _eyeHeight * 0.5f;
+
+            RaycastHit[] hits = Physics.SphereCastAll(
+                origin, radius, dir, distance + MoveSkinWidth, ~0, QueryTriggerInteraction.Ignore);
+
+            RaycastHit closest = default;
+            float closestDist = float.PositiveInfinity;
+            foreach (RaycastHit hit in hits)
+            {
+                if (hit.collider.transform.IsChildOf(transform))
+                    continue;
+                if (hit.transform == _player.transform || hit.transform.IsChildOf(_player.transform))
+                    continue;
+                if (hit.distance < closestDist)
+                {
+                    closestDist = hit.distance;
+                    closest = hit;
+                }
+            }
+
+            if (float.IsPositiveInfinity(closestDist))
+                return dir * distance;
+
+            float allowed = Mathf.Max(closestDist - MoveSkinWidth, 0f);
+            Vector3 remaining = dir * (distance - allowed);
+            Vector3 slide = Vector3.ProjectOnPlane(remaining, closest.normal);
+            return dir * allowed + slide;
         }
 
         private void RepathTo(Vector3 worldPos)

@@ -35,6 +35,13 @@ namespace AfterAll.Environment
         private const int   MaxBranchesPerCluster = 2;
         private const int   MaxBranchRooms      = 2;
 
+        // Elevator attach only ever tries ONE hub (whichever PickHubSeed picks for
+        // this seed) — TryGrowFrom exhausts that hub's doors, but if that specific
+        // hub footprint can't pair a door with the elevator at all, nothing else is
+        // tried. Reseeding re-rolls hub choice (and everything downstream), which is
+        // the only axis that matters. Bounded + deterministic (derived from base seed).
+        private const int   MaxElevatorAttachAttempts = 6;
+
         // ── Enums ─────────────────────────────────────────────────────────────
         private enum PrefabPickMode { Hub, FatOrMedium, Corridor, Stub }
         private enum WallPrefer    { Any, AlongHeading, FattenCluster, LateralToHeading, NotAlongHeading }
@@ -70,7 +77,42 @@ namespace AfterAll.Environment
         // ══════════════════════════════════════════════════════════════════════
         //  PUBLIC ENTRY POINT
         // ══════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Generates a plan, reseeding a bounded number of times if the elevator
+        /// (when requested) fails to attach to the picked hub — a floor must never
+        /// be built with the persistent elevator cabin unregistered relative to the
+        /// generated rooms (see RoomPoolSpawner.BuildPaintGrowthRoutine).
+        /// </summary>
         public static LayoutPlan Generate(
+            IReadOnlyList<RoomFootprint> library,
+            int                          seed,
+            PaintGrowthConfig            config,
+            RoomFootprint                elevatorFootprint = null)
+        {
+            LayoutPlan plan = GenerateAttempt(library, seed, config, elevatorFootprint);
+            if (elevatorFootprint == null || plan.elevatorIndex >= 0)
+                return plan;
+
+            for (int attempt = 1; attempt < MaxElevatorAttachAttempts && plan.elevatorIndex < 0; attempt++)
+            {
+                int retrySeed = unchecked(seed + attempt * unchecked((int)0x9E3779B1));
+                plan = GenerateAttempt(library, retrySeed, config, elevatorFootprint);
+            }
+
+            if (plan.elevatorIndex < 0)
+            {
+                plan.notes = (plan.notes ?? string.Empty) +
+                    $" | FATAL: elevator attach failed after {MaxElevatorAttachAttempts} attempts " +
+                    $"(base seed {seed}) — no hub footprint in the supplied library could pair a " +
+                    "door with the elevator footprint. Check elevatorFootprint door count / gap " +
+                    "width against the settlement library, not the RNG.";
+            }
+
+            return plan;
+        }
+
+        private static LayoutPlan GenerateAttempt(
             IReadOnlyList<RoomFootprint> library,
             int                          seed,
             PaintGrowthConfig            config,
