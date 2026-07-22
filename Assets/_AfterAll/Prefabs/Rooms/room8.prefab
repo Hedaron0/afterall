@@ -69,7 +69,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 1
 --- !u!4 &689198235104271761
 Transform:
@@ -248,7 +248,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 1
 --- !u!4 &1915427238509240924
 Transform:
@@ -360,7 +360,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 1
 --- !u!4 &5562355171016124809
 Transform:
@@ -508,8 +508,9 @@ MonoBehaviour:
   wallLeft: {fileID: 6532328013442527800}
   wallRight: {fileID: 689198235104271761}
   _openingMode: 1
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
+  _framePrefab: {fileID: 0}
   _frameChance: 0.35
+  _recessDepthM: 0
   _wallLengthM: 2.4999995
   _leftExtentM: 1.2499998
   _rightExtentM: 1.2499998
@@ -1014,7 +1015,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 1
 --- !u!4 &6532328013442527800
 Transform:
@@ -1348,7 +1349,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 0
 --- !u!4 &2909371769551311515
 Transform:
@@ -1436,8 +1437,9 @@ MonoBehaviour:
   wallLeft: {fileID: 1915427238509240924}
   wallRight: {fileID: 5562355171016124809}
   _openingMode: 1
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
+  _framePrefab: {fileID: 0}
   _frameChance: 0.35
+  _recessDepthM: 0
   _wallLengthM: 2.4999998
   _leftExtentM: 1.2499999
   _rightExtentM: 1.2499999
@@ -1610,7 +1612,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 0
 --- !u!4 &7249761467251232905
 Transform:

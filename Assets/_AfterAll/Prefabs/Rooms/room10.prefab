@@ -129,7 +129,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 1
 --- !u!4 &1392431573815983422
 Transform:
@@ -408,8 +408,9 @@ MonoBehaviour:
   wallLeft: {fileID: 5153333870885590193}
   wallRight: {fileID: 301065824629350220}
   _openingMode: 0
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
+  _framePrefab: {fileID: 0}
   _frameChance: 0.35
+  _recessDepthM: 0
   _wallLengthM: 12
   _leftExtentM: 5.999998
   _rightExtentM: 6.000002
@@ -470,7 +471,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 1
 --- !u!4 &301065824629350220
 Transform:
@@ -849,7 +850,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 1
 --- !u!4 &1034176162249991538
 Transform:
@@ -1341,7 +1342,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 1
 --- !u!4 &890269723059885275
 Transform:
@@ -1901,7 +1902,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 1
 --- !u!4 &386342091234329512
 Transform:
@@ -2273,8 +2274,9 @@ MonoBehaviour:
   wallLeft: {fileID: 386342091234329512}
   wallRight: {fileID: 8975143662955808019}
   _openingMode: 0
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
+  _framePrefab: {fileID: 0}
   _frameChance: 0.35
+  _recessDepthM: 0
   _wallLengthM: 12
   _leftExtentM: 6
   _rightExtentM: 6
@@ -2298,7 +2300,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 0
 --- !u!4 &9175716334317975403
 Transform:
@@ -2386,8 +2388,9 @@ MonoBehaviour:
   wallLeft: {fileID: 890269723059885275}
   wallRight: {fileID: 6793051904231300452}
   _openingMode: 0
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
+  _framePrefab: {fileID: 0}
   _frameChance: 0.35
+  _recessDepthM: 0
   _wallLengthM: 12
   _leftExtentM: 6
   _rightExtentM: 6
@@ -2581,7 +2584,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 1
 --- !u!4 &6793051904231300452
 Transform:
@@ -2691,7 +2694,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 0
 --- !u!4 &6027540051072421417
 Transform:
@@ -2741,7 +2744,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 0
 --- !u!4 &3262889923785437207
 Transform:
@@ -2941,7 +2944,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 1
 --- !u!4 &5153333870885590193
 Transform:
@@ -3089,8 +3092,9 @@ MonoBehaviour:
   wallLeft: {fileID: 1034176162249991538}
   wallRight: {fileID: 1392431573815983422}
   _openingMode: 0
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
+  _framePrefab: {fileID: 0}
   _frameChance: 0.35
+  _recessDepthM: 0
   _wallLengthM: 11.999999
   _leftExtentM: 6
   _rightExtentM: 5.999999
@@ -3116,7 +3120,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 1
 --- !u!4 &8975143662955808019
 Transform:
@@ -3488,7 +3492,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 0
 --- !u!4 &3627949745455522729
 Transform:

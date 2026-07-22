@@ -181,7 +181,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 1
 --- !u!4 &3962850324315967209
 Transform:
@@ -581,7 +581,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 1
 --- !u!4 &8152232961612341254
 Transform:
@@ -841,8 +841,9 @@ MonoBehaviour:
   wallLeft: {fileID: 3962850324315967209}
   wallRight: {fileID: 5239572076978424638}
   _openingMode: 1
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
+  _framePrefab: {fileID: 0}
   _frameChance: 0.35
+  _recessDepthM: 0
   _wallLengthM: 5.5
   _leftExtentM: 2.7500002
   _rightExtentM: 2.7499998
@@ -1010,7 +1011,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 0
 --- !u!4 &7931102577130338848
 Transform:
@@ -1127,7 +1128,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 1
 --- !u!4 &527731073327449486
 Transform:
@@ -1676,8 +1677,9 @@ MonoBehaviour:
   wallLeft: {fileID: 527731073327449486}
   wallRight: {fileID: 8152232961612341254}
   _openingMode: 1
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
+  _framePrefab: {fileID: 0}
   _frameChance: 0.35
+  _recessDepthM: 0
   _wallLengthM: 5.5
   _leftExtentM: 2.75
   _rightExtentM: 2.75
@@ -1849,7 +1851,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 0
 --- !u!4 &6813488403665612161
 Transform:
@@ -2013,7 +2015,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 1
 --- !u!4 &5239572076978424638
 Transform:

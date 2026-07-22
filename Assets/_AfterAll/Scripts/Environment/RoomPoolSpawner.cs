@@ -4,7 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using AfterAll.Player;
+using Unity.AI.Navigation;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.Serialization;
 
 namespace AfterAll.Environment
@@ -81,6 +83,7 @@ namespace AfterAll.Environment
 
         [SerializeField] private RoomContentManager _contentManager;
 
+        private NavMeshSurface _navMeshSurface;
         private int _placedRoomCount;
         private Coroutine _buildRoutine;
         private System.Random _rng;
@@ -298,6 +301,7 @@ namespace AfterAll.Environment
             yield return null;
 
             Dictionary<string, GameObject> prefabById = BuildPrefabLookup();
+            Dictionary<string, RoomFootprint> footprintById = BuildFootprintLookup();
             var roomsByIndex = new Dictionary<int, RoomInstance>(plan.PlacedCount);
             RoomInstance.SocketValidationReport validationTotals = default;
             int connectionsApplied = 0;
@@ -335,6 +339,8 @@ namespace AfterAll.Environment
                 Quaternion.Euler(0f, hubPlacement.yawDegrees, 0f));
             RoomInstance hub = GetRoom(hubGo);
             hub.PrefabId = hubPlacement.prefabId;
+            if (footprintById.TryGetValue(hub.PrefabId, out RoomFootprint hubFootprint))
+                hub.SetFootprint(hubFootprint);
             hub.SealAllWalls();
             AlignRoomWalkableFloorToWorldY(hub, _connector.LevelRoot.position.y);
             float hubWalkableY = hub.GetWalkableFloorY();
@@ -386,6 +392,8 @@ namespace AfterAll.Environment
                     childGo.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
                     child = GetRoom(childGo);
                     child.PrefabId = childPlacement.prefabId;
+                    if (footprintById.TryGetValue(child.PrefabId, out RoomFootprint childFootprint))
+                        child.SetFootprint(childFootprint);
                     child.SealAllWalls();
                     RoomInstance.SocketValidationReport childValidation = child.ValidateSocketContracts(logWarnings: true);
                     validationTotals.missingContractCount += childValidation.missingContractCount;
@@ -480,6 +488,18 @@ namespace AfterAll.Environment
 
             _contentManager?.ActivateAll(_lastUsedSeed);
 
+            int combinedStaticObjects = CombineStaticRoomGeometry();
+
+            // Rooms are placed at runtime, so NavMesh can't be pre-baked — bake it fresh over just
+            // this floor's geometry (LevelRoot only: player/loot/hunter live outside it, so they're
+            // excluded automatically) after content spawn, so pillars/props count as obstacles too.
+            // This runs while the elevator door is still closed (RunDirector.TransitionRoutine), so
+            // the (synchronous — this package version has no async surface bake) hitch is never seen
+            // by the player. NOTE: measured ~7.8s on a 16-room floor (2026-07-22) — the FIRST floor
+            // build has no door to hide behind, so this hitch is fully exposed on every Play start.
+            // Worth a dedicated pass (NavMeshSurface voxel size/quality, or async bake) later.
+            EnsureNavMeshSurface().BuildNavMesh();
+
             float minFloorY = float.PositiveInfinity;
             float maxFloorY = float.NegativeInfinity;
             foreach (RoomInstance room in placedRooms)
@@ -508,6 +528,7 @@ namespace AfterAll.Environment
             summary.AppendLine(
                 $"Connector stats: NoCompatible={stats.noCompatibleSocket}, Gap={stats.gapMismatch}, " +
                 $"Overlap={stats.overlapRejected}.");
+            summary.AppendLine($"Static batching: combined {combinedStaticObjects} renderers.");
             Debug.Log(summary.ToString());
 
             // First build with an elevator: adopt the cabin as persistent. It leaves LevelRoot so
@@ -631,6 +652,70 @@ namespace AfterAll.Environment
 
             if (_elevatorFootprint?.Prefab != null && !map.ContainsKey(_elevatorFootprint.Prefab.name))
                 map[_elevatorFootprint.Prefab.name] = _elevatorFootprint.Prefab;
+
+            return map;
+        }
+
+        /// <summary>
+        /// Combines every fixed-geometry renderer under LevelRoot into fewer draw calls via
+        /// StaticBatchingUtility (runtime-callable, unlike lightmap baking). Only GameObjects
+        /// still flagged isStatic on their source prefab are eligible — WallGapController's
+        /// WallLeft/WallRight pieces and RoomSocket markers must stay non-static since they get
+        /// repositioned/toggled at runtime to open doorway gaps, and the persistent elevator
+        /// cabin's prefab is entirely non-static since it's reused and re-linked every floor.
+        /// Runs once per floor build, after openings are finalized and unreachable rooms are
+        /// destroyed, so nothing combined here moves again this floor.
+        /// </summary>
+        private int CombineStaticRoomGeometry()
+        {
+            var staticObjects = new List<GameObject>();
+            foreach (MeshFilter filter in _connector.LevelRoot.GetComponentsInChildren<MeshFilter>(false))
+            {
+                if (filter.gameObject.isStatic)
+                    staticObjects.Add(filter.gameObject);
+            }
+
+            if (staticObjects.Count == 0)
+                return 0;
+
+            StaticBatchingUtility.Combine(staticObjects.ToArray(), _connector.LevelRoot.gameObject);
+            return staticObjects.Count;
+        }
+
+        private NavMeshSurface EnsureNavMeshSurface()
+        {
+            if (_navMeshSurface != null)
+                return _navMeshSurface;
+
+            GameObject root = _connector.LevelRoot.gameObject;
+            _navMeshSurface = root.GetComponent<NavMeshSurface>() ?? root.AddComponent<NavMeshSurface>();
+            _navMeshSurface.collectObjects = CollectObjects.Children;
+            // RenderMeshes measured ~8-23s to bake (scales with room count — 16.4M source
+            // triangles from decorative room geometry on a 20-room floor). PhysicsColliders reads
+            // the room kit's existing colliders instead (~1k tris, mostly BoxColliders) — 53ms.
+            // First attempt broke doorway pathing to ~30% of rooms: FrameDoor.prefab's DoorModel
+            // BoxCollider was solid (not a trigger), physically sealing ~35%-chance door frames
+            // that are meant to be purely decorative on an already-open connection — fixed
+            // 2026-07-22 (isTrigger=true), which PhysicsColliders correctly skips as a source.
+            _navMeshSurface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
+            return _navMeshSurface;
+        }
+
+        private Dictionary<string, RoomFootprint> BuildFootprintLookup()
+        {
+            var map = new Dictionary<string, RoomFootprint>();
+
+            if (_settlementFootprints != null)
+            {
+                foreach (RoomFootprint footprint in _settlementFootprints)
+                {
+                    if (footprint != null && !map.ContainsKey(footprint.PrefabId))
+                        map[footprint.PrefabId] = footprint;
+                }
+            }
+
+            if (_elevatorFootprint != null && !map.ContainsKey(_elevatorFootprint.PrefabId))
+                map[_elevatorFootprint.PrefabId] = _elevatorFootprint;
 
             return map;
         }

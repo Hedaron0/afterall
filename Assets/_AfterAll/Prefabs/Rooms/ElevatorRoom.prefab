@@ -1671,7 +1671,7 @@ MonoBehaviour:
   wallLeft: {fileID: 975612447285633305}
   wallRight: {fileID: 1304026340733414979}
   _openingMode: 0
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
+  _framePrefab: {fileID: 0}
   _frameChance: 0.35
   _recessDepthM: 0.15
   _wallLengthM: 10
