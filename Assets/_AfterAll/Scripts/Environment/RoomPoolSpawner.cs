@@ -479,8 +479,12 @@ namespace AfterAll.Environment
 
             CurrentElevatorRoom = elevatorRoom;
             RoomConnector.ConnectionStats stats = _connector.GetStats();
+            // Resolve overlaps BEFORE the reachability audit: destroying the losing room of an
+            // overlapping pair can orphan whatever hung off it, and the audit below (with its
+            // existing retry/salvage/destroy policy) is what's supposed to catch that — not a
+            // second, separate cleanup pass.
+            int postBuildOverlaps = ResolvePlacedRoomOverlaps();
             (ReachabilityAuditResult reachability, int finalPlacedCount) = RunReachabilityAudit(startRoom);
-            int postBuildOverlaps = ValidatePlacedRoomOverlaps();
             // On rebuilds the layout was pre-aligned onto the cabin the player is standing in —
             // teleporting the player here would snap them away from it.
             if (_repositionPlayerAfterBuild && !reuseElevatorCabin)
@@ -731,7 +735,17 @@ namespace AfterAll.Environment
             return null;
         }
 
-        private int ValidatePlacedRoomOverlaps()
+        /// <summary>
+        /// PaintGrowthPlanner's own overlap avoidance is plan-space only (do NOT rewrite it —
+        /// CLAUDE.md proc-gen contract) and RoomConnector.ApplyPlannedConnection (the main
+        /// build-loop path, unlike the salvage/retry path) never re-validates against already
+        /// -placed rooms — so a planner edge case can still land two non-adjacent branches on top
+        /// of each other. This is the runtime safety net: destroy the less-central room of each
+        /// overlapping pair (reusing the same DestroyUnreachableRoom the reachability audit uses),
+        /// then let that audit's existing retry/salvage/destroy policy handle anything its removal
+        /// orphans. Never touches the hub or the persistent elevator cabin.
+        /// </summary>
+        private int ResolvePlacedRoomOverlaps()
         {
             RoomInstance[] levelRootRooms = _connector.LevelRoot.GetComponentsInChildren<RoomInstance>();
             // The persistent cabin lives outside LevelRoot from the second floor onward
@@ -741,7 +755,8 @@ namespace AfterAll.Environment
             RoomInstance[] rooms = _persistentElevator != null && !levelRootRooms.Contains(_persistentElevator)
                 ? levelRootRooms.Append(_persistentElevator).ToArray()
                 : levelRootRooms;
-            int overlapPairs = 0;
+
+            var toDestroy = new HashSet<RoomInstance>();
 
             for (int i = 0; i < rooms.Length; i++)
             {
@@ -749,7 +764,7 @@ namespace AfterAll.Environment
                 {
                     RoomInstance a = rooms[i];
                     RoomInstance b = rooms[j];
-                    if (a == null || b == null)
+                    if (a == null || b == null || toDestroy.Contains(a) || toDestroy.Contains(b))
                         continue;
 
                     if (AreDirectlyConnected(a, b))
@@ -758,23 +773,47 @@ namespace AfterAll.Environment
                     if (!RoomConnector.RoomsOverlapForPlacement(a, b, false, null, null))
                         continue;
 
-                    overlapPairs++;
                     float area = RoomConnector.ComputeXZOverlapArea(
                         a.GetFloorFootprintBounds(),
                         b.GetFloorFootprintBounds());
+
                     // The elevator-attach guard in BuildPaintGrowthRoutine makes this pairing
                     // structurally impossible now — an occurrence here means that guard regressed.
-                    bool involvesElevator = a == _persistentElevator || b == _persistentElevator;
-                    string message =
-                        $"[RoomPoolSpawner] Post-build floor overlap: {a.name} <-> {b.name} (area={area:F2}m2)";
-                    if (involvesElevator)
-                        Debug.LogError(message);
-                    else
-                        Debug.LogWarning(message);
+                    // Log loudly and leave the cabin alone rather than destroy it.
+                    if (a == _persistentElevator || b == _persistentElevator)
+                    {
+                        Debug.LogError(
+                            $"[RoomPoolSpawner] Post-build floor overlap involving the elevator: " +
+                            $"{a.name} <-> {b.name} (area={area:F2}m2). Elevator-attach guard regressed.");
+                        continue;
+                    }
+
+                    RoomInstance loser = PickOverlapLoser(a, b);
+                    Debug.LogWarning(
+                        $"[RoomPoolSpawner] Post-build floor overlap: {a.name} <-> {b.name} " +
+                        $"(area={area:F2}m2) -> destroying {loser.name} (less central of the two).");
+                    toDestroy.Add(loser);
                 }
             }
 
-            return overlapPairs;
+            foreach (RoomInstance room in toDestroy)
+                DestroyUnreachableRoom(room);
+
+            return toDestroy.Count;
+        }
+
+        /// <summary>Picks which side of an overlapping pair to remove: never the hub, otherwise
+        /// prefer the room farther from the hub (higher GraphDepth), then the one with fewer
+        /// connections (more likely a leaf, so removing it orphans less of the layout).</summary>
+        private static RoomInstance PickOverlapLoser(RoomInstance a, RoomInstance b)
+        {
+            if (a.IsHub)
+                return b;
+            if (b.IsHub)
+                return a;
+            if (a.GraphDepth != b.GraphDepth)
+                return a.GraphDepth > b.GraphDepth ? a : b;
+            return a.ConnectedRooms.Count <= b.ConnectedRooms.Count ? a : b;
         }
 
         private (ReachabilityAuditResult result, int finalPlacedCount) RunReachabilityAudit(RoomInstance startRoom)
