@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 3761007465097552251}
   - component: {fileID: 2622050853798235528}
   - component: {fileID: 4750745140810160247}
+  - component: {fileID: 3627417203244227195}
   m_Layer: 0
   m_Name: Entity
   m_TagString: Untagged
@@ -133,6 +134,7 @@ MonoBehaviour:
   _chaseSpeed: 4.2
   _waypointReachDistance: 0.5
   _turnSpeedDeg: 360
+  _navSampleRadius: 3
   _sightRange: 14
   _sightFovDegrees: 110
   _eyeHeight: 1.6
@@ -141,3 +143,25 @@ MonoBehaviour:
   _chaseRepathInterval: 0.4
   _loseSightGraceSeconds: 1.5
   _killDistance: 1.1
+--- !u!195 &3627417203244227195
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 921237973838811011}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.5
+  m_Speed: 3.5
+  m_Acceleration: 8
+  avoidancePriority: 50
+  m_AngularSpeed: 120
+  m_StoppingDistance: 0
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 2
+  m_BaseOffset: 1
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 4
