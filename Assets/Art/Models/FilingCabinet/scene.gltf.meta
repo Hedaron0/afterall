@@ -1,0 +1,64 @@
+fileFormatVersion: 2
+guid: 4a23484dcd08eab4fa71da2e450a8d86
+ScriptedImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 2
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 11500000, guid: 715df9372183c47e389bb6e19fbc3b52, type: 3}
+  editorImportSettings:
+    generateSecondaryUVSet: 0
+  importSettings:
+    nodeNameMethod: 1
+    animationMethod: 2
+    generateMipMaps: 1
+    texturesReadable: 0
+    defaultMinFilterMode: 9729
+    defaultMagFilterMode: 9729
+    anisotropicFilterLevel: 1
+  instantiationSettings:
+    mask: -1
+    layer: 0
+    skinUpdateWhenOffscreen: 1
+    lightIntensityFactor: 1
+    sceneObjectCreation: 2
+  assetDependencies:
+  - type: 0
+    originalUri: Assets\Art\Models\FilingCabinet\scene.bin
+    assetPath: Assets\Art\Models\FilingCabinet\scene.bin
+  - type: 1
+    originalUri: Assets\Art\Models\FilingCabinet\textures\Alluminium_metallicRoughness.png
+    assetPath: Assets\Art\Models\FilingCabinet\textures\Alluminium_metallicRoughness.png
+  - type: 1
+    originalUri: Assets\Art\Models\FilingCabinet\textures\Rubber_red_baseColor.jpeg
+    assetPath: Assets\Art\Models\FilingCabinet\textures\Rubber_red_baseColor.jpeg
+  - type: 1
+    originalUri: Assets\Art\Models\FilingCabinet\textures\Rubber_red_metallicRoughness.png
+    assetPath: Assets\Art\Models\FilingCabinet\textures\Rubber_red_metallicRoughness.png
+  - type: 1
+    originalUri: Assets\Art\Models\FilingCabinet\textures\Metal_Textured_blue_normal.jpeg
+    assetPath: Assets\Art\Models\FilingCabinet\textures\Metal_Textured_blue_normal.jpeg
+  - type: 1
+    originalUri: Assets\Art\Models\FilingCabinet\textures\Metal_Drawer_interior_metallicRoughness.png
+    assetPath: Assets\Art\Models\FilingCabinet\textures\Metal_Drawer_interior_metallicRoughness.png
+  - type: 1
+    originalUri: Assets\Art\Models\FilingCabinet\textures\Paper_baseColor.jpeg
+    assetPath: Assets\Art\Models\FilingCabinet\textures\Paper_baseColor.jpeg
+  - type: 1
+    originalUri: Assets\Art\Models\FilingCabinet\textures\Paper_metallicRoughness.png
+    assetPath: Assets\Art\Models\FilingCabinet\textures\Paper_metallicRoughness.png
+  - type: 1
+    originalUri: Assets\Art\Models\FilingCabinet\textures\Paper_normal.jpeg
+    assetPath: Assets\Art\Models\FilingCabinet\textures\Paper_normal.jpeg
+  - type: 1
+    originalUri: Assets\Art\Models\FilingCabinet\textures\Stikers_baseColor.png
+    assetPath: Assets\Art\Models\FilingCabinet\textures\Stikers_baseColor.png
+  - type: 1
+    originalUri: Assets\Art\Models\FilingCabinet\textures\Stikers_metallicRoughness.png
+    assetPath: Assets\Art\Models\FilingCabinet\textures\Stikers_metallicRoughness.png
+  - type: 1
+    originalUri: Assets\Art\Models\FilingCabinet\textures\Stikers_2_baseColor.png
+    assetPath: Assets\Art\Models\FilingCabinet\textures\Stikers_2_baseColor.png
+  reportItems: []
