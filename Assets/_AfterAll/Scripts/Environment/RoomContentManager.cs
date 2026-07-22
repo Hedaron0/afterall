@@ -7,6 +7,9 @@ namespace AfterAll.Environment
 {
     /// <summary>
     /// Central prop-generation controller on RoomLevelGen. Applies shared settings to every placed room's Content root.
+    /// Preset choice and prop placement alternatives are driven by WeightedRandomGroup components authored on the
+    /// prefabs themselves (Content root = preset group, any nested group = a prop alternative), all sharing one
+    /// deterministic per-room System.Random derived from the level seed.
     /// </summary>
     public class RoomContentManager : MonoBehaviour
     {
@@ -31,7 +34,7 @@ namespace AfterAll.Environment
                 return;
             }
 
-            var usedPresetsPerPrefab = new Dictionary<string, HashSet<int>>();
+            var usedPresetsPerPrefab = new Dictionary<string, HashSet<string>>();
 
             foreach (RoomInstance room in _connector.LevelRoot.GetComponentsInChildren<RoomInstance>())
             {
@@ -45,16 +48,44 @@ namespace AfterAll.Environment
                     Mathf.RoundToInt(position.y * 100f),
                     Mathf.RoundToInt(position.z * 100f));
                 int roomSeed = HashCode.Combine(levelSeed, positionKey);
+                var rng = new System.Random(roomSeed);
 
                 string prefabId = room.PrefabId;
                 if (string.IsNullOrEmpty(prefabId))
                     prefabId = room.name.Replace("(Clone)", "").Trim();
 
-                if (!usedPresetsPerPrefab.ContainsKey(prefabId))
-                    usedPresetsPerPrefab[prefabId] = new HashSet<int>();
+                if (!usedPresetsPerPrefab.TryGetValue(prefabId, out HashSet<string> usedPresets))
+                {
+                    usedPresets = new HashSet<string>();
+                    usedPresetsPerPrefab[prefabId] = usedPresets;
+                }
 
                 ApplyLootDepthWeighting(content, room.GraphDepth);
-                RoomContentActivation.Apply(content, _settings, roomSeed, room, usedPresetsPerPrefab[prefabId]);
+
+                Transform selectedPreset = null;
+                if (content.TryGetComponent(out WeightedRandomGroup presetGroup))
+                {
+                    selectedPreset = presetGroup.Activate(rng, usedPresets);
+                    if (selectedPreset != null)
+                        usedPresets.Add(selectedPreset.name);
+                }
+
+                RoomContentActivation.ApplyRandomPool(content, _settings, rng);
+
+                // Prop placement alternatives (e.g. "DuckPropPositions") nested anywhere under the
+                // winning preset. Same mechanic as the preset pick, walked in hierarchy order so the
+                // shared rng is consumed deterministically for a given seed.
+                if (selectedPreset != null)
+                {
+                    foreach (WeightedRandomGroup nested in selectedPreset.GetComponentsInChildren<WeightedRandomGroup>(true))
+                        nested.Activate(rng);
+                }
+
+                if (_settings.LogActivation)
+                {
+                    string presetName = selectedPreset != null ? selectedPreset.name : "none";
+                    Debug.Log($"[RoomContent] {room.name} preset={presetName} seed={roomSeed}", content);
+                }
             }
 
             RefreshOpenWalls();
