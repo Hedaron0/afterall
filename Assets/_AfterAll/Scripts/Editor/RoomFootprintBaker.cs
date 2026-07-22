@@ -188,12 +188,23 @@ namespace AfterAll.Editor
                 if (TryGetLocalFloorBounds(root.transform, out Vector2 floorMin, out Vector2 floorMax))
                 {
                     Vector2 expand = new Vector2(0.15f, 0.15f);
-                    boundsMin = Vector2.Max(floorMin, wallMin - expand);
-                    boundsMax = Vector2.Min(floorMax, wallMax + expand);
-                    if (boundsMin.x >= boundsMax.x || boundsMin.y >= boundsMax.y)
+                    Vector2 clampedMin = Vector2.Max(floorMin, wallMin - expand);
+                    Vector2 clampedMax = Vector2.Min(floorMax, wallMax + expand);
+                    bool degenerate = clampedMin.x >= clampedMax.x || clampedMin.y >= clampedMax.y;
+                    // Single-wall rooms (e.g. the elevator, which only needs a door on one side)
+                    // have wall-hull data along just that one edge — clamping the opposite axis
+                    // against it collapses the footprint to a sliver. Fall back to raw floor
+                    // bounds whenever the wall-hull clamp produces an implausibly thin box.
+                    bool tooThin = (clampedMax.x - clampedMin.x) < 1f || (clampedMax.y - clampedMin.y) < 1f;
+                    if (degenerate || tooThin)
                     {
-                        boundsMin = wallMin;
-                        boundsMax = wallMax;
+                        boundsMin = floorMin;
+                        boundsMax = floorMax;
+                    }
+                    else
+                    {
+                        boundsMin = clampedMin;
+                        boundsMax = clampedMax;
                     }
                 }
 
