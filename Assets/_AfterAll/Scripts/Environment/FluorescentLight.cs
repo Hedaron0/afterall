@@ -4,7 +4,11 @@ using UnityEngine;
 namespace AfterAll.Environment
 {
     /// <summary>
-    /// Fluorescent troffer — flicker settings only. FluorescentLightManager drives emission + lights.
+    /// Fluorescent troffer — always emission-only (no real-time Light components; the room kit
+    /// relies on unlit/emissive materials for its look, not per-pixel lighting) with idle flicker.
+    /// Previously driven by FluorescentLightManager's distance-based tier budget; removed
+    /// 2026-07-22 once room-hop visibility culling made panels outside the visible radius disable
+    /// with their room anyway, and the manager's spot/point light tiers were mobile-unfriendly.
     /// </summary>
     [DefaultExecutionOrder(50)]
     public class FluorescentLight : MonoBehaviour
@@ -51,16 +55,11 @@ namespace AfterAll.Environment
 
         private void OnEnable()
         {
-            _tier = FluorescentLightTier.Off;
-            _quality = 1f;
-            ApplyTier(FluorescentLightTier.Off, 1f, false, false);
-            FluorescentLightManager.EnsureExists().Register(this);
+            ApplyTier(FluorescentLightTier.EmissionOnly, 1f, false, true);
         }
 
         private void OnDisable()
         {
-            FluorescentLightManager.Instance?.Unregister(this);
-
             if (_flickerRoutine != null)
             {
                 StopCoroutine(_flickerRoutine);
