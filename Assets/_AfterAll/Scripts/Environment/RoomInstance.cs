@@ -16,6 +16,7 @@ namespace AfterAll.Environment
         private readonly HashSet<WallGapController> _connectedWalls = new();
         private readonly Dictionary<WallGapController, RoomInstance> _wallNeighbors = new();
         private readonly List<RoomInstance> _connectedRooms = new();
+        private RoomFootprint _footprint;
 
         public IReadOnlyList<WallGapController> Walls => _walls;
         public IReadOnlyCollection<WallGapController> ConnectedWalls => _connectedWalls;
@@ -33,6 +34,10 @@ namespace AfterAll.Environment
         }
 
         public void SetGraphDepth(int depth) => GraphDepth = depth;
+
+        /// <summary>Baked design-time shape used by <see cref="ContainsPointXZ"/> for accurate
+        /// point→room classification. Wired by RoomPoolSpawner right after instantiation.</summary>
+        public void SetFootprint(RoomFootprint footprint) => _footprint = footprint;
 
         public bool IsDeadEnd() => _connectedRooms.Count <= 1;
 
@@ -179,13 +184,52 @@ namespace AfterAll.Environment
             return false;
         }
 
-        /// <summary>True when the XZ of a world point falls inside this room's footprint bounds
-        /// (Y ignored — floors are flat and height-aligned). Used for point→room lookups.</summary>
+        /// <summary>True when the XZ of a world point falls inside this room's true baked
+        /// footprint (Y ignored — floors are flat and height-aligned). Used for point→room
+        /// lookups (nav graph pathing). Tests against the baked <see cref="RoomFootprint"/>
+        /// rectangle when wired, so it stays correct even when two rooms' loose renderer AABBs
+        /// (inflated by wall thickness / frame props, or a planner overlap-tolerance edge case)
+        /// happen to overlap — falls back to the old renderer-bounds check only for rooms with
+        /// no footprint reference (e.g. hand-placed test-scene rooms).</summary>
         public bool ContainsPointXZ(Vector3 worldPos)
         {
+            if (_footprint != null)
+                return PointInFootprintXZ(worldPos);
+
             Bounds bounds = GetWorldBounds();
             return worldPos.x >= bounds.min.x && worldPos.x <= bounds.max.x
                 && worldPos.z >= bounds.min.z && worldPos.z <= bounds.max.z;
+        }
+
+        private bool PointInFootprintXZ(Vector3 worldPos)
+        {
+            Vector2 min = _footprint.BoundsMin;
+            Vector2 max = _footprint.BoundsMax;
+
+            Vector3[] corners =
+            {
+                transform.TransformPoint(new Vector3(min.x, 0f, min.y)),
+                transform.TransformPoint(new Vector3(max.x, 0f, min.y)),
+                transform.TransformPoint(new Vector3(max.x, 0f, max.y)),
+                transform.TransformPoint(new Vector3(min.x, 0f, max.y)),
+            };
+
+            // Point-in-quad via edge cross-product sign consistency — correct for any yaw,
+            // not just the cardinal 0/90/180/270 rotations the planner currently uses.
+            bool? inside = null;
+            for (int i = 0; i < 4; i++)
+            {
+                Vector3 a = corners[i];
+                Vector3 b = corners[(i + 1) % 4];
+                float cross = (b.x - a.x) * (worldPos.z - a.z) - (b.z - a.z) * (worldPos.x - a.x);
+                bool positive = cross >= 0f;
+                if (inside == null)
+                    inside = positive;
+                else if (inside != positive)
+                    return false;
+            }
+
+            return true;
         }
 
         public IEnumerable<WallGapController> GetOpenUnconnectedWalls()
@@ -200,6 +244,19 @@ namespace AfterAll.Environment
         public Vector3 GetApproximateCenter()
         {
             return GetWorldBounds().center;
+        }
+
+        /// <summary>True when worldPos falls inside a sealed-off compartment (see
+        /// <see cref="EntitySpawnBlockZone"/>) — entity spawn/patrol-target picking must skip it.</summary>
+        public bool IsPointBlockedForEntities(Vector3 worldPos)
+        {
+            foreach (EntitySpawnBlockZone zone in GetComponentsInChildren<EntitySpawnBlockZone>(true))
+            {
+                if (zone != null && zone.ContainsPoint(worldPos))
+                    return true;
+            }
+
+            return false;
         }
 
         public Vector3 GetSpawnPosition(float heightAboveFloor = 1.0f)

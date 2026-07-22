@@ -1,17 +1,19 @@
-using System.Collections.Generic;
 using AfterAll.Environment;
 using AfterAll.Player;
 using AfterAll.Run;
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace AfterAll.Entities
 {
     /// <summary>
     /// S4 entity v1: sound-driven unkillable hunter. Patrol (random rooms) → Investigate (last
     /// heard noise) → Chase (line of sight) → kill on touch → RunDirector.OnPlayerDied.
-    /// Moves on the EntityNavGraph (doorway waypoints, straight lines inside rooms); Y is locked
-    /// to the flat, height-aligned floors. Greybox-friendly: any capsule works as the body.
+    /// Moves via NavMeshAgent on the floor's runtime-baked NavMesh (RoomPoolSpawner bakes it fresh
+    /// per floor, hidden behind the elevator door-close transition) — real obstacle avoidance
+    /// around pillars/decor, no more custom straight-line-plus-slide walking.
     /// </summary>
+    [RequireComponent(typeof(NavMeshAgent))]
     public class HunterEntity : MonoBehaviour
     {
         private enum State
@@ -30,6 +32,9 @@ namespace AfterAll.Entities
         [SerializeField, Min(0.1f)] private float _chaseSpeed = 4.2f;
         [SerializeField, Min(0.05f)] private float _waypointReachDistance = 0.5f;
         [SerializeField, Min(0.5f)] private float _turnSpeedDeg = 360f;
+        [Tooltip("How far to search for a walkable NavMesh point when a target (room center, " +
+                 "noise position, player position) isn't exactly on the mesh.")]
+        [SerializeField, Min(0.1f)] private float _navSampleRadius = 3f;
 
         [Header("Senses")]
         [SerializeField, Min(1f)] private float _sightRange = 14f;
@@ -44,13 +49,9 @@ namespace AfterAll.Entities
         [SerializeField, Min(0f)] private float _loseSightGraceSeconds = 1.5f;
         [SerializeField, Min(0.2f)] private float _killDistance = 1.1f;
 
-        private const float MoveSkinWidth = 0.05f;
-
-        private readonly List<Vector3> _path = new();
+        private NavMeshAgent _agent;
         private State _state = State.Patrol;
         private PlayerMovement _player;
-        private CapsuleCollider _capsule;
-        private int _pathIndex;
         private Vector3 _investigateTarget;
         private float _lingerUntil;
         private float _nextRepathAt;
@@ -63,14 +64,16 @@ namespace AfterAll.Entities
             if (_runDirector == null)
                 _runDirector = FindAnyObjectByType<RunDirector>();
             _player = FindAnyObjectByType<PlayerMovement>();
-            _capsule = GetComponent<CapsuleCollider>();
+
+            _agent = GetComponent<NavMeshAgent>();
+            _agent.stoppingDistance = _waypointReachDistance;
+            _agent.angularSpeed = _turnSpeedDeg;
         }
 
         private void OnEnable()
         {
             NoiseEvents.NoiseReported += HandleNoise;
             _state = State.Patrol;
-            _path.Clear();
         }
 
         private void OnDisable()
@@ -80,7 +83,7 @@ namespace AfterAll.Entities
 
         private void Update()
         {
-            if (_player == null || _navGraph == null || !_navGraph.IsReady)
+            if (_player == null || _navGraph == null || !_navGraph.IsReady || !_agent.isOnNavMesh)
                 return;
 
             // The cabin is safe ground by design — the hunter never acts while the player is
@@ -127,10 +130,11 @@ namespace AfterAll.Entities
 
         private void TickPatrol()
         {
-            if (MoveAlongPath(_patrolSpeed))
+            _agent.speed = _patrolSpeed;
+            if (IsTraveling())
                 return;
 
-            // Path finished (or none): wander to a random room center.
+            // Arrived (or no path yet): wander to a random room center.
             RoomInstance target = PickPatrolRoom();
             if (target != null)
                 RepathTo(target.GetSpawnPosition(0f));
@@ -138,7 +142,8 @@ namespace AfterAll.Entities
 
         private void TickInvestigate()
         {
-            if (MoveAlongPath(_patrolSpeed))
+            _agent.speed = _patrolSpeed;
+            if (IsTraveling())
                 return;
 
             // Arrived: linger scanning, then go back to patrol.
@@ -150,6 +155,8 @@ namespace AfterAll.Entities
 
         private void TickChase(bool seesPlayer)
         {
+            _agent.speed = _chaseSpeed;
+
             if (!seesPlayer && Time.time - _lastSeenPlayerAt > _loseSightGraceSeconds)
             {
                 // Lost them: investigate the last known position.
@@ -165,8 +172,6 @@ namespace AfterAll.Entities
                 _nextRepathAt = Time.time + _chaseRepathInterval;
                 RepathTo(_player.transform.position);
             }
-
-            MoveAlongPath(_chaseSpeed);
 
             Vector3 toPlayer = _player.transform.position - transform.position;
             toPlayer.y = 0f;
@@ -185,84 +190,26 @@ namespace AfterAll.Entities
             _runDirector?.OnPlayerDied();
         }
 
-        /// <summary>True while still moving; false when the path is exhausted.</summary>
-        private bool MoveAlongPath(float speed)
+        /// <summary>True while the agent still has ground to cover toward its current destination.</summary>
+        private bool IsTraveling()
         {
-            if (_pathIndex >= _path.Count)
-                return false;
+            if (_agent.pathPending)
+                return true;
 
-            Vector3 target = _path[_pathIndex];
-            Vector3 to = target - transform.position;
-            to.y = 0f;
-
-            if (to.magnitude <= _waypointReachDistance)
-            {
-                _pathIndex++;
-                return _pathIndex < _path.Count;
-            }
-
-            Vector3 dir = to.normalized;
-            transform.position += ResolveWallSlide(dir, speed * Time.deltaTime);
-            Quaternion look = Quaternion.LookRotation(dir, Vector3.up);
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, look, _turnSpeedDeg * Time.deltaTime);
-            return true;
+            return _agent.remainingDistance > _agent.stoppingDistance;
         }
 
-        /// <summary>
-        /// Straight-line waypoint movement has no other collision source (no Rigidbody/
-        /// CharacterController), so without this a room's own walls never stop the hunter.
-        /// Sweeps a single sphere at chest height (deliberately NOT a full bottom-to-top
-        /// capsule — that grazes floor-mesh geometry at near-zero distance and reports a
-        /// permanent false "wall" hit) and clips/slides against whatever it finds, other
-        /// than the player, which the kill-distance check already handles separately.
-        /// </summary>
-        private Vector3 ResolveWallSlide(Vector3 dir, float distance)
-        {
-            if (_capsule == null)
-                return dir * distance;
-
-            float scaleXZ = Mathf.Max(transform.lossyScale.x, transform.lossyScale.z);
-            float radius = _capsule.radius * scaleXZ;
-            Vector3 origin = transform.TransformPoint(_capsule.center) + Vector3.up * _eyeHeight * 0.5f;
-
-            RaycastHit[] hits = Physics.SphereCastAll(
-                origin, radius, dir, distance + MoveSkinWidth, ~0, QueryTriggerInteraction.Ignore);
-
-            RaycastHit closest = default;
-            float closestDist = float.PositiveInfinity;
-            foreach (RaycastHit hit in hits)
-            {
-                if (hit.collider.transform.IsChildOf(transform))
-                    continue;
-                if (hit.transform == _player.transform || hit.transform.IsChildOf(_player.transform))
-                    continue;
-                if (hit.distance < closestDist)
-                {
-                    closestDist = hit.distance;
-                    closest = hit;
-                }
-            }
-
-            if (float.IsPositiveInfinity(closestDist))
-                return dir * distance;
-
-            float allowed = Mathf.Max(closestDist - MoveSkinWidth, 0f);
-            Vector3 remaining = dir * (distance - allowed);
-            Vector3 slide = Vector3.ProjectOnPlane(remaining, closest.normal);
-            return dir * allowed + slide;
-        }
-
+        /// <summary>Snaps worldPos onto the nearest walkable NavMesh point before targeting it —
+        /// room centers, noise positions and the player's feet are rarely exactly on the mesh.</summary>
         private void RepathTo(Vector3 worldPos)
         {
-            if (_navGraph.TryGetPath(transform.position, worldPos, _path))
-                _pathIndex = 0;
-            else
-                _path.Clear();
+            if (NavMesh.SamplePosition(worldPos, out NavMeshHit hit, _navSampleRadius, NavMesh.AllAreas))
+                _agent.SetDestination(hit.position);
         }
 
         private RoomInstance PickPatrolRoom()
         {
-            IReadOnlyList<RoomInstance> rooms = _navGraph.Rooms;
+            System.Collections.Generic.IReadOnlyList<RoomInstance> rooms = _navGraph.Rooms;
             if (rooms.Count == 0)
                 return null;
 
@@ -273,6 +220,8 @@ namespace AfterAll.Entities
             {
                 RoomInstance candidate = rooms[Random.Range(0, rooms.Count)];
                 if (candidate == null)
+                    continue;
+                if (candidate.IsPointBlockedForEntities(candidate.GetSpawnPosition(0f)))
                     continue;
 
                 float sqr = (candidate.GetApproximateCenter() - _player.transform.position).sqrMagnitude;

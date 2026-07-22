@@ -66,7 +66,9 @@ namespace AfterAll.Entities
             if (_runDirector.Depth < _minDepthToSpawn)
                 return;
 
-            RoomInstance spawnRoom = _navGraph.FindFarthestRoom(_spawner != null ? _spawner.CurrentElevatorRoom : null);
+            RoomInstance spawnRoom = _navGraph.FindFarthestRoom(
+                _spawner != null ? _spawner.CurrentElevatorRoom : null,
+                room => !room.IsPointBlockedForEntities(room.GetSpawnPosition(_spawnHeightAboveFloor)));
             if (spawnRoom == null)
                 return;
 
