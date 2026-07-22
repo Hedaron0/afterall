@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using AfterAll.Environment;
 using AfterAll.Player;
 using AfterAll.Run;
@@ -49,6 +50,13 @@ namespace AfterAll.Entities
         [SerializeField, Min(0f)] private float _loseSightGraceSeconds = 1.5f;
         [SerializeField, Min(0.2f)] private float _killDistance = 1.1f;
 
+        [Header("Blackout (opt-in atmosphere)")]
+        [Tooltip("Darken nearby fluorescent panels while chasing, restore them when the chase " +
+                 "ends. Off by default — enable per design decision, not tied to performance work.")]
+        [SerializeField] private bool _blackoutOnChase = false;
+        [SerializeField, Min(1f)] private float _blackoutRadius = 12f;
+
+        private readonly List<FluorescentLight> _blackedOutPanels = new();
         private NavMeshAgent _agent;
         private State _state = State.Patrol;
         private PlayerMovement _player;
@@ -79,6 +87,7 @@ namespace AfterAll.Entities
         private void OnDisable()
         {
             NoiseEvents.NoiseReported -= HandleNoise;
+            RestoreBlackedOutPanels();
         }
 
         private void Update()
@@ -164,6 +173,8 @@ namespace AfterAll.Entities
                 _state = State.Investigate;
                 _lingerUntil = 0f;
                 RepathTo(_investigateTarget);
+                if (_blackoutOnChase)
+                    RestoreBlackedOutPanels();
                 return;
             }
 
@@ -183,11 +194,42 @@ namespace AfterAll.Entities
         {
             _state = State.Chase;
             _nextRepathAt = 0f;
+            if (_blackoutOnChase)
+                BlackOutNearbyPanels();
         }
 
         private void KillPlayer()
         {
             _runDirector?.OnPlayerDied();
+        }
+
+        /// <summary>Drives every FluorescentLight within <see cref="_blackoutRadius"/> of the
+        /// hunter fully Off (not just EmissionOnly) for a "lights die as it arrives" beat.
+        /// Restored on losing the chase or on disable — never left permanently dark.</summary>
+        private void BlackOutNearbyPanels()
+        {
+            _blackedOutPanels.Clear();
+            foreach (FluorescentLight panel in FindObjectsByType<FluorescentLight>(FindObjectsSortMode.None))
+            {
+                if (panel == null)
+                    continue;
+                if ((panel.WorldPosition - transform.position).sqrMagnitude > _blackoutRadius * _blackoutRadius)
+                    continue;
+
+                panel.ApplyTier(FluorescentLightTier.Off, 1f, false, false);
+                _blackedOutPanels.Add(panel);
+            }
+        }
+
+        private void RestoreBlackedOutPanels()
+        {
+            foreach (FluorescentLight panel in _blackedOutPanels)
+            {
+                if (panel != null)
+                    panel.ApplyTier(FluorescentLightTier.EmissionOnly, 1f, false, true);
+            }
+
+            _blackedOutPanels.Clear();
         }
 
         /// <summary>True while the agent still has ground to cover toward its current destination.</summary>
