@@ -2913,14 +2913,14 @@ MonoBehaviour:
   _candidateFilter: 0
   _options:
   - label: 1
-    weight: 0
+    weight: 0.16666667
   - label: 2
-    weight: 0
+    weight: 0.16666667
   - label: 3
-    weight: 0
+    weight: 0.16666667
   - label: 4
-    weight: 1
-  _forceIndex: 4
+    weight: 0.5
+  _forceIndex: -1
 --- !u!1 &5394173930293549426
 GameObject:
   m_ObjectHideFlags: 0
