@@ -485,6 +485,7 @@ namespace AfterAll.Environment
             // second, separate cleanup pass.
             int postBuildOverlaps = ResolvePlacedRoomOverlaps();
             (ReachabilityAuditResult reachability, int finalPlacedCount) = RunReachabilityAudit(startRoom);
+            int resealedOrphanWalls = ResealOrphanOpenWalls();
             // On rebuilds the layout was pre-aligned onto the cabin the player is standing in —
             // teleporting the player here would snap them away from it.
             if (_repositionPlayerAfterBuild && !reuseElevatorCabin)
@@ -528,7 +529,8 @@ namespace AfterAll.Environment
                 $"salvaged={reachability.salvagedCount}, destroyed={reachability.destroyedCount}.");
             summary.AppendLine(
                 $"Validation missingContracts={validationTotals.missingContractCount}, " +
-                $"duplicateDirs={validationTotals.duplicateDirectionCount}, postBuildOverlaps={postBuildOverlaps}.");
+                $"duplicateDirs={validationTotals.duplicateDirectionCount}, postBuildOverlaps={postBuildOverlaps}, " +
+                $"resealedOrphanWalls={resealedOrphanWalls}.");
             summary.AppendLine(
                 $"Connector stats: NoCompatible={stats.noCompatibleSocket}, Gap={stats.gapMismatch}, " +
                 $"Overlap={stats.overlapRejected}.");
@@ -814,6 +816,32 @@ namespace AfterAll.Environment
             if (a.GraphDepth != b.GraphDepth)
                 return a.GraphDepth > b.GraphDepth ? a : b;
             return a.ConnectedRooms.Count <= b.ConnectedRooms.Count ? a : b;
+        }
+
+        /// <summary>
+        /// Post-build safety net: a wall can end up with hasOpening=true but no registered neighbor
+        /// (e.g. a connection attempt opened both sides then failed a later step, or a neighbor was
+        /// destroyed through a path that didn't route through DestroyUnreachableRoom/UnlinkNeighbor).
+        /// Every normal connect/destroy path already reseals both sides symmetrically, so this should
+        /// rarely fire — but when it does, an open gap with nothing behind it is worse than a closed
+        /// wall, so reseal it rather than leave a hole into nothing.
+        /// </summary>
+        private int ResealOrphanOpenWalls()
+        {
+            int resealed = 0;
+            foreach (RoomInstance room in _connector.LevelRoot.GetComponentsInChildren<RoomInstance>())
+            {
+                foreach (WallGapController wall in room.GetOpenUnconnectedWalls().ToList())
+                {
+                    Debug.LogWarning(
+                        $"[RoomPoolSpawner] Orphan open wall: {room.name}/{wall.name} has no connected " +
+                        "neighbor — resealing.");
+                    wall.ConfigureOpening(false, false, 0f);
+                    resealed++;
+                }
+            }
+
+            return resealed;
         }
 
         private (ReachabilityAuditResult result, int finalPlacedCount) RunReachabilityAudit(RoomInstance startRoom)

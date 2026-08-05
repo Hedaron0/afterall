@@ -63,7 +63,13 @@ namespace AfterAll.Environment
                 ApplyLootDepthWeighting(content, room.GraphDepth);
 
                 Transform selectedPreset = null;
-                if (content.TryGetComponent(out WeightedRandomGroup presetGroup))
+                if (!content.TryGetComponent(out WeightedRandomGroup presetGroup))
+                {
+                    Transform presetContainer = content.Find("Preset");
+                    if (presetContainer != null)
+                        presetContainer.TryGetComponent(out presetGroup);
+                }
+                if (presetGroup != null)
                 {
                     selectedPreset = presetGroup.Activate(rng, usedPresets);
                     if (selectedPreset != null)
