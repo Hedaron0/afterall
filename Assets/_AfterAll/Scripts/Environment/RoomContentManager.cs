@@ -76,6 +76,11 @@ namespace AfterAll.Environment
                         usedPresets.Add(selectedPreset.name);
                 }
 
+                // The room is baked once per preset option, so the lightmap can only be chosen after
+                // the winner is known (RoomLightmapData.Awake applied a placeholder on spawn).
+                if (room.TryGetComponent(out RoomLightmapData lightmaps) && lightmaps.HasBakedData)
+                    lightmaps.ApplyVariant(selectedPreset != null ? selectedPreset.name : string.Empty);
+
                 RoomContentActivation.ApplyRandomPool(content, _settings, rng);
 
                 // Prop placement alternatives (e.g. "DuckPropPositions") nested anywhere under the

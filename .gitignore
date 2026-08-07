@@ -105,3 +105,11 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# Baked lightmap output (AfterAll).
+# Regenerable via AfterAll > Lighting > Bake Room Lightmaps (All Rooms). Kept out of history because
+# a full kit bake is ~130MB of EXR and every art iteration would write that again. On a fresh clone
+# the prefabs' texture references go null until the bake is re-run - rooms render unlit, not broken.
+# Revisit once the lightmap resolution is settled and bakes stop churning.
+/Assets/_AfterAll/Data/RoomLightmaps/
+/Assets/Scenes/lighttest/

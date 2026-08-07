@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
 using AfterAll.Environment;
@@ -376,40 +377,94 @@ namespace AfterAll.EditorTools
         }
 
         /// <summary>
-        /// The combined shell plus the door walls contribute GI; genuinely runtime-variable geometry
-        /// (content presets, loot, panels) does not.
+        /// Decides what RoomLightmapBaker will bake. Anything whose geometry is fixed by the time a
+        /// bake runs contributes GI; anything still undetermined does not.
         ///
-        /// Door walls are kept in the bake even though WallGapController repositions them at runtime.
-        /// In the prefab the Left/Right pair sits side by side forming a closed wall — no overlap —
-        /// so the closed-state bake is geometrically valid, and opening the gap merely stretches the
-        /// baked lighting along the wall axis exactly as it already stretches the wallpaper's uv0.
-        /// Excluding them instead leaves them lit by ambient alone, which reads as near-black next to
-        /// the lightmapped shell.
+        /// In: the combined shell, the door walls, and preset option geometry. Door walls are kept
+        /// even though WallGapController repositions them at runtime — in the prefab the Left/Right
+        /// pair sits side by side forming a closed wall with no overlap, so the closed-state bake is
+        /// valid and opening a gap merely stretches the baked light along the wall axis exactly as it
+        /// already stretches the wallpaper's uv0. Preset geometry is baked because the baker runs once
+        /// per preset option, so each option is genuinely present in its own bake.
+        ///
+        /// Out: the Random loot pool (items get picked up and turn into physics objects), the
+        /// fluorescent panels (per-instance MaterialPropertyBlock flicker plus hunter blackout), and
+        /// anything under a nested WeightedRandomGroup — a prop that lands in one of two spots has no
+        /// single position at bake time, so a baked shadow would be wrong half the time.
         /// </summary>
         private static void ApplyGiFlags(Transform root)
         {
             int cleared = 0;
+            int enabled = 0;
+
+            Transform presetRoot = root.Find("Content/Preset");
+
             foreach (var t in root.GetComponentsInChildren<Transform>(true))
             {
                 if (t.name == CombinedChildName || t.parent != null && t.parent.name == CombinedChildName)
                     continue;
-                if (t.GetComponentInParent<WallGapController>() != null)
+
+                if (t.GetComponent<MeshRenderer>() == null)
                     continue;
+
+                bool shouldContribute =
+                    t.GetComponentInParent<WallGapController>() != null
+                    || IsBakeablePresetGeometry(t, presetRoot);
 
                 var flags = GameObjectUtility.GetStaticEditorFlags(t.gameObject);
-                if ((flags & StaticEditorFlags.ContributeGI) == 0)
-                    continue;
+                bool contributes = (flags & StaticEditorFlags.ContributeGI) != 0;
 
-                GameObjectUtility.SetStaticEditorFlags(t.gameObject, flags & ~StaticEditorFlags.ContributeGI);
-                cleared++;
+                if (shouldContribute && !contributes)
+                {
+                    // Opt in explicitly — the authored flags are inconsistent across the kit, so
+                    // merely declining to clear them would leave most of these unbaked.
+                    GameObjectUtility.SetStaticEditorFlags(t.gameObject, flags | StaticEditorFlags.ContributeGI);
+                    enabled++;
+                }
+                else if (!shouldContribute && contributes)
+                {
+                    GameObjectUtility.SetStaticEditorFlags(t.gameObject, flags & ~StaticEditorFlags.ContributeGI);
+                    cleared++;
+                }
             }
 
-            if (cleared > 0)
-                Debug.Log($"[Combiner] Contribute GI cleared on {cleared} runtime-variable object(s) (door walls, content, props).");
+            if (cleared > 0 || enabled > 0)
+                Debug.Log($"[Combiner] Contribute GI: enabled on {enabled} renderer(s) " +
+                          $"(door walls, preset geometry), cleared on {cleared} runtime-variable one(s) " +
+                          $"(loot, panels, nested prop alternatives).");
+        }
+
+        /// <summary>
+        /// True for geometry sitting inside a preset option, unless a nested WeightedRandomGroup below
+        /// that option still gets to move it — those have no fixed position at bake time.
+        /// </summary>
+        private static bool IsBakeablePresetGeometry(Transform t, Transform presetRoot)
+        {
+            if (presetRoot == null || !t.IsChildOf(presetRoot) || t == presetRoot)
+                return false;
+
+            for (Transform cursor = t; cursor != null && cursor != presetRoot; cursor = cursor.parent)
+            {
+                if (cursor.GetComponent<WeightedRandomGroup>() != null)
+                    return false;
+                if (cursor.parent != null && cursor.parent.GetComponent<WeightedRandomGroup>() != null
+                    && cursor.parent != presetRoot)
+                    return false;
+            }
+
+            return true;
         }
 
         private static string ResolvePrefabPath()
         {
+            // Prefab Mode (double-clicked into the prefab) is a separate temp scene: the selected
+            // GameObject there resolves to neither an instance root nor an asset path below, so check
+            // it first. It's also unnecessary to be in Prefab Mode at all — Combine/Bake load their
+            // own out-of-scene copy via LoadPrefabContents regardless of what's open in the editor.
+            var stage = PrefabStageUtility.GetCurrentPrefabStage();
+            if (stage != null && !string.IsNullOrEmpty(stage.assetPath))
+                return stage.assetPath;
+
             var selected = Selection.activeGameObject;
             if (selected == null)
             {
@@ -423,7 +478,8 @@ namespace AfterAll.EditorTools
 
             if (string.IsNullOrEmpty(path) || !path.EndsWith(".prefab"))
             {
-                Debug.LogError("[Combiner] Could not resolve a .prefab asset from the selection.");
+                Debug.LogError("[Combiner] Could not resolve a .prefab asset from the selection " +
+                                "(Project window, Hierarchy instance, or Prefab Mode).");
                 return null;
             }
 
