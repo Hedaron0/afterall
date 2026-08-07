@@ -4,11 +4,10 @@ using UnityEngine;
 namespace AfterAll.Environment
 {
     /// <summary>
-    /// Fluorescent troffer — always emission-only (no real-time Light components; the room kit
-    /// relies on unlit/emissive materials for its look, not per-pixel lighting) with idle flicker.
-    /// Previously driven by FluorescentLightManager's distance-based tier budget; removed
-    /// 2026-07-22 once room-hop visibility culling made panels outside the visible radius disable
-    /// with their room anyway, and the manager's spot/point light tiers were mobile-unfriendly.
+    /// Fluorescent troffer — emissive panel only at runtime, no realtime Light component.
+    /// Illumination comes from a baked Area Light child (see FluorescentPanel prefab) that only
+    /// exists at bake time; this script destroys it on spawn and drives the panel's emissive
+    /// material property block instead (lit on/off + idle flicker).
     /// </summary>
     [DefaultExecutionOrder(50)]
     public class FluorescentLight : MonoBehaviour
@@ -25,37 +24,30 @@ namespace AfterAll.Environment
         [SerializeField] private float _minIdleSeconds = 4f;
         [SerializeField] private float _maxIdleSeconds = 14f;
 
-        private Light    _spotLight;
-        private Light    _pointLight;
-        private float    _spotBaseIntensity;
-        private float    _pointBaseIntensity;
-        private bool     _lightsResolved;
-
         private Renderer              _panel;
         private MaterialPropertyBlock _propertyBlock;
         private Color                 _baseEmission;
         private Coroutine             _flickerRoutine;
         private bool                  _hasEmission;
-        private bool                  _useSpot;
-        private bool                  _useFlicker;
-        private FluorescentLightTier  _tier = FluorescentLightTier.Off;
-        private float                 _quality = 1f;
+        private bool                  _lit = true;
 
         public Vector3 WorldPosition => transform.position;
-        public Vector3 HorizontalPosition => transform.position;
-        public FluorescentLightTier CurrentTier => _tier;
 
         private void Awake()
         {
-            _panel = GetComponent<Renderer>();
+            _panel = GetComponentInChildren<Renderer>();
             _propertyBlock = new MaterialPropertyBlock();
-            ResolveLights();
+
+            var bakeOnlyLight = GetComponentInChildren<Light>(true);
+            if (bakeOnlyLight != null)
+                Destroy(bakeOnlyLight.gameObject);
+
             SetupEmission();
         }
 
         private void OnEnable()
         {
-            ApplyTier(FluorescentLightTier.EmissionOnly, 1f, false, true);
+            SetLit(true);
         }
 
         private void OnDisable()
@@ -66,102 +58,26 @@ namespace AfterAll.Environment
                 _flickerRoutine = null;
             }
 
-            RestoreDefaultVisuals();
+            SetPanelEmission(0f);
         }
 
-        public void ApplyTier(FluorescentLightTier tier, float quality, bool useSpot, bool useFlicker)
+        /// <summary>Turns the panel's emissive glow fully on or off (e.g. hunter blackout beat).</summary>
+        public void SetLit(bool lit)
         {
-            quality = Mathf.Clamp(quality, 0.2f, 1f);
-
-            if (_tier == tier
-                && Mathf.Approximately(_quality, quality)
-                && _useSpot == useSpot
-                && _useFlicker == useFlicker)
+            if (_lit == lit)
                 return;
 
-            _tier = tier;
-            _quality = quality;
-            _useSpot = useSpot;
-            _useFlicker = useFlicker;
-
-            bool emissionOn = tier != FluorescentLightTier.Off;
-
-            if (_panel != null)
-                _panel.enabled = true;
-
-            ApplyLightComponents(tier, quality, useSpot);
-            SetPanelEmission(emissionOn ? 1f : 0f);
+            _lit = lit;
+            SetPanelEmission(lit ? 1f : 0f);
             UpdateFlickerState();
         }
 
-        public void ApplyTier(FluorescentLightTier tier, float quality) =>
-            ApplyTier(tier, quality, tier == FluorescentLightTier.Full, tier == FluorescentLightTier.Full);
-
         public void TriggerFlicker()
         {
-            if (!isActiveAndEnabled || !_useFlicker)
+            if (!isActiveAndEnabled || !_lit)
                 return;
 
             StartCoroutine(FlickerBurst());
-        }
-
-        public static float HorizontalDistanceSqr(Vector3 a, Vector3 b)
-        {
-            float dx = a.x - b.x;
-            float dz = a.z - b.z;
-            return dx * dx + dz * dz;
-        }
-
-        private void ApplyLightComponents(FluorescentLightTier tier, float quality, bool useSpot)
-        {
-            ResolveLights();
-
-            bool point = tier == FluorescentLightTier.Full
-                      || tier == FluorescentLightTier.CorridorPartial;
-            bool spot = point && useSpot;
-
-            float pointScale = tier == FluorescentLightTier.CorridorPartial && !useSpot
-                ? quality
-                : 1f;
-
-            SetLightState(_spotLight, spot, _spotBaseIntensity, 1f);
-            SetLightState(_pointLight, point, _pointBaseIntensity, pointScale);
-        }
-
-        private static void SetLightState(Light light, bool active, float baseIntensity, float scale)
-        {
-            if (light == null)
-                return;
-
-            light.enabled   = active;
-            light.intensity = active ? baseIntensity * scale : 0f;
-            light.shadows   = LightShadows.None;
-        }
-
-        private void ResolveLights()
-        {
-            if (_lightsResolved)
-                return;
-
-            foreach (var light in GetComponentsInChildren<Light>(true))
-            {
-                if (light.type == LightType.Spot)
-                {
-                    _spotLight = light;
-                    _spotBaseIntensity = light.intensity;
-                }
-                else if (light.type == LightType.Point)
-                {
-                    _pointLight = light;
-                    _pointBaseIntensity = light.intensity;
-                }
-
-                light.intensity = 0f;
-                light.enabled   = false;
-                light.shadows   = LightShadows.None;
-            }
-
-            _lightsResolved = true;
         }
 
         private void SetupEmission()
@@ -188,9 +104,9 @@ namespace AfterAll.Environment
 
         private void UpdateFlickerState()
         {
-            if (_useFlicker && _tier != FluorescentLightTier.Off && _tier != FluorescentLightTier.EmissionOnly)
+            if (_flickerEnabled && _lit)
             {
-                if (_flickerEnabled && _flickerRoutine == null && isActiveAndEnabled)
+                if (_flickerRoutine == null && isActiveAndEnabled)
                     _flickerRoutine = StartCoroutine(FlickerLoop());
                 return;
             }
@@ -208,9 +124,8 @@ namespace AfterAll.Environment
 
             while (true)
             {
-                if (!ShouldRunFlicker())
+                if (!_flickerEnabled || !_lit)
                 {
-                    ApplyVisualIntensity(1f);
                     SetPanelEmission(1f);
                     yield return wait;
                     continue;
@@ -226,40 +141,17 @@ namespace AfterAll.Environment
             int steps = Random.Range(2, 5);
             for (int i = 0; i < steps; i++)
             {
-                ApplyVisualIntensity(Random.Range(0.2f, 0.75f) * _quality);
+                SetPanelEmission(Random.Range(0.2f, 0.75f));
                 yield return new WaitForSeconds(Random.Range(0.04f, 0.14f));
             }
 
             if (Random.value < 0.15f)
             {
-                ApplyVisualIntensity(0f);
+                SetPanelEmission(0f);
                 yield return new WaitForSeconds(Random.Range(0.05f, 0.12f));
             }
 
-            ApplyVisualIntensity(1f);
             SetPanelEmission(1f);
-        }
-
-        private bool ShouldRunFlicker() =>
-            _flickerEnabled && _useFlicker;
-
-        private void ApplyVisualIntensity(float normalized)
-        {
-            normalized = Mathf.Clamp01(normalized);
-
-            if (_spotLight != null && _spotLight.enabled)
-                _spotLight.intensity = _spotBaseIntensity * normalized;
-
-            if (_pointLight != null && _pointLight.enabled)
-            {
-                float pointScale = _tier == FluorescentLightTier.CorridorPartial && !_useSpot
-                    ? _quality
-                    : 1f;
-                _pointLight.intensity = _pointBaseIntensity * normalized * pointScale;
-            }
-
-            if (_useFlicker)
-                SetPanelEmission(normalized);
         }
 
         private void SetPanelEmission(float normalized)
@@ -267,9 +159,9 @@ namespace AfterAll.Environment
             if (!_hasEmission || _panel == null)
                 return;
 
-            // Play-mode script recompiles reload the domain and re-fire OnEnable (which re-registers
-            // with FluorescentLightManager and re-triggers ApplyTier) without re-running Awake, so this
-            // non-serialized field can be null here even though Awake always assigns it on first spawn.
+            // Play-mode script recompiles reload the domain and re-fire OnEnable without re-running
+            // Awake, so this non-serialized field can be null here even though Awake always assigns
+            // it on first spawn.
             _propertyBlock ??= new MaterialPropertyBlock();
 
             _panel.GetPropertyBlock(_propertyBlock);
@@ -285,15 +177,6 @@ namespace AfterAll.Environment
             }
 
             _panel.SetPropertyBlock(_propertyBlock);
-        }
-
-        private void RestoreDefaultVisuals()
-        {
-            SetLightState(_spotLight, false, _spotBaseIntensity, 1f);
-            SetLightState(_pointLight, false, _pointBaseIntensity, 1f);
-
-            if (_panel != null)
-                _panel.SetPropertyBlock(null);
         }
     }
 }

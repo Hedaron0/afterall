@@ -204,8 +204,8 @@ namespace AfterAll.Entities
         }
 
         /// <summary>Drives every FluorescentLight within <see cref="_blackoutRadius"/> of the
-        /// hunter fully Off (not just EmissionOnly) for a "lights die as it arrives" beat.
-        /// Restored on losing the chase or on disable — never left permanently dark.</summary>
+        /// hunter dark for a "lights die as it arrives" beat. Restored on losing the chase or on
+        /// disable — never left permanently dark.</summary>
         private void BlackOutNearbyPanels()
         {
             _blackedOutPanels.Clear();
@@ -216,7 +216,7 @@ namespace AfterAll.Entities
                 if ((panel.WorldPosition - transform.position).sqrMagnitude > _blackoutRadius * _blackoutRadius)
                     continue;
 
-                panel.ApplyTier(FluorescentLightTier.Off, 1f, false, false);
+                panel.SetLit(false);
                 _blackedOutPanels.Add(panel);
             }
         }
@@ -226,7 +226,7 @@ namespace AfterAll.Entities
             foreach (FluorescentLight panel in _blackedOutPanels)
             {
                 if (panel != null)
-                    panel.ApplyTier(FluorescentLightTier.EmissionOnly, 1f, false, true);
+                    panel.SetLit(true);
             }
 
             _blackedOutPanels.Clear();
