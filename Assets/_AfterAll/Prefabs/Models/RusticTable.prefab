@@ -73,7 +73,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3923218645025663178}
-  - component: {fileID: -4562346093699428701}
+  - component: {fileID: 3916710394849008438}
   m_Layer: 0
   m_Name: RusticTable
   m_TagString: Untagged
@@ -97,8 +97,8 @@ Transform:
   - {fileID: 383688362247683344}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!64 &-4562346093699428701
-MeshCollider:
+--- !u!65 &3916710394849008438
+BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -115,10 +115,9 @@ MeshCollider:
   m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 1
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 0}
+  serializedVersion: 3
+  m_Size: {x: 4.534565, y: 4.5345664, z: 3.297228}
+  m_Center: {x: -0.00000047683716, y: -0.00000047683716, z: 1.5637792}
 --- !u!1 &4017372440893332866
 GameObject:
   m_ObjectHideFlags: 0

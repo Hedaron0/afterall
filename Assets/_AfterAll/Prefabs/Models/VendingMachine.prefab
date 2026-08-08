@@ -41,7 +41,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1962684849824330361}
-  - component: {fileID: 2049727226594111959}
+  - component: {fileID: 420956145180880594}
   m_Layer: 0
   m_Name: VendingMachine
   m_TagString: Untagged
@@ -65,8 +65,8 @@ Transform:
   - {fileID: 4868894730890754503}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!64 &2049727226594111959
-MeshCollider:
+--- !u!65 &420956145180880594
+BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -83,10 +83,9 @@ MeshCollider:
   m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 1
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 0}
+  serializedVersion: 3
+  m_Size: {x: 8.434671, y: 8.607421, z: 12.852621}
+  m_Center: {x: 0, y: -0.30370903, z: 6.1120744}
 --- !u!1 &8252232403481515056
 GameObject:
   m_ObjectHideFlags: 0

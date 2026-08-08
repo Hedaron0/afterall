@@ -63,6 +63,12 @@ namespace AfterAll.Environment
         [SerializeField] private bool _forceFramesOnConnections;
         [SerializeField, Range(0f, 1f)] private float _frameChance = 0.35f;
 
+        [Header("Baked Lighting")]
+        [Tooltip("Depth nudge applied to each connected wall, towards its own room, so two coincident " +
+                 "walls stop fighting for the same depth. Millimetres — big enough to break the tie, " +
+                 "small enough that nothing visibly moves. 0 disables.")]
+        [SerializeField, Range(0f, 0.02f)] private float _connectedWallDepthNudge = 0.003f;
+
         [Header("Seed")]
         [SerializeField] private bool _useFixedSeed;
         [SerializeField] private int _fixedSeed = 12345;
@@ -486,6 +492,7 @@ namespace AfterAll.Environment
             int postBuildOverlaps = ResolvePlacedRoomOverlaps();
             (ReachabilityAuditResult reachability, int finalPlacedCount) = RunReachabilityAudit(startRoom);
             int resealedOrphanWalls = ResealOrphanOpenWalls();
+            int nudgedWalls = NudgeConnectedWallDepth();
             // On rebuilds the layout was pre-aligned onto the cabin the player is standing in —
             // teleporting the player here would snap them away from it.
             if (_repositionPlayerAfterBuild && !reuseElevatorCabin)
@@ -530,7 +537,7 @@ namespace AfterAll.Environment
             summary.AppendLine(
                 $"Validation missingContracts={validationTotals.missingContractCount}, " +
                 $"duplicateDirs={validationTotals.duplicateDirectionCount}, postBuildOverlaps={postBuildOverlaps}, " +
-                $"resealedOrphanWalls={resealedOrphanWalls}.");
+                $"resealedOrphanWalls={resealedOrphanWalls}, nudgedWalls={nudgedWalls}.");
             summary.AppendLine(
                 $"Connector stats: NoCompatible={stats.noCompatibleSocket}, Gap={stats.gapMismatch}, " +
                 $"Overlap={stats.overlapRejected}.");
@@ -1380,9 +1387,90 @@ namespace AfterAll.Environment
             return r;
         }
 
+        /// <summary>
+        /// Nudges each connected wall a few millimetres towards its own room and returns how many
+        /// moved.
+        ///
+        /// Rooms meet AABB against AABB, so the walls flanking a connection end up perfectly
+        /// coincident — two 0.25m walls in one 0.25m volume. Realtime lighting hid it because both
+        /// took the same light. Baked lighting does not: each wall's lightmap was baked inside its own
+        /// room, so the face pointing at the neighbour was baked against the void and is black. With
+        /// the two walls at identical depth the winner is arbitrary, which is why a room shows large
+        /// black panels beside its doorways. The nudge only has to break the tie — a few millimetres
+        /// puts each room's own correctly lit face in front and hides the neighbour's dark side behind
+        /// it. It is deliberately tiny: an earlier attempt at half a wall thickness separated the two
+        /// doorway reveals enough to open visible black slots, and the same class of fix was reverted
+        /// once before for the elevator/hub wall.
+        ///
+        /// Only connected walls need it — an unconnected wall's outer face points at the void. Runs
+        /// after every snap (moving a wall earlier would drag the socket the next room aligns to) and
+        /// before static batching and the NavMesh bake.
+        /// </summary>
+        private int NudgeConnectedWallDepth()
+        {
+            if (_connectedWallDepthNudge <= 0f || _connector == null || _connector.LevelRoot == null)
+                return 0;
+
+            int moved = 0;
+            foreach (Transform child in _connector.LevelRoot)
+            {
+                if (!child.TryGetComponent(out RoomInstance room))
+                    continue;
+                if (!TryGetWorldBounds(child, out Bounds roomBounds))
+                    continue;
+
+                foreach (WallGapController wall in room.ConnectedWalls)
+                {
+                    if (wall == null)
+                        continue;
+                    if (!TryGetWorldBounds(wall.transform, out Bounds wallBounds))
+                        continue;
+
+                    // The wall's thin horizontal axis is its normal; step along it towards the room.
+                    Vector3 axis = wallBounds.size.x <= wallBounds.size.z ? Vector3.right : Vector3.forward;
+                    float towardsRoom = Vector3.Dot(roomBounds.center - wallBounds.center, axis);
+                    if (Mathf.Approximately(towardsRoom, 0f))
+                        continue;
+
+                    wall.transform.position += axis * (Mathf.Sign(towardsRoom) * _connectedWallDepthNudge);
+                    moved++;
+                }
+            }
+
+            return moved;
+        }
+
+        /// <summary>Combined world-space renderer bounds of a subtree.</summary>
+        private static bool TryGetWorldBounds(Transform subtree, out Bounds bounds)
+        {
+            bounds = default;
+            bool any = false;
+
+            foreach (Renderer renderer in subtree.GetComponentsInChildren<Renderer>(false))
+            {
+                if (renderer is ParticleSystemRenderer)
+                    continue;
+
+                if (!any)
+                {
+                    bounds = renderer.bounds;
+                    any = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(renderer.bounds);
+                }
+            }
+
+            return any;
+        }
+
         private void ClearLevelRoot()
         {
             Transform root = _connector.LevelRoot;
+            // Must happen before the Destroy calls: the rooms are still alive this frame and the
+            // reset reads the surviving ones off the hierarchy.
+            RoomLightmapData.ResetForNewFloor(root);
             for (int i = root.childCount - 1; i >= 0; i--)
                 Destroy(root.GetChild(i).gameObject);
         }

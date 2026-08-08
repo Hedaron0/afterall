@@ -132,7 +132,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 157027150930743957}
-  - component: {fileID: -1837743732417534856}
+  - component: {fileID: 1097504851871459022}
   m_Layer: 0
   m_Name: Water
   m_TagString: Untagged
@@ -156,8 +156,8 @@ Transform:
   - {fileID: 5348398098759529811}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!64 &-1837743732417534856
-MeshCollider:
+--- !u!65 &1097504851871459022
+BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -174,10 +174,9 @@ MeshCollider:
   m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 1
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 0}
+  serializedVersion: 3
+  m_Size: {x: 1.7914969, y: 1.7914972, z: 4.271742}
+  m_Center: {x: 0, y: 0, z: 0.015438795}
 --- !u!1 &5388475819789357558
 GameObject:
   m_ObjectHideFlags: 0

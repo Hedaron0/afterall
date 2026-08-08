@@ -12,8 +12,6 @@ GameObject:
   - component: {fileID: 4203019729442258282}
   - component: {fileID: 681410838284542968}
   - component: {fileID: 667435259313909498}
-  - component: {fileID: 7711223344556677881}
-  - component: {fileID: 7711223344556677882}
   m_Layer: 0
   m_Name: pillar
   m_TagString: Untagged
@@ -114,37 +112,3 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.5, y: 4.0000005, z: 0.5}
   m_Center: {x: 0, y: 2.0000002, z: 0}
---- !u!65 &7711223344556677881
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8251431675082628176}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 1
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 0.5, y: 4.0000005, z: 0.5}
-  m_Center: {x: 0, y: 2.0000002, z: 0}
---- !u!114 &7711223344556677882
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8251431675082628176}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b8c7d6e5f4a39281706f5e4d3c2b1a09, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomOpeningBlockZone
-  _collider: {fileID: 7711223344556677881}

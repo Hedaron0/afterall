@@ -38,17 +38,34 @@ namespace AfterAll.Environment
         [SerializeField] private Variant[] _variants = new Variant[0];
         [SerializeField] private LightmapsMode _lightmapsMode = LightmapsMode.NonDirectional;
 
-        /// <summary>Maps an already-registered color texture to its index in LightmapSettings.lightmaps.</summary>
+        /// <summary>Our mirror of LightmapSettings.lightmaps, so registration never reads it back.</summary>
+        private static readonly List<LightmapData> Registry = new List<LightmapData>();
+
+        /// <summary>Maps an already-registered color texture to its index in <see cref="Registry"/>.</summary>
         private static readonly Dictionary<Texture2D, int> RegisteredLightmaps = new Dictionary<Texture2D, int>();
+
+        private static int _batchDepth;
+        private static bool _registryDirty;
+
+        /// <summary>Last variant pushed for this instance, so a floor rebuild can restore it.</summary>
+        private Variant _applied;
 
         public bool HasBakedData => _variants.Length > 0;
 
         private void Awake()
         {
-            // Content activation happens a moment later in the build sequence; apply something now so
-            // the room is never briefly unlit, then ApplyVariant corrects it once the preset is known.
-            if (_variants.Length > 0)
-                Apply(_variants[0]);
+            // The prefab's renderers still carry the lightmapIndex the bake scene gave them, and that
+            // index means something else entirely in the running game — it would point at whichever
+            // room happens to occupy that slot. Applying a variant here just to overwrite it would
+            // register a whole set of textures that ApplyVariant discards moments later, so blank the
+            // indices instead and let the room ride on ambient until its preset is known.
+            if (_variants.Length == 0)
+                return;
+
+            foreach (Variant variant in _variants)
+                foreach (Renderer renderer in variant.renderers)
+                    if (renderer != null)
+                        renderer.lightmapIndex = -1;
         }
 
         /// <summary>Applies the bake for <paramref name="presetName"/>, or the first one if unmatched.</summary>
@@ -84,6 +101,7 @@ namespace AfterAll.Environment
                 LightmapSettings.lightmapsMode = _lightmapsMode;
 
             int[] localToGlobal = RegisterLightmaps(variant);
+            _applied = variant;
 
             for (int i = 0; i < variant.renderers.Length; i++)
             {
@@ -100,11 +118,66 @@ namespace AfterAll.Environment
             }
         }
 
+        /// <summary>
+        /// Holds off pushing the lightmap array to Unity until <see cref="EndBatch"/>.
+        ///
+        /// Assigning LightmapSettings.lightmaps makes Unity re-resolve the binding for every renderer
+        /// in the scene and pull in any texture it hasn't loaded yet. Doing that once per room means
+        /// twenty of those passes over a growing array while a floor is built, each one dragging in
+        /// multi-megabyte lightmaps — enough to stall the editor for a long time on a full floor.
+        /// One assignment at the end costs the same as the first one did.
+        /// </summary>
+        public static void BeginBatch()
+        {
+            if (_batchDepth == 0)
+                EnsureRegistrySynced();
+
+            _batchDepth++;
+        }
+
+        /// <summary>Ends a <see cref="BeginBatch"/> scope and pushes the array if this was the last one.</summary>
+        public static void EndBatch()
+        {
+            if (_batchDepth > 0)
+                _batchDepth--;
+
+            if (_batchDepth == 0)
+                Flush();
+        }
+
+        private static void Flush()
+        {
+            if (!_registryDirty)
+                return;
+
+            LightmapSettings.lightmaps = Registry.ToArray();
+            _registryDirty = false;
+        }
+
+        /// <summary>
+        /// Drops the registry if it no longer describes LightmapSettings.
+        ///
+        /// These are statics, and with domain reload turned off in Play Mode Options they survive into
+        /// the next play session while LightmapSettings starts empty — every cached index would then
+        /// point at a slot that no longer exists. Only meaningful outside a batch, where the two are
+        /// expected to match.
+        /// </summary>
+        private static void EnsureRegistrySynced()
+        {
+            if (LightmapSettings.lightmaps.Length == Registry.Count)
+                return;
+
+            Registry.Clear();
+            RegisteredLightmaps.Clear();
+            _registryDirty = true;
+        }
+
         private static int[] RegisterLightmaps(Variant variant)
         {
-            var lightmaps = new List<LightmapData>(LightmapSettings.lightmaps);
+            if (_batchDepth == 0)
+                EnsureRegistrySynced();
+
             var localToGlobal = new int[variant.lightmapColors.Length];
-            bool changed = false;
 
             for (int i = 0; i < variant.lightmapColors.Length; i++)
             {
@@ -115,37 +188,63 @@ namespace AfterAll.Environment
                     continue;
                 }
 
-                // A cached index can outlive its slot when a scene load resets LightmapSettings or the
-                // editor reloads the domain, so validate before trusting it.
-                if (RegisteredLightmaps.TryGetValue(color, out int existing)
-                    && existing < lightmaps.Count
-                    && lightmaps[existing].lightmapColor == color)
+                if (RegisteredLightmaps.TryGetValue(color, out int existing))
                 {
                     localToGlobal[i] = existing;
                     continue;
                 }
 
-                lightmaps.Add(new LightmapData
+                Registry.Add(new LightmapData
                 {
                     lightmapColor = color,
                     lightmapDir   = i < variant.lightmapDirs.Length ? variant.lightmapDirs[i] : null,
                     shadowMask    = i < variant.shadowMasks.Length ? variant.shadowMasks[i] : null,
                 });
 
-                int index = lightmaps.Count - 1;
+                int index = Registry.Count - 1;
                 RegisteredLightmaps[color] = index;
                 localToGlobal[i] = index;
-                changed = true;
+                _registryDirty = true;
             }
 
-            if (changed)
-                LightmapSettings.lightmaps = lightmaps.ToArray();
+            if (_batchDepth == 0)
+                Flush();
 
             return localToGlobal;
         }
 
-        /// <summary>Drops the dedup cache — call when LightmapSettings is reset out from under us.</summary>
-        public static void ClearRegistry() => RegisteredLightmaps.Clear();
+        /// <summary>
+        /// Empties the global lightmap array before a floor rebuild and re-registers only the rooms
+        /// that outlive it.
+        ///
+        /// Nothing ever removed entries: every room appended its textures on spawn and the array kept
+        /// them after the floor was destroyed, so a run leaked one floor's worth of lightmap VRAM per
+        /// rebuild. <paramref name="destroyedRoot"/> is the subtree about to be torn down — its rooms
+        /// are skipped by transform rather than by Destroy having run, because Destroy only takes
+        /// effect at the end of the frame and they would otherwise re-register themselves. Rooms
+        /// outside it (the persistent elevator cabin) have to be re-applied, since wiping the array
+        /// invalidates the lightmapIndex their renderers are still holding.
+        /// </summary>
+        public static void ResetForNewFloor(Transform destroyedRoot)
+        {
+            RegisteredLightmaps.Clear();
+            Registry.Clear();
+            _batchDepth    = 0;
+            _registryDirty = true;
+
+            BeginBatch();
+            foreach (RoomLightmapData survivor in
+                     FindObjectsByType<RoomLightmapData>(FindObjectsSortMode.None))
+            {
+                if (survivor._applied == null)
+                    continue;
+                if (destroyedRoot != null && survivor.transform.IsChildOf(destroyedRoot))
+                    continue;
+
+                survivor.Apply(survivor._applied);
+            }
+            EndBatch();
+        }
 
 #if UNITY_EDITOR
         public void StoreVariants(Variant[] variants, LightmapsMode lightmapsMode)

@@ -1124,7 +1124,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1671789765917514832}
   - component: {fileID: 1200488711494866680}
-  - component: {fileID: -1407842454713749603}
+  - component: {fileID: 1685757700149196780}
   m_Layer: 0
   m_Name: File
   m_TagString: Untagged
@@ -1170,8 +1170,8 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!64 &-1407842454713749603
-MeshCollider:
+--- !u!65 &1685757700149196780
+BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1188,10 +1188,9 @@ MeshCollider:
   m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 1
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 0}
+  serializedVersion: 3
+  m_Size: {x: 2.5008612, y: 0.14000003, z: 3.6516032}
+  m_Center: {x: -0.12500012, y: 0.042000007, z: -0.04506159}
 --- !u!1 &7612400293221759940
 GameObject:
   m_ObjectHideFlags: 0

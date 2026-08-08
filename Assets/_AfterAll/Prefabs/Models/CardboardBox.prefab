@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5495946900855433853}
-  - component: {fileID: -8482961198215929821}
+  - component: {fileID: 1018421664540257957}
   m_Layer: 0
   m_Name: CardboardBox
   m_TagString: Untagged
@@ -33,8 +33,8 @@ Transform:
   - {fileID: 4808154448470409879}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
---- !u!64 &-8482961198215929821
-MeshCollider:
+--- !u!65 &1018421664540257957
+BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -51,10 +51,9 @@ MeshCollider:
   m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 1
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 0}
+  serializedVersion: 3
+  m_Size: {x: 42, y: 28.500008, z: 19.000004}
+  m_Center: {x: 3.7992477, y: -0.079704285, z: 9.500002}
 --- !u!1 &3411631195403369738
 GameObject:
   m_ObjectHideFlags: 0

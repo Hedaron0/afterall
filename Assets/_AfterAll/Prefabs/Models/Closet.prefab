@@ -255,7 +255,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2284971958961958245}
-  - component: {fileID: 1113794017461116799}
+  - component: {fileID: 2991251252521773651}
   m_Layer: 0
   m_Name: Closet
   m_TagString: Untagged
@@ -279,8 +279,8 @@ Transform:
   - {fileID: 5985348258469001541}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
---- !u!64 &1113794017461116799
-MeshCollider:
+--- !u!65 &2991251252521773651
+BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -297,10 +297,9 @@ MeshCollider:
   m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 1
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 0}
+  serializedVersion: 3
+  m_Size: {x: 2.7105277, y: 4.6733346, z: 7.900002}
+  m_Center: {x: -0.98815, y: 0.0144507885, z: 0.13026404}
 --- !u!1 &5927117297646504476
 GameObject:
   m_ObjectHideFlags: 0

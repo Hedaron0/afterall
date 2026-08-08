@@ -195,7 +195,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3945997707060826659}
-  - component: {fileID: -2905528212918457573}
+  - component: {fileID: 5634478923427974839}
   m_Layer: 0
   m_Name: PlasticChair
   m_TagString: Untagged
@@ -219,8 +219,8 @@ Transform:
   - {fileID: 2281680081769571054}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
---- !u!64 &-2905528212918457573
-MeshCollider:
+--- !u!65 &5634478923427974839
+BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -237,7 +237,6 @@ MeshCollider:
   m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 1
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 0}
+  serializedVersion: 3
+  m_Size: {x: 0.6418611, y: 0.6275922, z: 0.8798416}
+  m_Center: {x: 0, y: 0.022154689, z: 0.43990126}

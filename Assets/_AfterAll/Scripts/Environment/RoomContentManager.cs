@@ -36,6 +36,11 @@ namespace AfterAll.Environment
 
             var usedPresetsPerPrefab = new Dictionary<string, HashSet<string>>();
 
+            // Every room registers its lightmaps here; without the batch each one would push the whole
+            // (growing) array to Unity and force a scene-wide rebind plus texture load. A throw would
+            // leave the depth raised, but ResetForNewFloor zeroes it on the next build.
+            RoomLightmapData.BeginBatch();
+
             foreach (RoomInstance room in _connector.LevelRoot.GetComponentsInChildren<RoomInstance>())
             {
                 Transform content = room.transform.Find("Content");
@@ -77,7 +82,7 @@ namespace AfterAll.Environment
                 }
 
                 // The room is baked once per preset option, so the lightmap can only be chosen after
-                // the winner is known (RoomLightmapData.Awake applied a placeholder on spawn).
+                // the winner is known — until this call the room rides on ambient.
                 if (room.TryGetComponent(out RoomLightmapData lightmaps) && lightmaps.HasBakedData)
                     lightmaps.ApplyVariant(selectedPreset != null ? selectedPreset.name : string.Empty);
 
@@ -98,6 +103,8 @@ namespace AfterAll.Environment
                     Debug.Log($"[RoomContent] {room.name} preset={presetName} seed={roomSeed}", content);
                 }
             }
+
+            RoomLightmapData.EndBatch();
 
             RefreshOpenWalls();
         }

@@ -131,7 +131,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2312091386197429010}
-  - component: {fileID: -3590003939883165619}
+  - component: {fileID: 665633953497597922}
   m_Layer: 0
   m_Name: RusticDrawer
   m_TagString: Untagged
@@ -155,8 +155,8 @@ Transform:
   - {fileID: 4910343416205318559}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!64 &-3590003939883165619
-MeshCollider:
+--- !u!65 &665633953497597922
+BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -173,10 +173,9 @@ MeshCollider:
   m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 1
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 0}
+  serializedVersion: 3
+  m_Size: {x: 362.70612, y: 253.41791, z: 513.599}
+  m_Center: {x: -0.000015258789, y: 0, z: 77.17946}
 --- !u!1 &3611017517176244031
 GameObject:
   m_ObjectHideFlags: 0

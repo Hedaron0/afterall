@@ -73,7 +73,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5319954036758276200}
-  - component: {fileID: -2005910744738757096}
+  - component: {fileID: 604417280493112142}
   m_Layer: 0
   m_Name: StopSighn
   m_TagString: Untagged
@@ -97,8 +97,8 @@ Transform:
   - {fileID: 7029757162904956949}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!64 &-2005910744738757096
-MeshCollider:
+--- !u!65 &604417280493112142
+BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -115,10 +115,9 @@ MeshCollider:
   m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 1
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 0}
+  serializedVersion: 3
+  m_Size: {x: 0.23836255, y: 0.0067190602, z: 0.86243975}
+  m_Center: {x: 0, y: 0.00029805745, z: 0.43121988}
 --- !u!1 &1452354845268252746
 GameObject:
   m_ObjectHideFlags: 0
