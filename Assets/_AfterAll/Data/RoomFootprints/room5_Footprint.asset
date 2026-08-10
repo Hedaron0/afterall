@@ -15,7 +15,7 @@ MonoBehaviour:
   _prefab: {fileID: 282913196119312983, guid: 30b02d360b31ad24e97ecbf001ce8a0c, type: 3}
   _isElevator: 0
   _boundsMin: {x: -3, y: -2.9999998}
-  _boundsMax: {x: 2.9, y: 2.9}
+  _boundsMax: {x: 3, y: 2.9999998}
   _walls:
   - name: 5Wall1
     seamLocal: {x: -2.8750005, y: 0}

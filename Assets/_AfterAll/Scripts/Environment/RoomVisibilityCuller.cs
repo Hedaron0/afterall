@@ -5,11 +5,14 @@ using UnityEngine;
 namespace AfterAll.Environment
 {
     /// <summary>
-    /// Disables renderers and sleeps Rigidbodies on rooms more than <see cref="_visibleHopRadius"/>
+    /// Hides renderers and sleeps Rigidbodies on rooms more than <see cref="_visibleHopRadius"/>
     /// connection-hops from the player's current room. A cheap stand-in for occlusion culling,
     /// which can't be baked for runtime-generated floors (Editor-only). Colliders, NavMesh and
     /// RoomInstance/WallGapController state are untouched, so hunter pathing/logic (which reads
     /// room graph state, never renderer state) is unaffected.
+    ///
+    /// Hiding goes through Renderer.forceRenderingOff, never Renderer.enabled — see
+    /// <see cref="SetRoomRendererVisibility"/> for why that distinction is load-bearing.
     /// Collects its own room set from RoomConnector.LevelRoot on RoomPoolSpawner.FloorReady —
     /// deliberately does NOT read EntityNavGraph.Rooms, since FloorReady has multiple subscribers
     /// (this, RunDirector, EntityNavGraph) and Unity gives no ordering guarantee between them;
@@ -129,9 +132,14 @@ namespace AfterAll.Environment
                 _rigidbodiesByRoom[elevatorRoom] = elevatorRoom.GetComponentsInChildren<Rigidbody>(true);
             }
 
-            // Every room's renderers start enabled by default on instantiation — seed the
-            // "currently visible" set to match that reality so the first ApplyVisibility call
+            // Seed the "currently visible" set to all rooms so the first ApplyVisibility call
             // correctly detects true->false transitions instead of assuming nothing changed.
+            // Freshly instantiated rooms already match that, but the persistent elevator cabin
+            // outlives the floor and carries last floor's flag over, so make the two agree
+            // explicitly rather than trusting them to.
+            foreach (RoomInstance room in _renderersByRoom.Keys)
+                SetRoomRendererVisibility(room, true);
+
             _visibleRooms.UnionWith(_renderersByRoom.Keys);
         }
 
@@ -146,7 +154,7 @@ namespace AfterAll.Environment
                 if (wasVisible == nowVisible)
                     continue;
 
-                SetRoomRenderersEnabled(room, nowVisible);
+                SetRoomRendererVisibility(room, nowVisible);
                 SetRoomRigidbodiesAsleep(room, !nowVisible);
             }
 
@@ -180,7 +188,23 @@ namespace AfterAll.Environment
             return new HashSet<RoomInstance>(visited.Keys);
         }
 
-        private void SetRoomRenderersEnabled(RoomInstance room, bool enabled)
+        /// <summary>
+        /// Culling must never write Renderer.enabled: that flag is authored/gameplay state owned by
+        /// other systems, and blanket-setting it to true on re-entry destroys two of them.
+        ///
+        /// RoomStaticMeshCombiner leaves every shell renderer disabled and draws the room from the
+        /// single CombinedStatic mesh built out of them (8-26 per room). Re-enabling those puts an
+        /// exact coplanar duplicate of the whole shell back on screen — and only CombinedStatic
+        /// carries a lightmapIndex, so the duplicates render unlit and z-fight the lit surface,
+        /// which is the flickering dark patches that show up as the camera moves. WallGapController
+        /// also opens FullWall doorways by disabling the wall pieces' renderers (colliders come off
+        /// with them); re-enabling those alone draws a wall across an open doorway that the player
+        /// still walks straight through, and its outward face was baked closed, so it reads black.
+        ///
+        /// forceRenderingOff is the flag meant for exactly this — it suppresses drawing without
+        /// touching enabled, so both systems' state survives a cull/uncull cycle intact.
+        /// </summary>
+        private void SetRoomRendererVisibility(RoomInstance room, bool visible)
         {
             if (!_renderersByRoom.TryGetValue(room, out MeshRenderer[] renderers))
                 return;
@@ -188,7 +212,7 @@ namespace AfterAll.Environment
             foreach (MeshRenderer renderer in renderers)
             {
                 if (renderer != null)
-                    renderer.enabled = enabled;
+                    renderer.forceRenderingOff = !visible;
             }
         }
 

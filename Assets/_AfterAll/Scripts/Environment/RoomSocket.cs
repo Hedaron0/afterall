@@ -88,6 +88,58 @@ namespace AfterAll.Environment
 
             root.rotation = delta * root.rotation;
             root.position = delta * (root.position - pivot) + parentT.position;
+
+            // Landing the two sockets on the same point puts the two rooms' wall slabs in the SAME
+            // volume, because a socket sits on its wall's mid-plane (measured: the slab spans
+            // -0.125..+0.125 around it). That leaves the parent's inner face exactly coplanar with the
+            // child's OUTER face — one lit, one baked against the void and therefore black — so which
+            // one draws is decided per pixel by depth precision and the wall flickers black as the
+            // camera moves. Anything sitting inside that shared volume (a door frame is spawned right
+            // in it) fights the same way.
+            //
+            // Backing the child off by the two half-thicknesses puts the slabs side by side instead,
+            // which is also what the planner already assumes: RoomFootprint's AABB edge sits on the
+            // OUTER wall face, so plan space has the rooms meeting outer face to outer face. Without
+            // this the built floor sits one wall thickness tighter than the plan it came from, and
+            // every connected pair overlaps by that much.
+            float separation = HalfThicknessAlongNormal(parentSocket) + HalfThicknessAlongNormal(childSocket);
+            if (separation > 0.0001f)
+                root.position += parentT.forward * separation;
+        }
+
+        /// <summary>
+        /// Half the wall's depth measured along its own outward normal, or 0 when the wall has no
+        /// measurable geometry (portal-style OpenEnd walls, whose pieces are hidden).
+        /// </summary>
+        private static float HalfThicknessAlongNormal(RoomSocket socket)
+        {
+            if (socket == null || socket.Wall == null)
+                return 0f;
+
+            Vector3 normal = FlattenDirection(socket.transform.forward);
+            float min = float.PositiveInfinity;
+            float max = float.NegativeInfinity;
+
+            foreach (Renderer renderer in socket.Wall.GetComponentsInChildren<Renderer>(true))
+            {
+                Bounds b = renderer.bounds;
+                for (int x = -1; x <= 1; x += 2)
+                for (int y = -1; y <= 1; y += 2)
+                for (int z = -1; z <= 1; z += 2)
+                {
+                    Vector3 corner = b.center + Vector3.Scale(b.extents, new Vector3(x, y, z));
+                    float t = Vector3.Dot(corner - socket.transform.position, normal);
+                    min = Mathf.Min(min, t);
+                    max = Mathf.Max(max, t);
+                }
+            }
+
+            if (float.IsInfinity(min) || float.IsInfinity(max))
+                return 0f;
+
+            // Only the part standing between the socket plane and the neighbour matters — that is the
+            // half that would otherwise reach into the room being attached.
+            return Mathf.Max(0f, max);
         }
 
         public static float FaceScore(RoomSocket child, RoomSocket parent) =>

@@ -183,6 +183,19 @@ namespace AfterAll.Editor
                     wallMax = Vector2.Max(wallMax, wall.seamLocal);
                 }
 
+                // A WallGapController only exists where a doorway can go, so the hull above traces
+                // the door walls and nothing else. Rooms whose perimeter is not fully covered by
+                // them — room10 and room4 both have a wing with no door on it — end up with a
+                // footprint that stops short of their own floor: measured 9.6m and 3.35m of real,
+                // walled room sitting outside its own AABB. The planner reads only this AABB, so it
+                // happily parks a neighbour in that space and the wing spawns inside the other room.
+                // Union in the plain structural walls so the hull describes the whole perimeter.
+                if (TryGetLocalStructuralWallBounds(root.transform, out Vector2 shellMin, out Vector2 shellMax))
+                {
+                    wallMin = Vector2.Min(wallMin, shellMin);
+                    wallMax = Vector2.Max(wallMax, shellMax);
+                }
+
                 Vector2 boundsMin = wallMin;
                 Vector2 boundsMax = wallMax;
                 if (TryGetLocalFloorBounds(root.transform, out Vector2 floorMin, out Vector2 floorMax))
@@ -228,6 +241,72 @@ namespace AfterAll.Editor
             {
                 PrefabUtility.UnloadPrefabContents(root);
             }
+        }
+
+        /// <summary>
+        /// XZ hull of the room's plain structural walls, in root-local space.
+        ///
+        /// Selection is by height, not by name: a wall is tall (the kit runs 4m), a floor or ceiling
+        /// slab is 0.25m. Keeping the flat pieces out is deliberate — they are what the floor clamp
+        /// downstream is guarding against, since floor trim routinely overhangs the wall line by a
+        /// few centimetres and folding that into the hull would inflate every footprint.
+        ///
+        /// Skipped: Content (runtime-chosen props), WeightedRandomGroup subtrees (a prop that lands
+        /// in one of several spots has no fixed extent), and the combined shell, whose single mesh
+        /// merges floor, ceiling and walls and would therefore drag the flat pieces back in. The
+        /// renderers it was built from are only disabled, never removed, so they are still walked.
+        /// </summary>
+        private static bool TryGetLocalStructuralWallBounds(Transform root, out Vector2 min, out Vector2 max)
+        {
+            const float WallMinHeightM = 1f;
+
+            min = default;
+            max = default;
+            bool any = false;
+
+            foreach (MeshRenderer renderer in root.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                if (renderer.bounds.size.y < WallMinHeightM)
+                    continue;
+                if (renderer.GetComponentInParent<WeightedRandomGroup>() != null)
+                    continue;
+
+                bool excluded = false;
+                for (Transform cursor = renderer.transform; cursor != null && cursor != root.parent; cursor = cursor.parent)
+                {
+                    if (cursor.name == "Content" || cursor.name == "CombinedStatic")
+                    {
+                        excluded = true;
+                        break;
+                    }
+                }
+                if (excluded)
+                    continue;
+
+                Bounds b = renderer.bounds;
+                for (int x = -1; x <= 1; x += 2)
+                for (int y = -1; y <= 1; y += 2)
+                for (int z = -1; z <= 1; z += 2)
+                {
+                    Vector3 world = b.center + Vector3.Scale(b.extents, new Vector3(x, y, z));
+                    Vector3 local = root.InverseTransformPoint(world);
+                    var xz = new Vector2(local.x, local.z);
+
+                    if (!any)
+                    {
+                        min = xz;
+                        max = xz;
+                        any = true;
+                    }
+                    else
+                    {
+                        min = Vector2.Min(min, xz);
+                        max = Vector2.Max(max, xz);
+                    }
+                }
+            }
+
+            return any;
         }
 
         private static bool TryGetLocalFloorBounds(Transform root, out Vector2 min, out Vector2 max)

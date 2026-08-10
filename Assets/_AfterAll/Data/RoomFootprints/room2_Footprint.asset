@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomFootprint
   _prefab: {fileID: 8799603885322253748, guid: 77cfb0221d4fc6942b58e50b83874426, type: 3}
   _isElevator: 0
-  _boundsMin: {x: -1.6500005, y: -3.0000002}
-  _boundsMax: {x: 1.6500005, y: 3.0000002}
+  _boundsMin: {x: -1.7500002, y: -3.0000002}
+  _boundsMax: {x: 1.7500002, y: 3.0000002}
   _walls:
   - name: 2Wall1
     seamLocal: {x: 0, y: 2.8750005}

@@ -44,64 +44,72 @@ namespace AfterAll.Environment
             foreach (RoomInstance room in _connector.LevelRoot.GetComponentsInChildren<RoomInstance>())
             {
                 Transform content = room.transform.Find("Content");
-                if (content == null)
-                    continue;
-
-                Vector3 position = room.transform.position;
-                int positionKey = HashCode.Combine(
-                    Mathf.RoundToInt(position.x * 100f),
-                    Mathf.RoundToInt(position.y * 100f),
-                    Mathf.RoundToInt(position.z * 100f));
-                int roomSeed = HashCode.Combine(levelSeed, positionKey);
-                var rng = new System.Random(roomSeed);
-
-                string prefabId = room.PrefabId;
-                if (string.IsNullOrEmpty(prefabId))
-                    prefabId = room.name.Replace("(Clone)", "").Trim();
-
-                if (!usedPresetsPerPrefab.TryGetValue(prefabId, out HashSet<string> usedPresets))
-                {
-                    usedPresets = new HashSet<string>();
-                    usedPresetsPerPrefab[prefabId] = usedPresets;
-                }
-
-                ApplyLootDepthWeighting(content, room.GraphDepth);
-
                 Transform selectedPreset = null;
-                if (!content.TryGetComponent(out WeightedRandomGroup presetGroup))
+
+                // Rooms without a Content root (the elevator cabin: no presets, no loot) skip preset
+                // selection entirely, but still fall through to the lightmap apply below — they must,
+                // since RoomLightmapData.Awake() only blanks its renderers' lightmapIndex and waits for
+                // this loop to call ApplyVariant. An earlier version of this method returned early on
+                // `content == null`, which silently left the elevator riding on ambient forever, baked
+                // data or not.
+                if (content != null)
                 {
-                    Transform presetContainer = content.Find("Preset");
-                    if (presetContainer != null)
-                        presetContainer.TryGetComponent(out presetGroup);
-                }
-                if (presetGroup != null)
-                {
-                    selectedPreset = presetGroup.Activate(rng, usedPresets);
+                    Vector3 position = room.transform.position;
+                    int positionKey = HashCode.Combine(
+                        Mathf.RoundToInt(position.x * 100f),
+                        Mathf.RoundToInt(position.y * 100f),
+                        Mathf.RoundToInt(position.z * 100f));
+                    int roomSeed = HashCode.Combine(levelSeed, positionKey);
+                    var rng = new System.Random(roomSeed);
+
+                    string prefabId = room.PrefabId;
+                    if (string.IsNullOrEmpty(prefabId))
+                        prefabId = room.name.Replace("(Clone)", "").Trim();
+
+                    if (!usedPresetsPerPrefab.TryGetValue(prefabId, out HashSet<string> usedPresets))
+                    {
+                        usedPresets = new HashSet<string>();
+                        usedPresetsPerPrefab[prefabId] = usedPresets;
+                    }
+
+                    ApplyLootDepthWeighting(content, room.GraphDepth);
+
+                    if (!content.TryGetComponent(out WeightedRandomGroup presetGroup))
+                    {
+                        Transform presetContainer = content.Find("Preset");
+                        if (presetContainer != null)
+                            presetContainer.TryGetComponent(out presetGroup);
+                    }
+                    if (presetGroup != null)
+                    {
+                        selectedPreset = presetGroup.Activate(rng, usedPresets);
+                        if (selectedPreset != null)
+                            usedPresets.Add(selectedPreset.name);
+                    }
+
+                    RoomContentActivation.ApplyRandomPool(content, _settings, rng);
+
+                    // Prop placement alternatives (e.g. "DuckPropPositions") nested anywhere under the
+                    // winning preset. Same mechanic as the preset pick, walked in hierarchy order so the
+                    // shared rng is consumed deterministically for a given seed.
                     if (selectedPreset != null)
-                        usedPresets.Add(selectedPreset.name);
+                    {
+                        foreach (WeightedRandomGroup nested in selectedPreset.GetComponentsInChildren<WeightedRandomGroup>(true))
+                            nested.Activate(rng);
+                    }
+
+                    if (_settings.LogActivation)
+                    {
+                        string presetName = selectedPreset != null ? selectedPreset.name : "none";
+                        Debug.Log($"[RoomContent] {room.name} preset={presetName} seed={roomSeed}", content);
+                    }
                 }
 
                 // The room is baked once per preset option, so the lightmap can only be chosen after
-                // the winner is known — until this call the room rides on ambient.
+                // the winner is known — until this call the room rides on ambient. Runs for every room
+                // under LevelRoot, Content root or not.
                 if (room.TryGetComponent(out RoomLightmapData lightmaps) && lightmaps.HasBakedData)
                     lightmaps.ApplyVariant(selectedPreset != null ? selectedPreset.name : string.Empty);
-
-                RoomContentActivation.ApplyRandomPool(content, _settings, rng);
-
-                // Prop placement alternatives (e.g. "DuckPropPositions") nested anywhere under the
-                // winning preset. Same mechanic as the preset pick, walked in hierarchy order so the
-                // shared rng is consumed deterministically for a given seed.
-                if (selectedPreset != null)
-                {
-                    foreach (WeightedRandomGroup nested in selectedPreset.GetComponentsInChildren<WeightedRandomGroup>(true))
-                        nested.Activate(rng);
-                }
-
-                if (_settings.LogActivation)
-                {
-                    string presetName = selectedPreset != null ? selectedPreset.name : "none";
-                    Debug.Log($"[RoomContent] {room.name} preset={presetName} seed={roomSeed}", content);
-                }
             }
 
             RoomLightmapData.EndBatch();
