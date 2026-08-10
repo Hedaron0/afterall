@@ -116,6 +116,7 @@ namespace AfterAll.EditorTools
                 var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, scene);
                 instance.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
                 ActivatePreset(instance.transform, presetName);
+                OpenDoorwaysForBake(instance.transform);
 
                 // Lightmapping writes its output next to a saved scene, so the scene has to exist on
                 // disk before Bake() rather than after.
@@ -146,6 +147,7 @@ namespace AfterAll.EditorTools
             }
 
             StoreOnPrefab(prefabPath, baked, mode);
+            // (OpenDoorwaysForBake only touched the throwaway scene instances, never the prefab.)
             Debug.Log($"[RoomLightmapBaker] {roomName}: stored {baked.Count} lightmap variant(s) " +
                       $"[{string.Join(", ", baked.Select(b => string.IsNullOrEmpty(b.Variant.presetName) ? "<none>" : b.Variant.presetName))}].");
         }
@@ -287,6 +289,44 @@ namespace AfterAll.EditorTools
         /// A default skybox would pour daylight through every doorway and open wall and wash the bake
         /// out. Runtime ambient is a separate setting and still lights non-baked geometry.
         /// </summary>
+        /// <summary>
+        /// Cuts a centred doorway into every StandardGap wall before the bake.
+        ///
+        /// A door wall is two pieces, WallLeft and WallRight, and in the prefab they sit flush against
+        /// each other forming one solid slab. Baking that state lights the faces looking into the room
+        /// but leaves the faces where the two pieces meet buried inside the slab, so they bake pure
+        /// black. At runtime WallGapController slides the pieces apart along the wall axis to open the
+        /// doorway — and those buried faces are exactly what becomes the doorway's side reveal. Hence
+        /// the black jambs framing every opening, worse or better per room depending on which wall the
+        /// bake came from.
+        ///
+        /// Opening the gap here exposes those faces to the room's own light instead. The offset is
+        /// centred rather than random on purpose: at runtime the pieces get scaled and repositioned to
+        /// wherever the real gap lands, but that only stretches the existing uv2 mapping (the same
+        /// stretch the wallpaper already rides), so the reveal keeps the one light value it was baked
+        /// with wherever the doorway ends up.
+        ///
+        /// FullWall and OpenEnd walls are deliberately left closed: opening those hides the pieces'
+        /// renderers entirely, so they would be captured with no lightmap at all and then show up
+        /// unlit on any floor where that wall ends up unconnected and therefore visible.
+        /// </summary>
+        private static void OpenDoorwaysForBake(Transform root)
+        {
+            int opened = 0;
+            foreach (WallGapController wall in root.GetComponentsInChildren<WallGapController>(true))
+            {
+                if (wall.OpeningMode != WallOpeningMode.StandardGap)
+                    continue;
+
+                wall.ConfigureOpening(true, false, WallGapController.GetWallCenterGapOffset(wall));
+                opened++;
+            }
+
+            if (opened > 0)
+                Debug.Log($"[RoomLightmapBaker] {root.name}: opened {opened} doorway(s) for the bake so " +
+                          "the reveal faces receive light.");
+        }
+
         private static void ConfigureBakeEnvironment()
         {
             RenderSettings.skybox                  = null;
