@@ -63,12 +63,6 @@ namespace AfterAll.Environment
         [SerializeField] private bool _forceFramesOnConnections;
         [SerializeField, Range(0f, 1f)] private float _frameChance = 0.35f;
 
-        [Header("Baked Lighting")]
-        [Tooltip("Depth nudge applied to each connected wall, towards its own room, so two coincident " +
-                 "walls stop fighting for the same depth. Millimetres — big enough to break the tie, " +
-                 "small enough that nothing visibly moves. 0 disables.")]
-        [SerializeField, Range(0f, 0.02f)] private float _connectedWallDepthNudge = 0.003f;
-
         [Header("Seed")]
         [SerializeField] private bool _useFixedSeed;
         [SerializeField] private int _fixedSeed = 12345;
@@ -489,18 +483,46 @@ namespace AfterAll.Environment
             // overlapping pair can orphan whatever hung off it, and the audit below (with its
             // existing retry/salvage/destroy policy) is what's supposed to catch that — not a
             // second, separate cleanup pass.
+            // Every phase below is synchronous and scales with room count / total geometry, so any one
+            // of them can stall the editor hard enough to look like a crash ("Unity does nothing, have
+            // to End Task"). Time them all and print the breakdown with the summary, so the next stall
+            // names its own culprit instead of needing a guess. The yields between phases also give
+            // the editor a frame to repaint, which is what separates "slow" from "hung" on screen.
+            var phase = new System.Diagnostics.Stopwatch();
+            var timings = new StringBuilder();
+
+            phase.Restart();
             int postBuildOverlaps = ResolvePlacedRoomOverlaps();
+            timings.Append($" overlaps={phase.ElapsedMilliseconds}ms");
+            yield return null;
+
+            phase.Restart();
             (ReachabilityAuditResult reachability, int finalPlacedCount) = RunReachabilityAudit(startRoom);
+            timings.Append($" reachability={phase.ElapsedMilliseconds}ms");
+            yield return null;
+
+            phase.Restart();
             int resealedOrphanWalls = ResealOrphanOpenWalls();
-            int nudgedWalls = NudgeConnectedWallDepth();
+            timings.Append($" reseal={phase.ElapsedMilliseconds}ms");
             // On rebuilds the layout was pre-aligned onto the cabin the player is standing in —
             // teleporting the player here would snap them away from it.
             if (_repositionPlayerAfterBuild && !reuseElevatorCabin)
                 PlacePlayerAfterBuild(startRoom, elevatorRoom);
 
-            _contentManager?.ActivateAll(_lastUsedSeed);
+            yield return null;
 
+            phase.Restart();
+            _contentManager?.ActivateAll(_lastUsedSeed);
+            timings.Append($" content+lightmaps={phase.ElapsedMilliseconds}ms");
+            yield return null;
+
+            // Prime suspect for the "editor does nothing" stall: this walks every static MeshFilter
+            // under LevelRoot (room10 alone carries 626 renderers, room7 337) and merges them, so its
+            // cost scales with total floor geometry rather than room count.
+            phase.Restart();
             int combinedStaticObjects = CombineStaticRoomGeometry();
+            timings.Append($" staticBatch={phase.ElapsedMilliseconds}ms");
+            yield return null;
 
             // Rooms are placed at runtime, so NavMesh can't be pre-baked — bake it fresh over just
             // this floor's geometry (LevelRoot only: player/loot/hunter live outside it, so they're
@@ -510,7 +532,9 @@ namespace AfterAll.Environment
             // by the player. NOTE: measured ~7.8s on a 16-room floor (2026-07-22) — the FIRST floor
             // build has no door to hide behind, so this hitch is fully exposed on every Play start.
             // Worth a dedicated pass (NavMeshSurface voxel size/quality, or async bake) later.
+            phase.Restart();
             EnsureNavMeshSurface().BuildNavMesh();
+            timings.Append($" navmesh={phase.ElapsedMilliseconds}ms");
 
             float minFloorY = float.PositiveInfinity;
             float maxFloorY = float.NegativeInfinity;
@@ -537,7 +561,8 @@ namespace AfterAll.Environment
             summary.AppendLine(
                 $"Validation missingContracts={validationTotals.missingContractCount}, " +
                 $"duplicateDirs={validationTotals.duplicateDirectionCount}, postBuildOverlaps={postBuildOverlaps}, " +
-                $"resealedOrphanWalls={resealedOrphanWalls}, nudgedWalls={nudgedWalls}.");
+                $"resealedOrphanWalls={resealedOrphanWalls}.");
+            summary.AppendLine($"Phase times:{timings}");
             summary.AppendLine(
                 $"Connector stats: NoCompatible={stats.noCompatibleSocket}, Gap={stats.gapMismatch}, " +
                 $"Overlap={stats.overlapRejected}.");
@@ -1385,84 +1410,6 @@ namespace AfterAll.Environment
             RoomInstance r = go.GetComponent<RoomInstance>() ?? go.AddComponent<RoomInstance>();
             r.CacheWalls();
             return r;
-        }
-
-        /// <summary>
-        /// Nudges each connected wall a few millimetres towards its own room and returns how many
-        /// moved.
-        ///
-        /// Rooms meet AABB against AABB, so the walls flanking a connection end up perfectly
-        /// coincident — two 0.25m walls in one 0.25m volume. Realtime lighting hid it because both
-        /// took the same light. Baked lighting does not: each wall's lightmap was baked inside its own
-        /// room, so the face pointing at the neighbour was baked against the void and is black. With
-        /// the two walls at identical depth the winner is arbitrary, which is why a room shows large
-        /// black panels beside its doorways. The nudge only has to break the tie — a few millimetres
-        /// puts each room's own correctly lit face in front and hides the neighbour's dark side behind
-        /// it. It is deliberately tiny: an earlier attempt at half a wall thickness separated the two
-        /// doorway reveals enough to open visible black slots, and the same class of fix was reverted
-        /// once before for the elevator/hub wall.
-        ///
-        /// Only connected walls need it — an unconnected wall's outer face points at the void. Runs
-        /// after every snap (moving a wall earlier would drag the socket the next room aligns to) and
-        /// before static batching and the NavMesh bake.
-        /// </summary>
-        private int NudgeConnectedWallDepth()
-        {
-            if (_connectedWallDepthNudge <= 0f || _connector == null || _connector.LevelRoot == null)
-                return 0;
-
-            int moved = 0;
-            foreach (Transform child in _connector.LevelRoot)
-            {
-                if (!child.TryGetComponent(out RoomInstance room))
-                    continue;
-                if (!TryGetWorldBounds(child, out Bounds roomBounds))
-                    continue;
-
-                foreach (WallGapController wall in room.ConnectedWalls)
-                {
-                    if (wall == null)
-                        continue;
-                    if (!TryGetWorldBounds(wall.transform, out Bounds wallBounds))
-                        continue;
-
-                    // The wall's thin horizontal axis is its normal; step along it towards the room.
-                    Vector3 axis = wallBounds.size.x <= wallBounds.size.z ? Vector3.right : Vector3.forward;
-                    float towardsRoom = Vector3.Dot(roomBounds.center - wallBounds.center, axis);
-                    if (Mathf.Approximately(towardsRoom, 0f))
-                        continue;
-
-                    wall.transform.position += axis * (Mathf.Sign(towardsRoom) * _connectedWallDepthNudge);
-                    moved++;
-                }
-            }
-
-            return moved;
-        }
-
-        /// <summary>Combined world-space renderer bounds of a subtree.</summary>
-        private static bool TryGetWorldBounds(Transform subtree, out Bounds bounds)
-        {
-            bounds = default;
-            bool any = false;
-
-            foreach (Renderer renderer in subtree.GetComponentsInChildren<Renderer>(false))
-            {
-                if (renderer is ParticleSystemRenderer)
-                    continue;
-
-                if (!any)
-                {
-                    bounds = renderer.bounds;
-                    any = true;
-                }
-                else
-                {
-                    bounds.Encapsulate(renderer.bounds);
-                }
-            }
-
-            return any;
         }
 
         private void ClearLevelRoot()
