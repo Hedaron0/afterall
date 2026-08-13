@@ -79,6 +79,74 @@ namespace AfterAll.EditorTools
             Debug.Log($"[ProbeLightingSetup] {targets.Count} item prefab(s) inspected, {changed} newly wired.");
         }
 
+        /// <summary>
+        /// Runs the buried-probe repair over probe grids that were already baked, so fixing them does
+        /// not cost a full re-bake of the kit. The repair is a pure post-process on stored
+        /// coefficients — the same pass RoomLightmapBaker now runs inline — so applying it here gives
+        /// exactly the result a fresh bake would.
+        /// </summary>
+        [MenuItem("AfterAll/Lighting/Repair Buried Probes On Room Prefabs")]
+        private static void RepairBuriedProbes()
+        {
+            string[] guids = AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/_AfterAll/Prefabs/Rooms" });
+            int roomsChanged = 0;
+            int probesRepaired = 0;
+
+            foreach (string guid in guids.OrderBy(g => g))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                GameObject root = PrefabUtility.LoadPrefabContents(path);
+                try
+                {
+                    var data = root.GetComponent<RoomLightProbeData>();
+                    if (data == null || !data.HasBakedData)
+                        continue;
+
+                    var serialized = new SerializedObject(data);
+                    SerializedProperty variants = serialized.FindProperty("_variants");
+                    int repairedHere = 0;
+
+                    for (int v = 0; v < variants.arraySize; v++)
+                    {
+                        SerializedProperty variant = variants.GetArrayElementAtIndex(v);
+                        SerializedProperty dims = variant.FindPropertyRelative("dimensions");
+                        SerializedProperty coefficients = variant.FindPropertyRelative("coefficients");
+
+                        var dimensions = dims.vector3IntValue;
+                        var values = new float[coefficients.arraySize];
+                        for (int i = 0; i < values.Length; i++)
+                            values[i] = coefficients.GetArrayElementAtIndex(i).floatValue;
+
+                        int repaired = RoomLightmapBaker.RepairDeadProbes(dimensions, values);
+                        if (repaired == 0)
+                            continue;
+
+                        for (int i = 0; i < values.Length; i++)
+                            coefficients.GetArrayElementAtIndex(i).floatValue = values[i];
+
+                        repairedHere += repaired;
+                    }
+
+                    if (repairedHere == 0)
+                        continue;
+
+                    serialized.ApplyModifiedPropertiesWithoutUndo();
+                    PrefabUtility.SaveAsPrefabAsset(root, path);
+                    roomsChanged++;
+                    probesRepaired += repairedHere;
+                    Debug.Log($"[ProbeLightingSetup] {System.IO.Path.GetFileNameWithoutExtension(path)}: " +
+                              $"repaired {repairedHere} buried probe(s).");
+                }
+                finally
+                {
+                    PrefabUtility.UnloadPrefabContents(root);
+                }
+            }
+
+            Debug.Log($"[ProbeLightingSetup] Buried-probe repair done: {probesRepaired} probe(s) across " +
+                      $"{roomsChanged} room(s).");
+        }
+
         private static void AddPrefabPath(HashSet<string> targets, GameObject prefab)
         {
             if (prefab == null)

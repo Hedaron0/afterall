@@ -108,10 +108,10 @@ namespace AfterAll.Environment
                 if (room == null || room._applied == null || !room._applied.IsValid)
                     continue;
 
-                if (room.ContainsWorldPosition(worldPosition))
+                float sqr = room.SqrDistanceToGridXZ(worldPosition);
+                if (sqr <= 0f)
                     return room.TrySample(worldPosition, out sh);
 
-                float sqr = (room.GridCentreWorld() - worldPosition).sqrMagnitude;
                 if (sqr < nearestSqr)
                 {
                     nearestSqr = sqr;
@@ -162,23 +162,29 @@ namespace AfterAll.Environment
             return true;
         }
 
-        private bool ContainsWorldPosition(Vector3 worldPosition)
+        /// <summary>
+        /// Squared XZ distance from the grid's footprint, 0 when the point is over it.
+        ///
+        /// Deliberately ignores Y. The grid's lowest layer sits half a metre above the floor, so a
+        /// Y test would report that a room does not contain an object LYING ON ITS OWN FLOOR — which
+        /// is how a dropped item ended up sampling a different room entirely, and flipping to another
+        /// one (hard colour jump) as it rolled. Vertical position is handled by clamping inside
+        /// <see cref="TrySample"/>, which is the correct treatment: the nearest layer is the best
+        /// answer for a point above or below the field.
+        ///
+        /// Distance is measured to the grid's footprint rather than to its centre, so a 100x50m room
+        /// does not lose the point standing inside it to a small room 40m away.
+        /// </summary>
+        private float SqrDistanceToGridXZ(Vector3 worldPosition)
         {
             Variant variant = _applied;
             Vector3 local = transform.InverseTransformPoint(worldPosition);
             Vector3 min = variant.originLocal;
             Vector3 max = min + Vector3.Scale(variant.cellSize, variant.dimensions - Vector3Int.one);
 
-            return local.x >= min.x && local.x <= max.x
-                && local.y >= min.y && local.y <= max.y
-                && local.z >= min.z && local.z <= max.z;
-        }
-
-        private Vector3 GridCentreWorld()
-        {
-            Variant variant = _applied;
-            Vector3 half = Vector3.Scale(variant.cellSize, variant.dimensions - Vector3Int.one) * 0.5f;
-            return transform.TransformPoint(variant.originLocal + half);
+            float dx = Mathf.Max(min.x - local.x, 0f, local.x - max.x);
+            float dz = Mathf.Max(min.z - local.z, 0f, local.z - max.z);
+            return dx * dx + dz * dz;
         }
 
         private static void AccumulateProbe(

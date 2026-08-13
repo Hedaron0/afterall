@@ -121,6 +121,12 @@ namespace AfterAll.Environment
                 renderer.GetPropertyBlock(_block);
                 _block.CopySHCoefficientArraysFrom(_sh);
                 renderer.SetPropertyBlock(_block);
+
+                // Only now is CustomProvided safe. Switching earlier means that if the sample ever
+                // fails, Unity uses the SH we never wrote — all zeroes — and the object renders pure
+                // black. That is strictly worse than having no component at all, so the usage flag
+                // only moves once there is real data behind it.
+                renderer.lightProbeUsage = LightProbeUsage.CustomProvided;
             }
         }
 
@@ -174,8 +180,11 @@ namespace AfterAll.Environment
 
             foreach (Renderer renderer in _renderers)
             {
-                if (renderer != null)
-                    renderer.lightProbeUsage = LightProbeUsage.CustomProvided;
+                // Safe default until a sample lands: BlendProbes with no baked probe volume falls
+                // back to RenderSettings.ambientProbe, which ProbeLightingDirector keeps set to the
+                // light around the player. Wrong-but-plausible beats black.
+                if (renderer != null && renderer.lightProbeUsage != LightProbeUsage.CustomProvided)
+                    renderer.lightProbeUsage = LightProbeUsage.BlendProbes;
             }
         }
     }

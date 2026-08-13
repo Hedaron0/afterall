@@ -312,6 +312,11 @@ namespace AfterAll.EditorTools
                     coefficients[start + channel * 4 + k] = sh[channel, k];
             }
 
+            int repaired = RepairDeadProbes(grid.Dimensions, coefficients);
+            if (repaired > 0)
+                Debug.Log($"[RoomLightmapBaker] preset '{presetName}': repaired {repaired} of " +
+                          $"{grid.Count} probe(s) that landed inside geometry.");
+
             return new RoomLightProbeData.Variant
             {
                 presetName  = presetName,
@@ -320,6 +325,121 @@ namespace AfterAll.EditorTools
                 dimensions  = grid.Dimensions,
                 coefficients = coefficients,
             };
+        }
+
+        /// <summary>Below this L0 luminance a probe is treated as buried rather than merely dim. Real
+        /// dim spots in the kit measure ~0.03 and up; buried ones measure 0.000-0.003.</summary>
+        private const float DeadProbeLuminance = 0.01f;
+
+        /// <summary>
+        /// Replaces probes that baked black because they landed inside solid geometry.
+        ///
+        /// The lattice is regular, so some probes inevitably end up inside an interior partition, a
+        /// pillar, or a preset prop — measured: room10 and room1 both contain probes at 0.000 despite
+        /// carrying 231 and 12 panels. Those are not dark corners, they are probes with no line of
+        /// sight to anything. Sampling near one drags the interpolation toward zero, which is what
+        /// made an object dropped in certain spots go instantly pitch black while its neighbours a
+        /// metre away looked fine.
+        ///
+        /// The lattice cannot simply lose those entries — the runtime indexes it as a dense grid — so
+        /// each dead probe is flood-filled from its live 6-neighbours instead, repeatedly, until the
+        /// whole field is live. That is the standard fix for buried probes and it also softens the
+        /// field, since a repaired probe is by construction the average of what surrounds it.
+        /// </summary>
+        internal static int RepairDeadProbes(Vector3Int dimensions, float[] coefficients)
+        {
+            int count = dimensions.x * dimensions.y * dimensions.z;
+            var alive = new bool[count];
+            int aliveCount = 0;
+
+            for (int i = 0; i < count; i++)
+            {
+                int b = i * RoomLightProbeData.CoefficientsPerProbe;
+                float luminance = 0.2126f * coefficients[b] +
+                                  0.7152f * coefficients[b + 4] +
+                                  0.0722f * coefficients[b + 8];
+                alive[i] = luminance >= DeadProbeLuminance;
+                if (alive[i])
+                    aliveCount++;
+            }
+
+            int dead = count - aliveCount;
+            if (dead == 0 || aliveCount == 0)
+            {
+                if (aliveCount == 0)
+                    Debug.LogWarning("[RoomLightmapBaker] Every probe in this room baked black — the " +
+                                     "grid may be outside the room, or the room has no lights.");
+                return 0;
+            }
+
+            var accumulator = new float[RoomLightProbeData.CoefficientsPerProbe];
+
+            // Bounded by the grid diameter: each pass grows the live region by one cell.
+            int maxPasses = dimensions.x + dimensions.y + dimensions.z;
+            for (int pass = 0; pass < maxPasses && aliveCount < count; pass++)
+            {
+                var filledThisPass = new System.Collections.Generic.List<int>();
+
+                for (int z = 0; z < dimensions.z; z++)
+                for (int y = 0; y < dimensions.y; y++)
+                for (int x = 0; x < dimensions.x; x++)
+                {
+                    int index = x + dimensions.x * (y + dimensions.y * z);
+                    if (alive[index])
+                        continue;
+
+                    System.Array.Clear(accumulator, 0, accumulator.Length);
+                    int contributors = 0;
+
+                    AccumulateNeighbour(dimensions, coefficients, alive, x - 1, y, z, accumulator, ref contributors);
+                    AccumulateNeighbour(dimensions, coefficients, alive, x + 1, y, z, accumulator, ref contributors);
+                    AccumulateNeighbour(dimensions, coefficients, alive, x, y - 1, z, accumulator, ref contributors);
+                    AccumulateNeighbour(dimensions, coefficients, alive, x, y + 1, z, accumulator, ref contributors);
+                    AccumulateNeighbour(dimensions, coefficients, alive, x, y, z - 1, accumulator, ref contributors);
+                    AccumulateNeighbour(dimensions, coefficients, alive, x, y, z + 1, accumulator, ref contributors);
+
+                    if (contributors == 0)
+                        continue;
+
+                    int b = index * RoomLightProbeData.CoefficientsPerProbe;
+                    for (int c = 0; c < RoomLightProbeData.CoefficientsPerProbe; c++)
+                        coefficients[b + c] = accumulator[c] / contributors;
+
+                    filledThisPass.Add(index);
+                }
+
+                if (filledThisPass.Count == 0)
+                    break;
+
+                // Marked alive only after the pass, so a probe filled this pass cannot feed another
+                // one in the same pass — that would smear one value across a whole buried region.
+                foreach (int index in filledThisPass)
+                {
+                    alive[index] = true;
+                    aliveCount++;
+                }
+            }
+
+            return dead;
+        }
+
+        private static void AccumulateNeighbour(
+            Vector3Int dimensions, float[] coefficients, bool[] alive,
+            int x, int y, int z, float[] accumulator, ref int contributors)
+        {
+            if (x < 0 || y < 0 || z < 0 ||
+                x >= dimensions.x || y >= dimensions.y || z >= dimensions.z)
+                return;
+
+            int index = x + dimensions.x * (y + dimensions.y * z);
+            if (!alive[index])
+                return;
+
+            int b = index * RoomLightProbeData.CoefficientsPerProbe;
+            for (int c = 0; c < RoomLightProbeData.CoefficientsPerProbe; c++)
+                accumulator[c] += coefficients[b + c];
+
+            contributors++;
         }
 
         /// <summary>
