@@ -32,11 +32,39 @@ namespace AfterAll.Environment
         [HideInInspector] [SerializeField] private float _wallLengthM;
         [HideInInspector] [SerializeField] private float _leftExtentM;
         [HideInInspector] [SerializeField] private float _rightExtentM;
-        [HideInInspector] [SerializeField] private Vector3 _axisWorld;
-        [HideInInspector] [SerializeField] private Vector3 _seamWorld;
+        // Stored in this transform's LOCAL space, never world space.
+        //
+        // These used to be world coordinates, which is only ever correct for the pose the cache
+        // happened to be taken in. A prefab keeps them, so room7 shipped with a baseline captured
+        // while it sat 42m from the origin. Play mode hid it (EnsureBaseline always rebuilds when
+        // playing) but the editor did not, and RoomLightmapBaker opens every doorway in the editor —
+        // so every bake of room7 flung its five door walls 40+m into the void, four of them fully
+        // outside the room. They baked pure black and left the room open to the void: the "large
+        // black wall panels" that stayed unexplained through 2026-08-10.
+        //
+        // Local space is pose-independent, so the cache is valid wherever the room is instantiated.
+        [HideInInspector] [SerializeField] private Vector3 _axisLocal;
+        [HideInInspector] [SerializeField] private Vector3 _seamLocal;
         [HideInInspector] [SerializeField] private int _leftScaleAxis;
         [HideInInspector] [SerializeField] private int _rightScaleAxis;
-        [HideInInspector] [SerializeField] private bool _baselineCached;
+        // Renamed together with the world -> local switch above, on purpose: the old field name no
+        // longer deserializes, so every existing prefab comes back with this false and rebuilds its
+        // baseline from live geometry on first touch. That is the migration.
+        [HideInInspector] [SerializeField] private bool _baselineCachedLocal;
+
+        /// <summary>Wall seam in world space, derived from the pose-independent local cache.</summary>
+        private Vector3 SeamWorld => transform.TransformPoint(_seamLocal);
+
+        /// <summary>Wall axis in world space. Normalized on read so a scaled wall transform can't
+        /// leak its scale into what is meant to be a direction.</summary>
+        private Vector3 AxisWorld
+        {
+            get
+            {
+                Vector3 world = transform.TransformDirection(_axisLocal);
+                return world.sqrMagnitude > 1e-8f ? world.normalized : Vector3.right;
+            }
+        }
 
         private RoomSocket _socket;
 
@@ -121,16 +149,16 @@ namespace AfterAll.Environment
             outwardWorld = default;
 
             AutoFindChildren();
-            if (!_baselineCached)
+            if (!_baselineCachedLocal)
                 RebuildBaseline();
 
             if (_openingMode == WallOpeningMode.OpenEnd)
             {
                 // Portal: use transform as seam; length from serialized gap or measured pieces if present.
-                if (_baselineCached && _wallLengthM >= 0.1f)
+                if (_baselineCachedLocal && _wallLengthM >= 0.1f)
                 {
-                    seamWorld = _seamWorld;
-                    axisWorld = _axisWorld;
+                    seamWorld = SeamWorld;
+                    axisWorld = AxisWorld;
                     lengthMeters = _wallLengthM;
                 }
                 else
@@ -140,23 +168,22 @@ namespace AfterAll.Environment
                     if (axisWorld.sqrMagnitude < 0.0001f)
                         axisWorld = Vector3.right;
                     lengthMeters = Mathf.Max(gapWidth, 1.3f);
-                    _seamWorld = seamWorld;
-                    _axisWorld = axisWorld;
+                    StoreBaselineWorld(seamWorld, axisWorld);
                     _wallLengthM = lengthMeters;
-                    _baselineCached = true;
+                    _baselineCachedLocal = true;
                 }
 
                 outwardWorld = ComputeOutwardForward(seamWorld);
                 return outwardWorld.sqrMagnitude > 0.0001f;
             }
 
-            if (!_baselineCached || _wallLengthM < 0.1f)
+            if (!_baselineCachedLocal || _wallLengthM < 0.1f)
                 return false;
 
-            seamWorld = _seamWorld;
-            axisWorld = _axisWorld;
+            seamWorld = SeamWorld;
+            axisWorld = AxisWorld;
             lengthMeters = _wallLengthM;
-            outwardWorld = ComputeOutwardForward(_seamWorld);
+            outwardWorld = ComputeOutwardForward(seamWorld);
             return outwardWorld.sqrMagnitude > 0.0001f;
         }
 
@@ -312,7 +339,7 @@ namespace AfterAll.Environment
 
             // Do not call EnsureBaseline() here — in play mode it rebuilds via RestoreClosed()
             // without re-applying the gap, which seals every wall after content activation.
-            if (!_baselineCached)
+            if (!_baselineCachedLocal)
                 RebuildBaseline();
 
             if (_wallLengthM < 0.1f)
@@ -334,8 +361,10 @@ namespace AfterAll.Environment
             float gapRightT = gapLeftT + effectiveGapWidth;
             float floorY = GetWallFloorY();
 
-            Vector3 leftEdge = _seamWorld + _axisWorld * gapLeftT;
-            Vector3 rightEdge = _seamWorld + _axisWorld * gapRightT;
+            Vector3 seamWorld = SeamWorld;
+            Vector3 axisWorld = AxisWorld;
+            Vector3 leftEdge = seamWorld + axisWorld * gapLeftT;
+            Vector3 rightEdge = seamWorld + axisWorld * gapRightT;
             leftEdge.y = floorY;
             rightEdge.y = floorY;
 
@@ -343,7 +372,7 @@ namespace AfterAll.Environment
             Vector3 inward = -ComputeOutwardForward(gapCenter);
             inward.y = 0f;
             if (inward.sqrMagnitude < 0.0001f)
-                inward = -Vector3.Cross(Vector3.up, _axisWorld);
+                inward = -Vector3.Cross(Vector3.up, axisWorld);
             inward.Normalize();
 
             Vector3 innerLeft = leftEdge + inward * inwardDepth;
@@ -488,7 +517,7 @@ namespace AfterAll.Environment
 #if UNITY_EDITOR
             if (!Application.isPlaying)
             {
-                if (!_baselineCached)
+                if (!_baselineCachedLocal)
                     RebuildBaseline();
                 ApplyGap();
             }
@@ -520,7 +549,7 @@ namespace AfterAll.Environment
         {
             if (Application.isPlaying)
                 RebuildBaseline();
-            else if (!_baselineCached)
+            else if (!_baselineCachedLocal)
                 RebuildBaseline();
         }
 
@@ -581,7 +610,7 @@ namespace AfterAll.Environment
             // cosmetically recessed (see _recessDepthM), and the socket used to snap the connecting room
             // into place must stay at the real doorway location, or the recess would drag that room's
             // placement back with it and cancel itself out.
-            Vector3 trueGapCenter = _seamWorld + _axisWorld * ((gapLeftT + gapRightT) * 0.5f);
+            Vector3 trueGapCenter = SeamWorld + AxisWorld * ((gapLeftT + gapRightT) * 0.5f);
             UpdateSocketFromLiveGap(effectiveGapWidth, trueGapCenter);
         }
 
@@ -591,7 +620,7 @@ namespace AfterAll.Environment
             SetWallPiecesVisible(false);
 
             float width = EffectiveOpeningWidth;
-            Vector3 center = _seamWorld;
+            Vector3 center = SeamWorld;
             center.y = GetWallFloorY();
             Vector3 outward = ComputeOutwardForward(center);
             EnsureSocket();
@@ -619,7 +648,7 @@ namespace AfterAll.Environment
             }
 
             float width = EffectiveOpeningWidth;
-            Vector3 center = _baselineCached ? _seamWorld : transform.position;
+            Vector3 center = _baselineCachedLocal ? SeamWorld : transform.position;
             center.y = GetWallFloorY();
             Vector3 outward = ComputeOutwardForward(center);
             EnsureSocket();
@@ -649,7 +678,7 @@ namespace AfterAll.Environment
         private void EnsureBaselineIfPossible()
         {
             AutoFindChildren();
-            if (!_baselineCached)
+            if (!_baselineCachedLocal)
                 RebuildBaseline();
         }
 
@@ -707,9 +736,9 @@ namespace AfterAll.Environment
             Vector3 origin = room != null ? room.GetApproximateCenter() : transform.position;
 
             // Prefer geometric wall normal for stable direction on irregular room shapes.
-            if (_baselineCached)
+            if (_baselineCachedLocal)
             {
-                Vector3 wallNormal = Vector3.Cross(Vector3.up, _axisWorld).normalized;
+                Vector3 wallNormal = Vector3.Cross(Vector3.up, AxisWorld).normalized;
                 if (wallNormal.sqrMagnitude > 0.001f)
                 {
                     Vector3 toGap = gapCenter - origin;
@@ -780,20 +809,20 @@ namespace AfterAll.Environment
             if (_openingMode == WallOpeningMode.OpenEnd && (wallLeft == null || wallRight == null))
             {
                 SetWallPiecesVisible(true);
-                _seamWorld = transform.position;
-                _axisWorld = Vector3.ProjectOnPlane(transform.right, Vector3.up).normalized;
-                if (_axisWorld.sqrMagnitude < 0.0001f)
-                    _axisWorld = Vector3.right;
+                Vector3 portalAxis = Vector3.ProjectOnPlane(transform.right, Vector3.up).normalized;
+                if (portalAxis.sqrMagnitude < 0.0001f)
+                    portalAxis = Vector3.right;
+                StoreBaselineWorld(transform.position, portalAxis);
                 _wallLengthM = Mathf.Max(gapWidth, 1.3f);
                 _leftExtentM = _wallLengthM * 0.5f;
                 _rightExtentM = _wallLengthM * 0.5f;
-                _baselineCached = true;
+                _baselineCachedLocal = true;
                 return;
             }
 
             RestoreClosed();
             SetWallPiecesVisible(true);
-            _baselineCached = CacheFromClosedMesh();
+            _baselineCachedLocal = CacheFromClosedMesh();
         }
 
         private void RestoreClosed()
@@ -889,36 +918,46 @@ namespace AfterAll.Environment
             if (leftR == null || rightR == null)
                 return false;
 
-            _seamWorld = (wallLeft.position + wallRight.position) * 0.5f;
+            Vector3 seamWorld = (wallLeft.position + wallRight.position) * 0.5f;
 
-            if (!TryGetWallAxis(leftR.bounds, rightR.bounds, out _axisWorld))
+            if (!TryGetWallAxis(leftR.bounds, rightR.bounds, out Vector3 axisWorld))
                 return false;
 
             Bounds combined = leftR.bounds;
             combined.Encapsulate(rightR.bounds);
-            ProjectBounds(combined, _seamWorld, _axisWorld, out float minT, out float maxT);
+            ProjectBounds(combined, seamWorld, axisWorld, out float minT, out float maxT);
 
             if (maxT - minT < 0.1f)
                 return false;
 
             if (minT > maxT)
             {
-                _axisWorld = -_axisWorld;
+                axisWorld = -axisWorld;
                 (minT, maxT) = (maxT, minT);
             }
 
+            StoreBaselineWorld(seamWorld, axisWorld);
             _leftExtentM = -minT;
             _rightExtentM = maxT;
             _wallLengthM = maxT - minT;
-            _leftScaleAxis = FindScaleAxis(wallLeft, _axisWorld);
-            _rightScaleAxis = FindScaleAxis(wallRight, _axisWorld);
+            _leftScaleAxis = FindScaleAxis(wallLeft, axisWorld);
+            _rightScaleAxis = FindScaleAxis(wallRight, axisWorld);
 
             return _leftExtentM > 0.05f && _rightExtentM > 0.05f;
         }
 
+        /// <summary>Converts a freshly measured world-space baseline into the pose-independent local
+        /// form that actually gets serialized.</summary>
+        private void StoreBaselineWorld(Vector3 seamWorld, Vector3 axisWorld)
+        {
+            _seamLocal = transform.InverseTransformPoint(seamWorld);
+            Vector3 axisLocal = transform.InverseTransformDirection(axisWorld);
+            _axisLocal = axisLocal.sqrMagnitude > 1e-8f ? axisLocal.normalized : Vector3.right;
+        }
+
         private void PlacePivot(Transform piece, float tMeters, int scaleAxis, float scaleFactor)
         {
-            Vector3 worldPos = _seamWorld + _axisWorld * tMeters;
+            Vector3 worldPos = SeamWorld + AxisWorld * tMeters;
             if (Mathf.Abs(_recessDepthM) > 0.0001f)
                 worldPos -= ComputeOutwardForward(worldPos) * _recessDepthM;
             piece.localPosition = transform.InverseTransformPoint(worldPos);

@@ -76,7 +76,7 @@ namespace AfterAll.Environment
                 return;
             }
 
-            if ((transform.position - _lastSamplePosition).sqrMagnitude >=
+            if ((GetSamplePosition() - _lastSamplePosition).sqrMagnitude >=
                 _resampleDistanceM * _resampleDistanceM)
                 Resample();
         }
@@ -102,7 +102,7 @@ namespace AfterAll.Environment
             if (_renderers == null || _renderers.Length == 0)
                 return;
 
-            Vector3 position = transform.position;
+            Vector3 position = GetSamplePosition();
             if (!RoomLightProbeData.TryFindSample(position, out SphericalHarmonicsL2 sh))
                 return;
 
@@ -132,6 +132,38 @@ namespace AfterAll.Environment
             _includeChildren = includeChildren;
         }
 #endif
+
+        /// <summary>
+        /// Where in the world to read the light from: the centre of the geometry, not the pivot.
+        ///
+        /// Pivots in this kit are not reliably inside their own mesh — room7's wall pivots sit tens
+        /// of metres from the wall they drive — so sampling at transform.position can read the light
+        /// of a completely different part of the room, or of no room at all. Renderer bounds are
+        /// world-space and always wrap the visible surface, which is what should be lit.
+        /// </summary>
+        private Vector3 GetSamplePosition()
+        {
+            Bounds bounds = default;
+            bool any = false;
+
+            foreach (Renderer renderer in _renderers)
+            {
+                if (renderer == null)
+                    continue;
+
+                if (!any)
+                {
+                    bounds = renderer.bounds;
+                    any = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(renderer.bounds);
+                }
+            }
+
+            return any ? bounds.center : transform.position;
+        }
 
         /// <summary>Re-reads the renderer list — call after adding or removing renderers at runtime.</summary>
         public void CacheRenderers()

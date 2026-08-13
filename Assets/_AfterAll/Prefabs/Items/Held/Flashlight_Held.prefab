@@ -541,6 +541,7 @@ GameObject:
   - component: {fileID: 327098288162539692}
   - component: {fileID: 8877665544332211}
   - component: {fileID: 8877665544332212}
+  - component: {fileID: 2693103501418006277}
   m_Layer: 0
   m_Name: Flashlight_Held
   m_TagString: Untagged
@@ -601,6 +602,21 @@ MonoBehaviour:
   _maxSway: 0.08
   _idleBobAmount: 0.004
   _idleBobSpeed: 1.2
+--- !u!114 &2693103501418006277
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8378822913778105135}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 1
+  _includeChildren: 1
 --- !u!1 &9163349891872744636
 GameObject:
   m_ObjectHideFlags: 0

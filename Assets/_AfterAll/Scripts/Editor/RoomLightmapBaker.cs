@@ -540,6 +540,14 @@ namespace AfterAll.EditorTools
             int opened = 0;
             foreach (WallGapController wall in root.GetComponentsInChildren<WallGapController>(true))
             {
+                // Measure from live geometry before touching anything, exactly as RoomFootprintBaker
+                // does. Play mode rebuilds the baseline on every access, but the editor trusts the
+                // serialized one — and a stale baseline puts the seam somewhere the wall isn't, so
+                // opening the gap "slides" the pieces to a position derived from that wrong seam.
+                // room7 shipped 42m off and had four of its five door walls thrown clean out of the
+                // room by this call, where they baked black against the void.
+                wall.RecacheBaseline();
+
                 if (wall.OpeningMode != WallOpeningMode.StandardGap)
                     continue;
 

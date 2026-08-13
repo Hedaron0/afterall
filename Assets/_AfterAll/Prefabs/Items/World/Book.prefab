@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 3158040425374052666}
   - component: {fileID: -457927452550151946}
   - component: {fileID: 5883827518287473784}
+  - component: {fileID: 510062858096871883}
   m_Layer: 0
   m_Name: Book
   m_TagString: Untagged
@@ -115,6 +116,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomContentPickable
   _spawnChance: 1
+--- !u!114 &510062858096871883
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 42653152370252516}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 1
+  _includeChildren: 1
 --- !u!1 &5065181655532139633
 GameObject:
   m_ObjectHideFlags: 0

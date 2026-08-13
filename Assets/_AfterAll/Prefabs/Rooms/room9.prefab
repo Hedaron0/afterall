@@ -45,6 +45,7 @@ GameObject:
   - component: {fileID: 4748993358848515452}
   - component: {fileID: 8466762448882416064}
   - component: {fileID: 4028034494033045008}
+  - component: {fileID: 2604394801126866659}
   m_Layer: 0
   m_Name: 9Floor
   m_TagString: Untagged
@@ -145,6 +146,21 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.03, y: 0.15999997, z: 0.0024999995}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &2604394801126866659
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 208833667132433303}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1 &759320801582606718
 GameObject:
   m_ObjectHideFlags: 0
@@ -223,6 +239,7 @@ GameObject:
   - component: {fileID: 582649768371612499}
   - component: {fileID: 572788883893692383}
   - component: {fileID: 1159158450634760235}
+  - component: {fileID: 2901713742307738122}
   m_Layer: 2
   m_Name: Cube.044
   m_TagString: Untagged
@@ -323,6 +340,21 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.0025000046, y: 0.0024999995, z: 0.03999999}
   m_Center: {x: -0.0000000018626451, y: 0, z: 0}
+--- !u!114 &2901713742307738122
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1080042024668419058}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1 &1266913255857673731
 GameObject:
   m_ObjectHideFlags: 0
@@ -384,6 +416,7 @@ GameObject:
   - component: {fileID: 2034786622944828885}
   - component: {fileID: 6609489208145248769}
   - component: {fileID: 544681363319504362}
+  - component: {fileID: 2610115832405310560}
   m_Layer: 0
   m_Name: room9
   m_TagString: Untagged
@@ -461,6 +494,384 @@ MonoBehaviour:
     shadowMasks:
     - {fileID: 0}
   _lightmapsMode: 0
+--- !u!114 &2610115832405310560
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1837065743007804278}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f766b6147256ae48a058793e6857186, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomLightProbeData
+  _variants:
+  - presetName: 1
+    originLocal: {x: -0.7000002, y: -0.16666573, z: -7.2000017}
+    cellSize: {x: 1.4000005, y: 1.4249998, z: 3.6000009}
+    dimensions: {x: 2, y: 3, z: 5}
+    coefficients:
+    - 0.83724684
+    - 0.56423986
+    - 0.20679793
+    - 0.12030201
+    - 0.83827144
+    - 0.6210768
+    - 0.20747937
+    - 0.12211638
+    - 0.41759467
+    - 0.36959115
+    - 0.11200396
+    - 0.07063883
+    - 0.8502063
+    - 0.5569971
+    - 0.17512758
+    - -0.11107295
+    - 0.8504893
+    - 0.6139019
+    - 0.17653297
+    - -0.112798855
+    - 0.41824296
+    - 0.36648324
+    - 0.10656614
+    - -0.07199597
+    - 1.7498689
+    - 1.1210433
+    - 0.524901
+    - 0.28954893
+    - 1.8180422
+    - 1.2059692
+    - 0.5554843
+    - 0.30732858
+    - 0.9407025
+    - 0.750261
+    - 0.3761551
+    - 0.2095557
+    - 1.747875
+    - 1.0865415
+    - 0.4864291
+    - -0.2971048
+    - 1.8139181
+    - 1.1703509
+    - 0.51608014
+    - -0.31589183
+    - 0.9322884
+    - 0.7359345
+    - 0.36552855
+    - -0.21847358
+    - 3.2806501
+    - 1.5319026
+    - 1.5444793
+    - 0.83562815
+    - 3.4535577
+    - 1.6572728
+    - 1.6541092
+    - 0.899162
+    - 1.9512345
+    - 1.1675642
+    - 1.1376277
+    - 0.6397041
+    - 3.202493
+    - 1.4618819
+    - 1.4858983
+    - -0.8815365
+    - 3.3682277
+    - 1.5814224
+    - 1.5915958
+    - -0.94606215
+    - 1.8901627
+    - 1.1150461
+    - 1.0935535
+    - -0.66370434
+    - 1.2063427
+    - 0.74676454
+    - -0.0054611783
+    - 0.15891203
+    - 1.2054871
+    - 0.8303566
+    - -0.008590473
+    - 0.15987706
+    - 0.62749755
+    - 0.5134187
+    - -0.009201138
+    - 0.09915235
+    - 1.2120506
+    - 0.7502937
+    - -0.008666762
+    - -0.1566866
+    - 1.2117836
+    - 0.83401364
+    - -0.011317742
+    - -0.15867187
+    - 0.62699896
+    - 0.5114938
+    - -0.009748472
+    - -0.10316978
+    - 1.9263536
+    - 1.0856984
+    - 0.22084919
+    - 0.2929141
+    - 1.9974073
+    - 1.181778
+    - 0.23314822
+    - 0.3102064
+    - 1.0819495
+    - 0.76617235
+    - 0.15327372
+    - 0.22108254
+    - 1.9465365
+    - 1.0839771
+    - 0.21415704
+    - -0.3073383
+    - 2.016214
+    - 1.1782951
+    - 0.22714007
+    - -0.32482976
+    - 1.0776006
+    - 0.7588452
+    - 0.15073235
+    - -0.23140983
+    - 2.1696374
+    - 0.81137764
+    - 1.0593568
+    - 0.5907344
+    - 2.2629614
+    - 0.88904583
+    - 1.1294686
+    - 0.6319756
+    - 1.2265675
+    - 0.64045924
+    - 0.733018
+    - 0.453971
+    - 2.10294
+    - 0.76917446
+    - 1.0004896
+    - -0.6282334
+    - 2.1945255
+    - 0.8449506
+    - 1.0671734
+    - -0.67076296
+    - 1.1948446
+    - 0.61709046
+    - 0.70263946
+    - -0.47168916
+    - 1.221151
+    - 0.7491575
+    - -0.0114645045
+    - 0.15877534
+    - 1.219953
+    - 0.83364236
+    - -0.011150922
+    - 0.15986925
+    - 0.6338182
+    - 0.5163363
+    - -0.004203637
+    - 0.09988112
+    - 1.2061684
+    - 0.73828614
+    - -0.0037249231
+    - -0.1542565
+    - 1.2058666
+    - 0.8204513
+    - -0.005007937
+    - -0.15712626
+    - 0.6293438
+    - 0.51160914
+    - -0.0033849608
+    - -0.10255044
+    - 1.8392582
+    - 1.0255286
+    - 0.04727505
+    - 0.2737711
+    - 1.8994503
+    - 1.1159465
+    - 0.05040313
+    - 0.28884003
+    - 1.0051332
+    - 0.7088163
+    - 0.033735693
+    - 0.20473567
+    - 1.8447957
+    - 1.0053164
+    - 0.038807895
+    - -0.29359373
+    - 1.9044466
+    - 1.0941894
+    - 0.042011537
+    - -0.30999258
+    - 1.0005267
+    - 0.7000101
+    - 0.031542383
+    - -0.21600284
+    - 1.7789912
+    - 0.47995272
+    - 0.32321268
+    - 0.4415209
+    - 1.8440678
+    - 0.53602535
+    - 0.34734166
+    - 0.47046575
+    - 0.9619615
+    - 0.4072495
+    - 0.238747
+    - 0.33625007
+    - 1.7627395
+    - 0.46522072
+    - 0.3297176
+    - -0.47221118
+    - 1.8263732
+    - 0.51909834
+    - 0.3537076
+    - -0.50322837
+    - 0.94774437
+    - 0.39505824
+    - 0.23383142
+    - -0.35050118
+    - 1.1988013
+    - 0.74132776
+    - -0.0055462467
+    - 0.1473109
+    - 1.1996591
+    - 0.8235682
+    - -0.005548938
+    - 0.1489122
+    - 0.6260279
+    - 0.51008695
+    - 0.00086917105
+    - 0.0968143
+    - 1.2136759
+    - 0.74995303
+    - -0.017161408
+    - -0.15057713
+    - 1.2141453
+    - 0.8336004
+    - -0.016636707
+    - -0.15263008
+    - 0.6273772
+    - 0.5095608
+    - -0.0012368202
+    - -0.10181545
+    - 1.7740171
+    - 0.976182
+    - -0.07072453
+    - 0.26108447
+    - 1.835223
+    - 1.0640717
+    - -0.07262122
+    - 0.27645996
+    - 0.98353666
+    - 0.6905149
+    - -0.04217122
+    - 0.20011206
+    - 1.789845
+    - 0.9784898
+    - -0.074441716
+    - -0.28237084
+    - 1.8492819
+    - 1.0660945
+    - -0.07554078
+    - -0.29856396
+    - 0.98074555
+    - 0.68465966
+    - -0.041774713
+    - -0.21132998
+    - 1.7271113
+    - 0.47319502
+    - -0.39031035
+    - 0.446203
+    - 1.7930955
+    - 0.52662164
+    - -0.4132741
+    - 0.47481462
+    - 0.93898624
+    - 0.39723435
+    - -0.26767096
+    - 0.3300353
+    - 1.7094637
+    - 0.45193577
+    - -0.39319128
+    - -0.4609815
+    - 1.7726403
+    - 0.5055757
+    - -0.41622058
+    - -0.48990488
+    - 0.92487615
+    - 0.38546446
+    - -0.26191038
+    - -0.3410556
+    - 0.80652666
+    - 0.5012475
+    - -0.20123196
+    - 0.10357909
+    - 0.8055434
+    - 0.5523438
+    - -0.20515253
+    - 0.105339445
+    - 0.38837397
+    - 0.3296747
+    - -0.12720785
+    - 0.063833825
+    - 0.80892587
+    - 0.5051218
+    - -0.20400774
+    - -0.11150561
+    - 0.8083441
+    - 0.5557479
+    - -0.20761637
+    - -0.113153346
+    - 0.3885283
+    - 0.32909897
+    - -0.12743527
+    - -0.066459425
+    - 1.4902848
+    - 0.8529354
+    - -0.5387967
+    - 0.23419753
+    - 1.5428343
+    - 0.9211409
+    - -0.5710853
+    - 0.24775444
+    - 0.7855993
+    - 0.5836763
+    - -0.38738927
+    - 0.16705304
+    - 1.4553947
+    - 0.8342321
+    - -0.55812144
+    - -0.25305337
+    - 1.5069593
+    - 0.9010653
+    - -0.5892721
+    - -0.26688775
+    - 0.7753271
+    - 0.57421225
+    - -0.3868307
+    - -0.17614962
+    - 1.9904108
+    - 0.62206316
+    - -1.1445521
+    - 0.43135226
+    - 2.0802262
+    - 0.6792284
+    - -1.2205278
+    - 0.4629028
+    - 1.1044513
+    - 0.49514988
+    - -0.80572164
+    - 0.3310999
+    - 1.8583361
+    - 0.6053607
+    - -1.1671621
+    - -0.45543766
+    - 1.9455332
+    - 0.66067487
+    - -1.2400948
+    - -0.48837903
+    - 1.0616553
+    - 0.4779538
+    - -0.7885678
+    - -0.34466773
 --- !u!1 &2565656478437104392
 GameObject:
   m_ObjectHideFlags: 0
@@ -473,6 +884,7 @@ GameObject:
   - component: {fileID: 1940162375747300136}
   - component: {fileID: 1851864951639815145}
   - component: {fileID: 1075471092366670569}
+  - component: {fileID: 4703487289528318898}
   m_Layer: 2
   m_Name: Cube.047
   m_TagString: Untagged
@@ -573,6 +985,21 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.0025000046, y: 0.0024999995, z: 0.03999999}
   m_Center: {x: 0.0000000018626451, y: 0, z: 0}
+--- !u!114 &4703487289528318898
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2565656478437104392}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1 &2599348533250284588
 GameObject:
   m_ObjectHideFlags: 0
@@ -635,6 +1062,7 @@ GameObject:
   - component: {fileID: 2665788862336693842}
   - component: {fileID: 4374570560959500276}
   - component: {fileID: 273684534025939893}
+  - component: {fileID: 3580451976809525104}
   m_Layer: 2
   m_Name: Cube.045
   m_TagString: Untagged
@@ -735,6 +1163,21 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.0025000046, y: 0.0024999995, z: 0.03999999}
   m_Center: {x: -0.0000000018626451, y: 0, z: 0}
+--- !u!114 &3580451976809525104
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2599625623732667417}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1 &3612516267586209393
 GameObject:
   m_ObjectHideFlags: 0
@@ -747,6 +1190,7 @@ GameObject:
   - component: {fileID: 6560703098776510955}
   - component: {fileID: 4321519063922483147}
   - component: {fileID: 6794131523362709876}
+  - component: {fileID: 7598468047685481241}
   m_Layer: 2
   m_Name: 9Wall3
   m_TagString: Untagged
@@ -847,6 +1291,21 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.0025000046, y: 0.15499994, z: 0.03999999}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &7598468047685481241
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3612516267586209393}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1 &3762710195815549917
 GameObject:
   m_ObjectHideFlags: 0
@@ -909,6 +1368,7 @@ GameObject:
   - component: {fileID: 3251900345676103111}
   - component: {fileID: 4462335099971479560}
   - component: {fileID: 1645732243065585992}
+  - component: {fileID: 6517428091228620807}
   m_Layer: 2
   m_Name: Cube.046
   m_TagString: Untagged
@@ -1009,6 +1469,21 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.0025000046, y: 0.0024999995, z: 0.03999999}
   m_Center: {x: 0.0000000018626451, y: 0, z: 0}
+--- !u!114 &6517428091228620807
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4086438865160664285}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1 &5030263924427447191
 GameObject:
   m_ObjectHideFlags: 0
@@ -1176,8 +1651,6 @@ MonoBehaviour:
   wallLeft: {fileID: 8285815505455989818}
   wallRight: {fileID: 1805336728659956378}
   _openingMode: 1
-  _framePrefab: {fileID: 0}
-  _frameChance: 0.35
   _recessDepthM: 0
   _wallLengthM: 2.4999995
   _leftExtentM: 1.2499998
@@ -1352,8 +1825,6 @@ MonoBehaviour:
   wallLeft: {fileID: 2164889534468174952}
   wallRight: {fileID: 4349599437904743096}
   _openingMode: 1
-  _framePrefab: {fileID: 0}
-  _frameChance: 0.35
   _recessDepthM: 0
   _wallLengthM: 2.4999998
   _leftExtentM: 1.2499999
@@ -1487,6 +1958,7 @@ GameObject:
   - component: {fileID: 9079101929723532735}
   - component: {fileID: 1023146764393508422}
   - component: {fileID: 6260782405094584667}
+  - component: {fileID: 5163514246811832731}
   m_Layer: 2
   m_Name: 9Wall4
   m_TagString: Untagged
@@ -1587,6 +2059,21 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.0025000046, y: 0.15499997, z: 0.03999999}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &5163514246811832731
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7547045865322243925}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1 &8149156424025568799
 GameObject:
   m_ObjectHideFlags: 0
@@ -1636,6 +2123,7 @@ GameObject:
   - component: {fileID: 6073918682874638815}
   - component: {fileID: 9961253242570212}
   - component: {fileID: 7447921765048966774}
+  - component: {fileID: 6284776693770285039}
   m_Layer: 0
   m_Name: 9Ceiling
   m_TagString: Untagged
@@ -1736,6 +2224,21 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.03, y: 0.15999997, z: 0.0024999995}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &6284776693770285039
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8343135434088501037}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1 &9138678294539211694
 GameObject:
   m_ObjectHideFlags: 0
@@ -2027,13 +2530,36 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8156544124639124318, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6021333789076813330}
   m_SourcePrefab: {fileID: 100100000, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
 --- !u!4 &4803667177774933930 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6474993513332443071, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
   m_PrefabInstance: {fileID: 1977574551639941141}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &7656150398686985035 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8156544124639124318, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+  m_PrefabInstance: {fileID: 1977574551639941141}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6021333789076813330
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7656150398686985035}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1001 &4562643008158882621
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2101,8 +2627,31 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8156544124639124318, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8628212075055129508}
   m_SourcePrefab: {fileID: 100100000, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+--- !u!1 &5647546981922422883 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8156544124639124318, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+  m_PrefabInstance: {fileID: 4562643008158882621}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &8628212075055129508
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5647546981922422883}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!4 &7388735657945422978 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6474993513332443071, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
@@ -2175,13 +2724,36 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8156544124639124318, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3313293490546987128}
   m_SourcePrefab: {fileID: 100100000, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
 --- !u!4 &2160839302285313179 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6474993513332443071, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
   m_PrefabInstance: {fileID: 4910924356169286436}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &3825462655316056186 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8156544124639124318, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+  m_PrefabInstance: {fileID: 4910924356169286436}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &3313293490546987128
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3825462655316056186}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1001 &6314197651937737282
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2249,10 +2821,33 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8156544124639124318, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 367710698938353096}
   m_SourcePrefab: {fileID: 100100000, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
 --- !u!4 &1043503622827621885 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6474993513332443071, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
   m_PrefabInstance: {fileID: 6314197651937737282}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &2779095791660212508 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8156544124639124318, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+  m_PrefabInstance: {fileID: 6314197651937737282}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &367710698938353096
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2779095791660212508}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0

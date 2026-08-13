@@ -77,6 +77,7 @@ GameObject:
   - component: {fileID: 7321540768405230395}
   - component: {fileID: -2050801332125383677}
   - component: {fileID: 6215967195970635259}
+  - component: {fileID: 3757360894902708798}
   m_Layer: 0
   m_Name: Tape
   m_TagString: Untagged
@@ -179,6 +180,21 @@ Rigidbody:
   m_Interpolate: 1
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &3757360894902708798
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3738052204126800097}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 1
+  _includeChildren: 1
 --- !u!1 &6140549560912189453
 GameObject:
   m_ObjectHideFlags: 0

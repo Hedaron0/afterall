@@ -262,6 +262,7 @@ GameObject:
   - component: {fileID: -50940001499968587}
   - component: {fileID: 6037342264864349842}
   - component: {fileID: 6188609911361518442}
+  - component: {fileID: 6900264460271384290}
   m_Layer: 0
   m_Name: VHS
   m_TagString: Untagged
@@ -364,6 +365,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomContentPickable
   _spawnChance: 1
+--- !u!114 &6900264460271384290
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3258510468136375478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 1
+  _includeChildren: 1
 --- !u!1 &3710515607229708934
 GameObject:
   m_ObjectHideFlags: 0

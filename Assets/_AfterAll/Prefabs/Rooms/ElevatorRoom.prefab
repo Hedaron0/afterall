@@ -156,6 +156,7 @@ GameObject:
   - component: {fileID: 8163479750100259727}
   - component: {fileID: 8226835767337997803}
   - component: {fileID: 6110166899041932054}
+  - component: {fileID: 1658390388490575481}
   m_Layer: 0
   m_Name: ElevatorCeiling
   m_TagString: Untagged
@@ -256,6 +257,21 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &1658390388490575481
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 246912711168212716}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1 &665590140709664402
 GameObject:
   m_ObjectHideFlags: 0
@@ -479,6 +495,7 @@ GameObject:
   - component: {fileID: 1443518565146851982}
   - component: {fileID: 4479559213736067326}
   - component: {fileID: 4951810019554341414}
+  - component: {fileID: 2995944220660227685}
   m_Layer: 0
   m_Name: UpPanel
   m_TagString: Untagged
@@ -597,6 +614,21 @@ MonoBehaviour:
   _recessDurationS: 0.15
   _pressClip: {fileID: 8300000, guid: 6d6177d775f1a274481c259b3471de83, type: 3}
   _pressVolume: 0.7
+--- !u!114 &2995944220660227685
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1431659478797751656}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1 &1582978020934583298
 GameObject:
   m_ObjectHideFlags: 0
@@ -609,6 +641,7 @@ GameObject:
   - component: {fileID: 4445528286309260620}
   - component: {fileID: 3184381753628984678}
   - component: {fileID: 7370260720691223787}
+  - component: {fileID: 4648282620351924710}
   m_Layer: 0
   m_Name: Mesh
   m_TagString: Untagged
@@ -709,6 +742,21 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &4648282620351924710
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1582978020934583298}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1 &1654173965163800602
 GameObject:
   m_ObjectHideFlags: 0
@@ -819,6 +867,7 @@ GameObject:
   - component: {fileID: 3707596736609388437}
   - component: {fileID: 7425571423036803757}
   - component: {fileID: 9168598767343625437}
+  - component: {fileID: 6550323144753621905}
   m_Layer: 0
   m_Name: Panel
   m_TagString: Untagged
@@ -920,6 +969,21 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &6550323144753621905
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2154385564212029732}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1 &2400062264266930660
 GameObject:
   m_ObjectHideFlags: 0
@@ -982,6 +1046,7 @@ GameObject:
   - component: {fileID: 3440326306153309755}
   - component: {fileID: 2057353199207155094}
   - component: {fileID: 4960646875141224019}
+  - component: {fileID: 2329336989386959229}
   m_Layer: 0
   m_Name: Mesh
   m_TagString: Untagged
@@ -1082,6 +1147,21 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &2329336989386959229
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2662922563278033410}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1 &2699384044147549230
 GameObject:
   m_ObjectHideFlags: 0
@@ -1094,6 +1174,7 @@ GameObject:
   - component: {fileID: 1604680646573873849}
   - component: {fileID: 4319113149987170803}
   - component: {fileID: 4613614697457323709}
+  - component: {fileID: 9037150868548408062}
   m_Layer: 0
   m_Name: ElevatorRoom
   m_TagString: Untagged
@@ -1188,10 +1269,10 @@ MonoBehaviour:
     - {x: 0.11412551, y: 0.11439739, z: 0.0014902586, w: 0.53273916}
     - {x: 0.12593159, y: 0.12643921, z: 0.41159862, w: 0.47019032}
     - {x: 0.051159713, y: 0.054188237, z: 0.3494019, w: 0.5368896}
-    - {x: 0.007870724, y: 0.01204183, z: 0.1347337, w: 0.59956056}
     - {x: 0.007870724, y: 0.01204183, z: 0.5253587, w: 0.43159178}
-    - {x: 0.019676812, y: 0.02408366, z: 0.41984206, w: 0.5682617}
+    - {x: 0.007870724, y: 0.01204183, z: 0.1347337, w: 0.59956056}
     - {x: 0.019676812, y: 0.02408366, z: 0.12687331, w: 0.54873043}
+    - {x: 0.019676812, y: 0.02408366, z: 0.41984206, w: 0.5682617}
     - {x: 0.051159713, y: 0.054188237, z: 0.4509644, w: 0.57204586}
     - {x: 0.5362313, y: 0.53670174, z: -0.008771501, w: -0.00878091}
     lightmapColors:
@@ -1201,6 +1282,600 @@ MonoBehaviour:
     shadowMasks:
     - {fileID: 0}
   _lightmapsMode: 0
+--- !u!114 &9037150868548408062
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2699384044147549230}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f766b6147256ae48a058793e6857186, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomLightProbeData
+  _variants:
+  - presetName: 
+    originLocal: {x: -4.35, y: 0.5, z: -4.3499994}
+    cellSize: {x: 2.8999999, y: 1.3999999, z: 2.852163}
+    dimensions: {x: 4, y: 3, z: 4}
+    coefficients:
+    - 0.7590675
+    - 0.516562
+    - 0.2345135
+    - 0.2398622
+    - 0.8103625
+    - 0.55129707
+    - 0.24977611
+    - 0.25547838
+    - 0.5734192
+    - 0.39085895
+    - 0.17915078
+    - 0.18317373
+    - 1.0632573
+    - 0.685196
+    - 0.4062773
+    - -0.010001618
+    - 1.1370463
+    - 0.7328903
+    - 0.43440133
+    - -0.010513012
+    - 0.79704565
+    - 0.51334786
+    - 0.3049217
+    - -0.0081286
+    - 1.0558246
+    - 0.68193424
+    - 0.41262734
+    - 0.010415693
+    - 1.129055
+    - 0.7297376
+    - 0.4411563
+    - 0.01079436
+    - 0.7914561
+    - 0.5095726
+    - 0.3096342
+    - 0.008964798
+    - 0.7532673
+    - 0.5213432
+    - 0.23363036
+    - -0.24710782
+    - 0.80418545
+    - 0.5567259
+    - 0.2491303
+    - -0.26317215
+    - 0.56902385
+    - 0.39343098
+    - 0.17749915
+    - -0.1887623
+    - 1.1302937
+    - 0.7175507
+    - 0.43759057
+    - 0.43585658
+    - 1.2078835
+    - 0.76710874
+    - 0.467417
+    - 0.46525055
+    - 0.84983855
+    - 0.5386666
+    - 0.3298298
+    - 0.32952315
+    - 1.33827
+    - 0.76657814
+    - 0.58544916
+    - -0.26264173
+    - 1.4310172
+    - 0.819872
+    - 0.6256582
+    - -0.28083998
+    - 1.0035523
+    - 0.57433087
+    - 0.44030988
+    - -0.19687197
+    - 1.3438888
+    - 0.77211094
+    - 0.5832357
+    - 0.27151033
+    - 1.4368852
+    - 0.82608134
+    - 0.6233948
+    - 0.29031292
+    - 1.0083656
+    - 0.5777863
+    - 0.43839246
+    - 0.20375367
+    - 1.1543243
+    - 0.7250057
+    - 0.44233987
+    - -0.4522556
+    - 1.2331258
+    - 0.7750132
+    - 0.4720224
+    - -0.48255098
+    - 0.8694814
+    - 0.54464716
+    - 0.3349917
+    - -0.34269363
+    - 1.208152
+    - 0.33847564
+    - 0.64669394
+    - 0.6469926
+    - 1.294634
+    - 0.36234313
+    - 0.69448245
+    - 0.6926592
+    - 0.9086644
+    - 0.2524028
+    - 0.48951477
+    - 0.48749107
+    - 1.1130414
+    - 0.25336123
+    - 0.611995
+    - -0.57307047
+    - 1.1907483
+    - 0.27124944
+    - 0.6546401
+    - -0.6125871
+    - 0.8330129
+    - 0.18899295
+    - 0.4582126
+    - -0.4304745
+    - 1.1112094
+    - 0.24106611
+    - 0.6106257
+    - 0.54236275
+    - 1.1883507
+    - 0.25803408
+    - 0.65272593
+    - 0.5795433
+    - 0.83254546
+    - 0.17995207
+    - 0.45859694
+    - 0.40802142
+    - 1.1989481
+    - 0.33378202
+    - 0.6361257
+    - -0.64461917
+    - 1.2823992
+    - 0.35714036
+    - 0.680233
+    - -0.68900883
+    - 0.8977915
+    - 0.24959105
+    - 0.47696668
+    - -0.4842356
+    - 1.0817062
+    - 0.69271225
+    - -0.002242594
+    - 0.41295022
+    - 1.1561036
+    - 0.7403712
+    - -0.0024227295
+    - 0.44122097
+    - 0.81310207
+    - 0.520715
+    - -0.0015946368
+    - 0.3109246
+    - 1.5495028
+    - 1.0251544
+    - 0.10697219
+    - 0.091452025
+    - 1.6570158
+    - 1.0964053
+    - 0.1139027
+    - 0.09785077
+    - 1.161446
+    - 0.7682213
+    - 0.08182606
+    - 0.06830262
+    - 1.5408803
+    - 1.0199202
+    - 0.10787103
+    - -0.09893194
+    - 1.6474501
+    - 1.0907499
+    - 0.11503494
+    - -0.10558957
+    - 1.1557571
+    - 0.7643418
+    - 0.08191629
+    - -0.074871615
+    - 1.0580138
+    - 0.67313224
+    - -0.012503805
+    - -0.39906934
+    - 1.130844
+    - 0.7193821
+    - -0.013104126
+    - -0.42632735
+    - 0.79463136
+    - 0.50603366
+    - -0.01028988
+    - -0.30051288
+    - 1.3566483
+    - 0.78234047
+    - -0.2662744
+    - 0.59195215
+    - 1.4503505
+    - 0.836705
+    - -0.28474623
+    - 0.6325439
+    - 1.0182692
+    - 0.58638036
+    - -0.1996295
+    - 0.44545367
+    - 1.9637088
+    - 1.1657298
+    - 0.1051768
+    - 0.1057881
+    - 2.0994813
+    - 1.2463957
+    - 0.11238081
+    - 0.112787224
+    - 1.4733466
+    - 0.87474096
+    - 0.079131305
+    - 0.08044067
+    - 1.9413638
+    - 1.1491249
+    - 0.11303486
+    - -0.09118128
+    - 2.0763946
+    - 1.2285205
+    - 0.12066335
+    - -0.09774133
+    - 1.4538561
+    - 0.8625879
+    - 0.0855305
+    - -0.067646556
+    - 1.3405908
+    - 0.77688974
+    - -0.27334684
+    - -0.57574916
+    - 1.43325
+    - 0.83014554
+    - -0.29201847
+    - -0.6153849
+    - 1.0056213
+    - 0.58432025
+    - -0.20581195
+    - -0.4324709
+    - 1.1574754
+    - 0.27522525
+    - -0.5607324
+    - 0.65433717
+    - 1.2380856
+    - 0.2945919
+    - -0.6004353
+    - 0.6998885
+    - 0.86674356
+    - 0.2055137
+    - -0.4177064
+    - 0.4901281
+    - 1.6831692
+    - 0.5266226
+    - 0.13086443
+    - 0.094951615
+    - 1.8006514
+    - 0.5637997
+    - 0.14054675
+    - 0.10215129
+    - 1.260557
+    - 0.39279687
+    - 0.09854628
+    - 0.06988199
+    - 1.668414
+    - 0.5308348
+    - 0.13494769
+    - -0.115032755
+    - 1.7847201
+    - 0.56826895
+    - 0.14450623
+    - -0.12275801
+    - 1.2488351
+    - 0.39606056
+    - 0.10062379
+    - -0.08718141
+    - 1.1563103
+    - 0.28046668
+    - -0.58014196
+    - -0.65641016
+    - 1.2365731
+    - 0.29997444
+    - -0.6206812
+    - -0.70167583
+    - 0.8666585
+    - 0.21014252
+    - -0.4339594
+    - -0.49298558
+    - 1.0647856
+    - 0.67440575
+    - 0.008212038
+    - 0.41798514
+    - 1.1380826
+    - 0.7208029
+    - 0.008477433
+    - 0.44619155
+    - 0.7998812
+    - 0.5068311
+    - 0.0071374774
+    - 0.31591937
+    - 1.540554
+    - 1.0174861
+    - -0.11111932
+    - 0.10320431
+    - 1.6472362
+    - 1.0881579
+    - -0.11870971
+    - 0.110033035
+    - 1.1556833
+    - 0.7626658
+    - -0.083633386
+    - 0.078430556
+    - 1.5651635
+    - 1.0281788
+    - -0.12328318
+    - -0.11421355
+    - 1.6729035
+    - 1.0991665
+    - -0.1312699
+    - -0.12148534
+    - 1.1758461
+    - 0.77219146
+    - -0.09414837
+    - -0.08777105
+    - 1.064131
+    - 0.6754508
+    - -0.008477339
+    - -0.40635142
+    - 1.137633
+    - 0.72206247
+    - -0.008948884
+    - -0.4343296
+    - 0.79872566
+    - 0.50729614
+    - -0.006765783
+    - -0.3054165
+    - 1.304743
+    - 0.74448305
+    - 0.24720204
+    - 0.5754749
+    - 1.3952051
+    - 0.79613096
+    - 0.26439917
+    - 0.6151728
+    - 0.9782469
+    - 0.5581422
+    - 0.18509388
+    - 0.43216804
+    - 1.926215
+    - 1.1228572
+    - -0.13117866
+    - 0.14575146
+    - 2.060675
+    - 1.2010928
+    - -0.14022203
+    - 0.15582125
+    - 1.4421235
+    - 0.84108526
+    - -0.098199055
+    - 0.10940207
+    - 1.9521575
+    - 1.1388576
+    - -0.13576959
+    - -0.13406259
+    - 2.087833
+    - 1.2180521
+    - -0.14475578
+    - -0.1433353
+    - 1.4630551
+    - 0.8533463
+    - -0.103019744
+    - -0.100531444
+    - 1.3029642
+    - 0.73804235
+    - 0.26502404
+    - -0.57185477
+    - 1.393564
+    - 0.7893463
+    - 0.28339207
+    - -0.6115615
+    - 0.97612303
+    - 0.5530506
+    - 0.19873373
+    - -0.42872897
+    - 1.0356618
+    - 0.20427549
+    - 0.49825388
+    - 0.56454617
+    - 1.1094935
+    - 0.21899244
+    - 0.53454757
+    - 0.6047854
+    - 0.7770916
+    - 0.15231526
+    - 0.3741735
+    - 0.4253538
+    - 1.7020687
+    - 0.5579076
+    - -0.2514096
+    - 0.30808267
+    - 1.8214504
+    - 0.5970021
+    - -0.2666508
+    - 0.3295945
+    - 1.2765948
+    - 0.41692486
+    - -0.18794662
+    - 0.23243022
+    - 1.6831733
+    - 0.5635423
+    - -0.25626257
+    - -0.2925856
+    - 1.8012252
+    - 0.6033196
+    - -0.27428478
+    - -0.31344423
+    - 1.2578387
+    - 0.42041922
+    - -0.1912175
+    - -0.21751092
+    - 1.042155
+    - 0.20328556
+    - 0.48574892
+    - -0.5714981
+    - 1.1147105
+    - 0.21761797
+    - 0.5196772
+    - -0.610869
+    - 0.7801785
+    - 0.15163803
+    - 0.36332464
+    - -0.42925614
+    - 0.75569445
+    - 0.5120097
+    - -0.20333435
+    - 0.23604423
+    - 0.8076043
+    - 0.54732394
+    - -0.21716031
+    - 0.251701
+    - 0.56922334
+    - 0.38587013
+    - -0.15344101
+    - 0.17983918
+    - 1.0415654
+    - 0.6541899
+    - -0.4479225
+    - -0.020228036
+    - 1.1133466
+    - 0.69955504
+    - -0.47861838
+    - -0.021928208
+    - 0.7822369
+    - 0.49049297
+    - -0.33690605
+    - -0.014175033
+    - 1.041306
+    - 0.61734354
+    - -0.4434233
+    - 0.014910849
+    - 1.1126723
+    - 0.66002804
+    - -0.47316927
+    - 0.01604287
+    - 0.78353536
+    - 0.46343797
+    - -0.33563325
+    - 0.0108219
+    - 0.7536923
+    - 0.5264694
+    - -0.22749043
+    - -0.23324563
+    - 0.8053389
+    - 0.5629227
+    - -0.24267706
+    - -0.24900071
+    - 0.56712514
+    - 0.3950275
+    - -0.17260104
+    - -0.17626017
+    - 1.2037287
+    - 0.73779356
+    - -0.40259376
+    - 0.43740416
+    - 1.286523
+    - 0.78876287
+    - -0.4296876
+    - 0.46728408
+    - 0.9046272
+    - 0.55383044
+    - -0.30450675
+    - 0.32953098
+    - 1.269364
+    - 0.6781948
+    - -0.5590643
+    - -0.27094296
+    - 1.358064
+    - 0.72573525
+    - -0.5978688
+    - -0.28981438
+    - 0.9498891
+    - 0.5067432
+    - -0.41870457
+    - -0.20259368
+    - 1.2833328
+    - 0.670788
+    - -0.57412404
+    - 0.2566624
+    - 1.3722016
+    - 0.71741664
+    - -0.61353034
+    - 0.27420378
+    - 0.96290773
+    - 0.50261956
+    - -0.4316833
+    - 0.19332337
+    - 1.187959
+    - 0.72987753
+    - -0.40009257
+    - -0.43331036
+    - 1.2699596
+    - 0.78049207
+    - -0.42732403
+    - -0.46274418
+    - 0.8930424
+    - 0.5464829
+    - -0.30221015
+    - -0.32583994
+    - 1.3969473
+    - 0.4425634
+    - -0.70588124
+    - 0.8034685
+    - 1.4947269
+    - 0.47376803
+    - -0.75476015
+    - 0.85996675
+    - 1.045135
+    - 0.33015987
+    - -0.5292525
+    - 0.6009954
+    - 1.189863
+    - 0.3071645
+    - -0.6058836
+    - -0.6160082
+    - 1.280447
+    - 0.32812315
+    - -0.64187664
+    - -0.65248245
+    - 0.89847845
+    - 0.22936231
+    - -0.447683
+    - -0.4557268
+    - 1.1518489
+    - 0.29117307
+    - -0.5855716
+    - 0.56871945
+    - 1.2372522
+    - 0.31136647
+    - -0.62107193
+    - 0.6106292
+    - 0.8661248
+    - 0.21684906
+    - -0.43279707
+    - 0.42812905
+    - 1.4000449
+    - 0.43873364
+    - -0.7000209
+    - -0.80502135
+    - 1.4975227
+    - 0.46959862
+    - -0.74847543
+    - -0.8607164
+    - 1.0483305
+    - 0.32752684
+    - -0.5251084
+    - -0.60401434
 --- !u!1 &2705253981564566554
 GameObject:
   m_ObjectHideFlags: 0
@@ -1325,6 +2000,7 @@ GameObject:
   - component: {fileID: 4821951026003527465}
   - component: {fileID: 3365266805684864099}
   - component: {fileID: 8476969841041818298}
+  - component: {fileID: 6516872704778849491}
   m_Layer: 0
   m_Name: Mesh
   m_TagString: Untagged
@@ -1425,6 +2101,21 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &6516872704778849491
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2989714499704988721}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1 &3354668228350445379
 GameObject:
   m_ObjectHideFlags: 0
@@ -1502,6 +2193,7 @@ GameObject:
   - component: {fileID: 7409558676116202952}
   - component: {fileID: 5231917290123590147}
   - component: {fileID: 8271467694368947263}
+  - component: {fileID: 7174809595983968224}
   m_Layer: 0
   m_Name: Mesh
   m_TagString: Untagged
@@ -1602,6 +2294,21 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &7174809595983968224
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4590773669023946777}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1 &4590955438229314650
 GameObject:
   m_ObjectHideFlags: 0
@@ -1689,8 +2396,6 @@ MonoBehaviour:
   wallLeft: {fileID: 975612447285633305}
   wallRight: {fileID: 1304026340733414979}
   _openingMode: 0
-  _framePrefab: {fileID: 0}
-  _frameChance: 0.35
   _recessDepthM: 0.15
   _wallLengthM: 10
   _leftExtentM: 5
@@ -1851,6 +2556,7 @@ GameObject:
   - component: {fileID: 3842776130405052393}
   - component: {fileID: 1004844898262937595}
   - component: {fileID: 8670558371641209314}
+  - component: {fileID: 806009852387209840}
   m_Layer: 0
   m_Name: ElevatorFloor
   m_TagString: Untagged
@@ -1951,6 +2657,21 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &806009852387209840
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5025666125016893484}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1 &5039066291317304721
 GameObject:
   m_ObjectHideFlags: 0
@@ -2429,6 +3150,7 @@ GameObject:
   - component: {fileID: 56905524119812973}
   - component: {fileID: 7512265050712343475}
   - component: {fileID: 4351973695770834969}
+  - component: {fileID: 8573462200975675811}
   m_Layer: 0
   m_Name: DownPanel
   m_TagString: Untagged
@@ -2547,6 +3269,21 @@ MonoBehaviour:
   _recessDurationS: 0.15
   _pressClip: {fileID: 8300000, guid: 6d6177d775f1a274481c259b3471de83, type: 3}
   _pressVolume: 0.7
+--- !u!114 &8573462200975675811
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6620387405963315166}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1 &6838068182356486011
 GameObject:
   m_ObjectHideFlags: 0
@@ -2683,6 +3420,7 @@ GameObject:
   - component: {fileID: 8515363440455632926}
   - component: {fileID: 7760821097641147318}
   - component: {fileID: 7012425424056280009}
+  - component: {fileID: 392659593289677224}
   m_Layer: 0
   m_Name: Mesh
   m_TagString: Untagged
@@ -2783,6 +3521,21 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &392659593289677224
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7088153190230969457}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1 &7100989404186182329
 GameObject:
   m_ObjectHideFlags: 0
@@ -2907,6 +3660,7 @@ GameObject:
   - component: {fileID: 2885594522041955594}
   - component: {fileID: 7651348286473191148}
   - component: {fileID: 3465550363798290429}
+  - component: {fileID: 4611337809472835758}
   m_Layer: 0
   m_Name: Buttons
   m_TagString: Untagged
@@ -3009,6 +3763,21 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.99999994, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &4611337809472835758
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7202409492603970312}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1 &7472119182620753380
 GameObject:
   m_ObjectHideFlags: 0
@@ -3469,6 +4238,7 @@ GameObject:
   - component: {fileID: 5609391877181409448}
   - component: {fileID: 2237167098335295490}
   - component: {fileID: 9090295695803116001}
+  - component: {fileID: 660339654300767304}
   m_Layer: 0
   m_Name: Mesh
   m_TagString: Untagged
@@ -3569,6 +4339,21 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &660339654300767304
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8809108055290672559}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!1001 &3092007994099993650
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3628,13 +4413,36 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8156544124639124318, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6908115249876547314}
   m_SourcePrefab: {fileID: 100100000, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
 --- !u!23 &4270519516000809570 stripped
 MeshRenderer:
   m_CorrespondingSourceObject: {fileID: 1273087391718342224, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
   m_PrefabInstance: {fileID: 3092007994099993650}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &6618278564088616812 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8156544124639124318, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+  m_PrefabInstance: {fileID: 3092007994099993650}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6908115249876547314
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6618278564088616812}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!4 &8300917687880256397 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6474993513332443071, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
@@ -3699,13 +4507,36 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8156544124639124318, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1087281773651557515}
   m_SourcePrefab: {fileID: 100100000, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
 --- !u!23 &2326156895011437608 stripped
 MeshRenderer:
   m_CorrespondingSourceObject: {fileID: 1273087391718342224, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
   m_PrefabInstance: {fileID: 3594648086990619256}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &4671108889376659750 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8156544124639124318, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+  m_PrefabInstance: {fileID: 3594648086990619256}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1087281773651557515
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4671108889376659750}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!4 &7510048321495270855 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6474993513332443071, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
@@ -3770,13 +4601,36 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8156544124639124318, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3177317407709519817}
   m_SourcePrefab: {fileID: 100100000, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
 --- !u!4 &285648990429891844 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6474993513332443071, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
   m_PrefabInstance: {fileID: 6497876728426678971}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &3106575407093928421 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8156544124639124318, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+  m_PrefabInstance: {fileID: 6497876728426678971}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &3177317407709519817
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3106575407093928421}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!23 &5442585073389941995 stripped
 MeshRenderer:
   m_CorrespondingSourceObject: {fileID: 1273087391718342224, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
@@ -3841,8 +4695,31 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8156544124639124318, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4886721494791095835}
   m_SourcePrefab: {fileID: 100100000, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+--- !u!1 &859991254604175464 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8156544124639124318, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+  m_PrefabInstance: {fileID: 8853673174298379062}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &4886721494791095835
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 859991254604175464}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!4 &2523524993482376329 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6474993513332443071, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
@@ -3912,8 +4789,31 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8156544124639124318, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6773406331871603658}
   m_SourcePrefab: {fileID: 100100000, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+--- !u!1 &1076528144749080705 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8156544124639124318, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
+  m_PrefabInstance: {fileID: 9205715041323625439}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6773406331871603658
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1076528144749080705}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0f426fd8ebf8a545b7adc6c9f8269fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLitRenderer
+  _resampleDistanceM: 0.4
+  _trackMovement: 0
+  _includeChildren: 0
 --- !u!4 &2745657852293229664 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6474993513332443071, guid: 8fbf233b3edb3e34796d87e46ebc1c47, type: 3}
