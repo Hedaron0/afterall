@@ -220,7 +220,7 @@ namespace AfterAll.EditorTools
             GameObjectUtility.SetStaticEditorFlags(go, ShellFlags);
 
             var so = new SerializedObject(renderer);
-            so.FindProperty("m_ReceiveGI").enumValueIndex = 0;      // Lightmaps
+            so.FindProperty("m_ReceiveGI").enumValueIndex = ReceiveGiLightmaps;
             so.FindProperty("m_StitchLightmapSeams").boolValue = true;
             so.ApplyModifiedPropertiesWithoutUndo();
 
@@ -380,12 +380,19 @@ namespace AfterAll.EditorTools
         /// Decides what RoomLightmapBaker will bake. Anything whose geometry is fixed by the time a
         /// bake runs contributes GI; anything still undetermined does not.
         ///
-        /// In: the combined shell, the door walls, and preset option geometry. Door walls are kept
-        /// even though WallGapController repositions them at runtime — in the prefab the Left/Right
-        /// pair sits side by side forming a closed wall with no overlap, so the closed-state bake is
-        /// valid and opening a gap merely stretches the baked light along the wall axis exactly as it
-        /// already stretches the wallpaper's uv0. Preset geometry is baked because the baker runs once
-        /// per preset option, so each option is genuinely present in its own bake.
+        /// In: the combined shell and preset option geometry. Preset geometry is baked because the
+        /// baker runs once per preset option, so each option is genuinely present in its own bake.
+        ///
+        /// Door walls are a third case: they still CONTRIBUTE (they have to occlude, or the bake
+        /// leaks light between rooms) but they no longer RECEIVE a lightmap. WallGapController opens
+        /// a doorway by SCALING the Left/Right pieces along the wall axis, and scaling does not touch
+        /// uv2 — so a baked lightmap gets stretched or squashed with the piece. The bake is centred
+        /// while the runtime gap offset is random, so a doorway landing near one end shrinks one
+        /// piece to almost nothing and stretches the other across the whole wall, smearing its baked
+        /// light into dark bands and a hard seam at the opening. No bake setting fixes that; a
+        /// lightmap is simply the wrong tool for geometry that moves at runtime. They read from the
+        /// room probe field instead (RoomLightProbeData + ProbeLitRenderer), which is stretch-free
+        /// and consistent wherever the doorway lands.
         ///
         /// Out: the Random loot pool (items get picked up and turn into physics objects), the
         /// fluorescent panels (per-instance MaterialPropertyBlock flicker plus hunter blackout), and
@@ -396,6 +403,7 @@ namespace AfterAll.EditorTools
         {
             int cleared = 0;
             int enabled = 0;
+            int probeReceivers = 0;
 
             Transform presetRoot = root.Find("Content/Preset");
 
@@ -404,12 +412,12 @@ namespace AfterAll.EditorTools
                 if (t.name == CombinedChildName || t.parent != null && t.parent.name == CombinedChildName)
                     continue;
 
-                if (t.GetComponent<MeshRenderer>() == null)
+                var meshRenderer = t.GetComponent<MeshRenderer>();
+                if (meshRenderer == null)
                     continue;
 
-                bool shouldContribute =
-                    t.GetComponentInParent<WallGapController>() != null
-                    || IsBakeablePresetGeometry(t, presetRoot);
+                bool isDoorWall = t.GetComponentInParent<WallGapController>() != null;
+                bool shouldContribute = isDoorWall || IsBakeablePresetGeometry(t, presetRoot);
 
                 var flags = GameObjectUtility.GetStaticEditorFlags(t.gameObject);
                 bool contributes = (flags & StaticEditorFlags.ContributeGI) != 0;
@@ -426,12 +434,38 @@ namespace AfterAll.EditorTools
                     GameObjectUtility.SetStaticEditorFlags(t.gameObject, flags & ~StaticEditorFlags.ContributeGI);
                     cleared++;
                 }
+
+                if (isDoorWall && SetReceiveGI(meshRenderer, ReceiveGiLightProbes))
+                    probeReceivers++;
             }
 
-            if (cleared > 0 || enabled > 0)
+            if (cleared > 0 || enabled > 0 || probeReceivers > 0)
                 Debug.Log($"[Combiner] Contribute GI: enabled on {enabled} renderer(s) " +
                           $"(door walls, preset geometry), cleared on {cleared} runtime-variable one(s) " +
-                          $"(loot, panels, nested prop alternatives).");
+                          $"(loot, panels, nested prop alternatives). " +
+                          $"Receive GI set to Light Probes on {probeReceivers} door-wall renderer(s).");
+        }
+
+        /// <summary>
+        /// m_ReceiveGI is serialized as a 0-based enum INDEX, not the enum's value: index 0 =
+        /// ReceiveGI.Lightmaps (value 1), index 1 = ReceiveGI.LightProbes (value 2). Verified against
+        /// UnityEngine.ReceiveGI on 2026-08-13. There is no public Renderer.receiveGI property to use
+        /// instead, so SerializedObject is the only way to set this.
+        /// </summary>
+        internal const int ReceiveGiLightmaps = 0;
+        internal const int ReceiveGiLightProbes = 1;
+
+        /// <summary>Sets a renderer's Receive GI mode; returns true when it actually changed.</summary>
+        internal static bool SetReceiveGI(Renderer renderer, int receiveGi)
+        {
+            var so = new SerializedObject(renderer);
+            SerializedProperty property = so.FindProperty("m_ReceiveGI");
+            if (property == null || property.enumValueIndex == receiveGi)
+                return false;
+
+            property.enumValueIndex = receiveGi;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return true;
         }
 
         /// <summary>

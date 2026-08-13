@@ -108,13 +108,25 @@ namespace AfterAll.Environment
                 // The room is baked once per preset option, so the lightmap can only be chosen after
                 // the winner is known — until this call the room rides on ambient. Runs for every room
                 // under LevelRoot, Content root or not.
+                string variantName = selectedPreset != null ? selectedPreset.name : string.Empty;
                 if (room.TryGetComponent(out RoomLightmapData lightmaps) && lightmaps.HasBakedData)
-                    lightmaps.ApplyVariant(selectedPreset != null ? selectedPreset.name : string.Empty);
+                    lightmaps.ApplyVariant(variantName);
+
+                // Same reasoning for the probe field: it is baked per preset too, and everything the
+                // lightmap deliberately excludes (loot, props, the runtime-scaled door walls) reads
+                // its light from here.
+                if (room.TryGetComponent(out RoomLightProbeData probes) && probes.HasBakedData)
+                    probes.ApplyVariant(variantName);
             }
 
             RoomLightmapData.EndBatch();
 
             RefreshOpenWalls();
+
+            // Last: the probe grids are now resolved AND RefreshOpenWalls has moved every door-wall
+            // piece to its final position, so a sample taken here is the first one that is actually
+            // correct. Objects sampled earlier (on spawn) would have used the prefab-local pose.
+            ProbeLitRenderer.RefreshAll(_connector.LevelRoot);
         }
 
         /// <summary>

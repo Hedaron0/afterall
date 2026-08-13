@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 using AfterAll.Environment;
+using AfterAll.Items;
 
 namespace AfterAll.EditorTools
 {
@@ -28,6 +29,28 @@ namespace AfterAll.EditorTools
         private const string RoomPrefabFolder = "Assets/_AfterAll/Prefabs/Rooms";
         private const string BakeSceneFolder  = "Assets/_AfterAll/Data/RoomLightmaps";
         private const string FinalSettings    = "Assets/_AfterAll/Settings/Lighting/Bake_Final.lighting";
+
+        /// <summary>Horizontal probe spacing. Coarse on purpose — the field only has to describe how
+        /// the room's own fluorescents fall off, and every probe costs bake time on room10.</summary>
+        private const float ProbeSpacingM = 4f;
+
+        /// <summary>Keeps the outermost probes off the walls, so trilinear sampling near a wall never
+        /// blends in a probe sitting inside (or outside) the shell, where the bake is black.</summary>
+        private const float ProbeWallInsetM = 0.8f;
+
+        /// <summary>Height of the lowest probe layer above the walkable floor — low enough to describe
+        /// the light on loot lying on the ground.</summary>
+        private const float ProbeFloorOffsetM = 0.5f;
+
+        /// <summary>Clearance kept below the top of the room's bounds. The bounds top is the OUTSIDE of
+        /// the ceiling slab, so the layers are pulled down far enough to stay in open air rather than
+        /// inside the slab, where the bake is black.</summary>
+        private const float ProbeCeilingInsetM = 0.9f;
+
+        private const int ProbeLayers = 3;
+
+        /// <summary>Matches RoomStaticMeshCombiner's generated shell child.</summary>
+        private const string CombinedChildName = "CombinedStatic";
 
         [MenuItem("AfterAll/Lighting/Bake Room Lightmaps (Selected Prefab)")]
         private static void BakeSelected()
@@ -102,6 +125,7 @@ namespace AfterAll.EditorTools
 
             string[] presetNames = GetPresetOptionNames(prefabPath);
             var baked = new List<BakedVariant>(presetNames.Length);
+            var probeVariants = new List<RoomLightProbeData.Variant>(presetNames.Length);
             LightmapsMode mode = LightmapsMode.NonDirectional;
 
             foreach (string presetName in presetNames)
@@ -117,6 +141,12 @@ namespace AfterAll.EditorTools
                 instance.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
                 ActivatePreset(instance.transform, presetName);
                 OpenDoorwaysForBake(instance.transform);
+                SetDoorWallsToProbeLighting(instance.transform);
+
+                // The instance sits at the origin unrotated, so its local space and the bake scene's
+                // world space are the same thing — probe positions can be used as either.
+                ProbeGrid grid = BuildProbeGrid(instance);
+                CreateProbeGroup(grid);
 
                 // Lightmapping writes its output next to a saved scene, so the scene has to exist on
                 // disk before Bake() rather than after.
@@ -136,6 +166,13 @@ namespace AfterAll.EditorTools
                     Debug.LogWarning($"[RoomLightmapBaker] {roomName} preset '{presetName}': " +
                                      "bake produced no lightmapped renderers.");
 
+                RoomLightProbeData.Variant probes = CaptureProbeVariant(grid, presetName);
+                if (probes != null)
+                    probeVariants.Add(probes);
+                else
+                    Debug.LogWarning($"[RoomLightmapBaker] {roomName} preset '{presetName}': " +
+                                     "bake produced no light probes — dynamic props will stay unlit.");
+
                 EditorSceneManager.SaveScene(scene, scenePath);
             }
 
@@ -146,7 +183,7 @@ namespace AfterAll.EditorTools
                 return;
             }
 
-            StoreOnPrefab(prefabPath, baked, mode);
+            StoreOnPrefab(prefabPath, baked, mode, probeVariants);
             // (OpenDoorwaysForBake only touched the throwaway scene instances, never the prefab.)
             Debug.Log($"[RoomLightmapBaker] {roomName}: stored {baked.Count} lightmap variant(s) " +
                       $"[{string.Join(", ", baked.Select(b => string.IsNullOrEmpty(b.Variant.presetName) ? "<none>" : b.Variant.presetName))}].");
@@ -157,6 +194,178 @@ namespace AfterAll.EditorTools
         {
             public RoomLightmapData.Variant Variant;
             public string[] RendererPaths;
+        }
+
+        /// <summary>A regular probe lattice over one room, in bake-scene space (== room-local).</summary>
+        private class ProbeGrid
+        {
+            public Vector3 Origin;
+            public Vector3 CellSize;
+            public Vector3Int Dimensions;
+
+            public int Count => Dimensions.x * Dimensions.y * Dimensions.z;
+
+            public Vector3 PositionAt(int x, int y, int z) => Origin + new Vector3(
+                CellSize.x * x, CellSize.y * y, CellSize.z * z);
+        }
+
+        /// <summary>
+        /// Lays a lattice across the room's interior: <see cref="ProbeSpacingM"/> horizontally, three
+        /// height layers, inset from the shell so no probe ends up inside or behind a wall where the
+        /// bake is black (a single such probe would drag every nearby object dark through trilinear
+        /// interpolation).
+        /// </summary>
+        private static ProbeGrid BuildProbeGrid(GameObject instance)
+        {
+            Bounds bounds = default;
+            bool any = false;
+            foreach (Renderer renderer in instance.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!renderer.enabled)
+                    continue;
+
+                if (!any)
+                {
+                    bounds = renderer.bounds;
+                    any = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(renderer.bounds);
+                }
+            }
+
+            if (!any)
+                bounds = new Bounds(instance.transform.position, Vector3.one * 4f);
+
+            float floorY = instance.TryGetComponent(out RoomInstance room)
+                ? room.GetWalkableFloorY()
+                : bounds.min.y;
+
+            float minY = floorY + ProbeFloorOffsetM;
+            float maxY = Mathf.Max(minY, bounds.max.y - ProbeCeilingInsetM);
+
+            float minX = bounds.min.x + ProbeWallInsetM;
+            float maxX = bounds.max.x - ProbeWallInsetM;
+            float minZ = bounds.min.z + ProbeWallInsetM;
+            float maxZ = bounds.max.z - ProbeWallInsetM;
+
+            // A room narrower than two insets collapses to a single column rather than inverting.
+            if (maxX < minX)
+                minX = maxX = bounds.center.x;
+            if (maxZ < minZ)
+                minZ = maxZ = bounds.center.z;
+
+            int countX = Mathf.Max(2, Mathf.CeilToInt((maxX - minX) / ProbeSpacingM) + 1);
+            int countZ = Mathf.Max(2, Mathf.CeilToInt((maxZ - minZ) / ProbeSpacingM) + 1);
+            int countY = Mathf.Max(2, ProbeLayers);
+
+            return new ProbeGrid
+            {
+                Origin = new Vector3(minX, minY, minZ),
+                CellSize = new Vector3(
+                    (maxX - minX) / (countX - 1),
+                    (maxY - minY) / (countY - 1),
+                    (maxZ - minZ) / (countZ - 1)),
+                Dimensions = new Vector3Int(countX, countY, countZ),
+            };
+        }
+
+        /// <summary>Adds the LightProbeGroup the bake needs — without one Unity bakes no probes at all.</summary>
+        private static void CreateProbeGroup(ProbeGrid grid)
+        {
+            var positions = new Vector3[grid.Count];
+            int i = 0;
+            for (int z = 0; z < grid.Dimensions.z; z++)
+            for (int y = 0; y < grid.Dimensions.y; y++)
+            for (int x = 0; x < grid.Dimensions.x; x++)
+                positions[i++] = grid.PositionAt(x, y, z);
+
+            var go = new GameObject("BakeProbes");
+            go.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            go.AddComponent<LightProbeGroup>().probePositions = positions;
+        }
+
+        /// <summary>
+        /// Reads the baked field back out at exactly the lattice points, flattening L0+L1 into the
+        /// layout RoomLightProbeData re-interpolates at runtime. Sampling through
+        /// GetInterpolatedProbe rather than reading LightProbes.bakedProbes directly keeps this
+        /// independent of how Unity ordered or tetrahedralised the group.
+        /// </summary>
+        private static RoomLightProbeData.Variant CaptureProbeVariant(ProbeGrid grid, string presetName)
+        {
+            if (LightmapSettings.lightProbes == null || LightmapSettings.lightProbes.count == 0)
+                return null;
+
+            var coefficients = new float[grid.Count * RoomLightProbeData.CoefficientsPerProbe];
+
+            for (int z = 0; z < grid.Dimensions.z; z++)
+            for (int y = 0; y < grid.Dimensions.y; y++)
+            for (int x = 0; x < grid.Dimensions.x; x++)
+            {
+                LightProbes.GetInterpolatedProbe(grid.PositionAt(x, y, z), null, out SphericalHarmonicsL2 sh);
+
+                int probe = x + grid.Dimensions.x * (y + grid.Dimensions.y * z);
+                int start = probe * RoomLightProbeData.CoefficientsPerProbe;
+                for (int channel = 0; channel < 3; channel++)
+                for (int k = 0; k < 4; k++)
+                    coefficients[start + channel * 4 + k] = sh[channel, k];
+            }
+
+            return new RoomLightProbeData.Variant
+            {
+                presetName  = presetName,
+                originLocal = grid.Origin,
+                cellSize    = grid.CellSize,
+                dimensions  = grid.Dimensions,
+                coefficients = coefficients,
+            };
+        }
+
+        /// <summary>
+        /// Gives every renderer the bake left out of the lightmap a <see cref="ProbeLitRenderer"/>, so
+        /// it reads the room's probe field instead of falling back to near-black ambient.
+        ///
+        /// "Left out of the lightmap" is taken from the bake result itself — the union of renderer
+        /// paths across every preset variant — rather than by re-deriving the combiner's
+        /// contribute-GI rules here. That way the two can never drift: whatever ApplyGiFlags decides
+        /// not to bake automatically becomes probe-lit, including door walls now that they receive
+        /// from probes.
+        ///
+        /// Fluorescent panels are the one exception. They are emissive fixtures driving their own
+        /// per-instance MaterialPropertyBlock for flicker and the hunter blackout, and probe light
+        /// would both fight that block and be wrong for a surface that is its own light source.
+        /// </summary>
+        private static void AttachProbeLitRenderers(Transform root, List<BakedVariant> baked)
+        {
+            var lightmapped = new HashSet<string>();
+            foreach (BakedVariant entry in baked)
+                foreach (string path in entry.RendererPaths)
+                    lightmapped.Add(path);
+
+            int attached = 0;
+            foreach (MeshRenderer renderer in root.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                Transform t = renderer.transform;
+                if (t.name == CombinedChildName || (t.parent != null && t.parent.name == CombinedChildName))
+                    continue;
+                if (renderer.GetComponent<FluorescentLight>() != null)
+                    continue;
+                if (lightmapped.Contains(GetHierarchyPath(t, root)))
+                    continue;
+
+                var lit = renderer.GetComponent<ProbeLitRenderer>() ?? renderer.gameObject.AddComponent<ProbeLitRenderer>();
+
+                // Only things that actually travel need the per-frame check: a carried Echo has to
+                // dim as the player walks it out of a lit room, while a preset pillar or a door-wall
+                // piece is positioned once during the build and then never moves again.
+                bool moves = renderer.GetComponentInParent<WorldItem>() != null;
+                lit.ConfigureForBake(trackMovement: moves, includeChildren: false);
+                attached++;
+            }
+
+            if (attached > 0)
+                Debug.Log($"[RoomLightmapBaker] {root.name}: {attached} renderer(s) wired to probe lighting.");
         }
 
         /// <summary>Preset option names, or a single empty entry when the room has no preset group.</summary>
@@ -237,7 +446,11 @@ namespace AfterAll.EditorTools
             };
         }
 
-        private static void StoreOnPrefab(string prefabPath, List<BakedVariant> baked, LightmapsMode mode)
+        private static void StoreOnPrefab(
+            string prefabPath,
+            List<BakedVariant> baked,
+            LightmapsMode mode,
+            List<RoomLightProbeData.Variant> probeVariants)
         {
             GameObject root = PrefabUtility.LoadPrefabContents(prefabPath);
             try
@@ -275,6 +488,18 @@ namespace AfterAll.EditorTools
 
                 var data = root.GetComponent<RoomLightmapData>() ?? root.AddComponent<RoomLightmapData>();
                 data.StoreVariants(baked.Select(b => b.Variant).ToArray(), mode);
+
+                if (probeVariants.Count > 0)
+                {
+                    var probeData = root.GetComponent<RoomLightProbeData>()
+                        ?? root.AddComponent<RoomLightProbeData>();
+                    probeData.StoreVariants(probeVariants.ToArray());
+                }
+
+                // Everything the bake deliberately left out of the lightmap now has a light source:
+                // the probe field above. Wiring it here (rather than by hand on 11 prefabs) keeps the
+                // two halves of the decision — "excluded from GI" and "lit by probes" — in step.
+                AttachProbeLitRenderers(root.transform, baked);
 
                 PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
             }
@@ -325,6 +550,33 @@ namespace AfterAll.EditorTools
             if (opened > 0)
                 Debug.Log($"[RoomLightmapBaker] {root.name}: opened {opened} doorway(s) for the bake so " +
                           "the reveal faces receive light.");
+        }
+
+        /// <summary>
+        /// Forces the door walls in this bake scene to receive from probes rather than lightmaps.
+        ///
+        /// RoomStaticMeshCombiner already writes this onto the prefab, but only when Combine is
+        /// re-run — and re-combining 11 rooms just to flip a flag is a chore that would silently be
+        /// skipped, leaving the walls lightmapped and stretched again. Setting it on the throwaway
+        /// instance makes every bake correct on its own terms; the prefab-side flag stays as the
+        /// asset's own record of the same decision.
+        /// </summary>
+        private static void SetDoorWallsToProbeLighting(Transform root)
+        {
+            int changed = 0;
+            foreach (WallGapController wall in root.GetComponentsInChildren<WallGapController>(true))
+            {
+                foreach (MeshRenderer renderer in wall.GetComponentsInChildren<MeshRenderer>(true))
+                {
+                    if (RoomStaticMeshCombiner.SetReceiveGI(
+                            renderer, RoomStaticMeshCombiner.ReceiveGiLightProbes))
+                        changed++;
+                }
+            }
+
+            if (changed > 0)
+                Debug.Log($"[RoomLightmapBaker] {root.name}: {changed} door-wall renderer(s) switched to " +
+                          "probe lighting for this bake (they still contribute GI / cast shadows).");
         }
 
         private static void ConfigureBakeEnvironment()
