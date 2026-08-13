@@ -10,8 +10,6 @@ namespace AfterAll.Environment
     [ExecuteAlways]
     public class WallGapController : MonoBehaviour
     {
-        private const float FrameYawDegrees = 90f;
-
         public float gapWidth = 1.3f;
         public bool hasOpening;
         public bool randomizeOffset = true;
@@ -21,8 +19,6 @@ namespace AfterAll.Environment
         public Transform wallRight;
 
         [SerializeField] private WallOpeningMode _openingMode = WallOpeningMode.StandardGap;
-        [SerializeField] private GameObject _framePrefab;
-        [SerializeField, Range(0f, 1f)] private float _frameChance = 0.35f;
 
         [Tooltip("Authored per-wall recess: pulls this wall's cut pieces inward (opposite outward normal) " +
             "by this many meters, so a connecting room's coplanar wall doesn't z-fight with this one at the " +
@@ -42,8 +38,6 @@ namespace AfterAll.Environment
         [HideInInspector] [SerializeField] private int _rightScaleAxis;
         [HideInInspector] [SerializeField] private bool _baselineCached;
 
-        private bool? _spawnFrameOverride;
-        private GameObject _spawnedFrame;
         private RoomSocket _socket;
 
         public float WallLengthMeters => _wallLengthM;
@@ -193,12 +187,12 @@ namespace AfterAll.Environment
             bool previousRandomize = randomizeOffset;
 
             float offset = GetWallCenterGapOffset(this, GapOffsetPolicy.Default);
-            ConfigureOpening(true, false, offset);
+            ConfigureOpening(true, offset);
 
             if (!TryGetSocket(out RoomSocket socket))
             {
                 if (!wasOpen)
-                    ConfigureOpening(false, false, 0f);
+                    ConfigureOpening(false);
                 return false;
             }
 
@@ -210,12 +204,12 @@ namespace AfterAll.Environment
 
             if (wasOpen)
             {
-                ConfigureOpening(true, false, previousOffset);
+                ConfigureOpening(true, previousOffset);
                 randomizeOffset = previousRandomize;
             }
             else
             {
-                ConfigureOpening(false, false, 0f);
+                ConfigureOpening(false);
             }
 
             return socket.HasValidContract;
@@ -466,10 +460,9 @@ namespace AfterAll.Environment
             samples.Add(candidate);
         }
 
-        public void ConfigureOpening(bool open, bool spawnFrame, float offsetMeters = 0f)
+        public void ConfigureOpening(bool open, float offsetMeters = 0f)
         {
             hasOpening = open;
-            _spawnFrameOverride = spawnFrame;
             gapOffset = offsetMeters;
             randomizeOffset = false;
             ApplyGap();
@@ -534,7 +527,6 @@ namespace AfterAll.Environment
         private void ApplyGapInternal(bool useRandomOffset)
         {
             AutoFindChildren();
-            ClearSpawnedFrame();
 
             if (_openingMode == WallOpeningMode.OpenEnd)
             {
@@ -591,7 +583,6 @@ namespace AfterAll.Environment
             // placement back with it and cancel itself out.
             Vector3 trueGapCenter = _seamWorld + _axisWorld * ((gapLeftT + gapRightT) * 0.5f);
             UpdateSocketFromLiveGap(effectiveGapWidth, trueGapCenter);
-            TrySpawnFrame(effectiveGapWidth);
         }
 
         private void ApplyFullWallOpening()
@@ -606,7 +597,6 @@ namespace AfterAll.Environment
             EnsureSocket();
             _socket.Bind(this, width);
             _socket.AlignAt(center, outward, width);
-            // No door frames on full-wall openings.
         }
 
         private void ApplyOpenEndOpening()
@@ -768,39 +758,6 @@ namespace AfterAll.Environment
             return true;
         }
 
-        private void TrySpawnFrame(float effectiveGapWidth)
-        {
-            if (UsesFullOpening)
-                return;
-
-            if (_framePrefab == null || !ShouldSpawnFrame())
-                return;
-
-            if (wallLeft == null || wallRight == null)
-                return;
-
-            Vector3 center = (wallLeft.position + wallRight.position) * 0.5f;
-            center.y = GetWallFloorY();
-            Vector3 forward = _socket != null ? _socket.transform.forward : ComputeOutwardForward(center);
-            forward = Vector3.ProjectOnPlane(forward, Vector3.up).normalized;
-            if (forward.sqrMagnitude < 0.0001f)
-                forward = Vector3.forward;
-
-            Quaternion rot = Quaternion.LookRotation(forward, Vector3.up) * Quaternion.Euler(0f, FrameYawDegrees, 0f);
-
-            _spawnedFrame = InstantiateFrame();
-            _spawnedFrame.transform.SetPositionAndRotation(center, rot);
-            _spawnedFrame.transform.SetParent(transform, true);
-        }
-
-        private bool ShouldSpawnFrame()
-        {
-            if (_spawnFrameOverride.HasValue)
-                return _spawnFrameOverride.Value;
-
-            return Application.isPlaying && Random.value <= _frameChance;
-        }
-
         private float GetWallFloorY()
         {
             // Keep door sockets on the walkable floor plane so mixed prefab pivots
@@ -814,30 +771,6 @@ namespace AfterAll.Environment
             return leftR != null && rightR != null
                 ? Mathf.Min(leftR.bounds.min.y, rightR.bounds.min.y)
                 : transform.position.y;
-        }
-
-        private GameObject InstantiateFrame()
-        {
-#if UNITY_EDITOR
-            if (!Application.isPlaying)
-                return (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(_framePrefab);
-#endif
-            return Instantiate(_framePrefab);
-        }
-
-        private void ClearSpawnedFrame()
-        {
-            if (_spawnedFrame == null)
-                return;
-
-#if UNITY_EDITOR
-            if (!Application.isPlaying)
-                DestroyImmediate(_spawnedFrame);
-            else
-#endif
-                Destroy(_spawnedFrame);
-
-            _spawnedFrame = null;
         }
 
         private void RebuildBaseline()

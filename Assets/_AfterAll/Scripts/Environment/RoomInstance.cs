@@ -62,24 +62,24 @@ namespace AfterAll.Environment
         public void SealAllWalls()
         {
             foreach (WallGapController wall in _walls)
-                wall.ConfigureOpening(false, false, 0f);
+                wall.ConfigureOpening(false);
         }
 
-        public void OpenWall(WallGapController wall, bool spawnFrame)
+        public void OpenWall(WallGapController wall)
         {
             if (wall == null)
                 return;
 
             float offset = WallGapController.GetWallCenterGapOffset(wall);
-            wall.ConfigureOpening(true, spawnFrame, offset);
+            wall.ConfigureOpening(true, offset);
         }
 
-        public void OpenWall(WallGapController wall, float offsetMeters, bool spawnFrame)
+        public void OpenWall(WallGapController wall, float offsetMeters)
         {
             if (wall == null)
                 return;
 
-            wall.ConfigureOpening(true, spawnFrame, offsetMeters);
+            wall.ConfigureOpening(true, offsetMeters);
         }
 
         public bool IsWallConnected(WallGapController wall) => _connectedWalls.Contains(wall);
@@ -154,7 +154,7 @@ namespace AfterAll.Environment
             {
                 _wallNeighbors.Remove(wall);
                 _connectedWalls.Remove(wall);
-                wall.ConfigureOpening(false, false, 0f);
+                wall.ConfigureOpening(false);
 
                 if (wall.TryGetSocket(out RoomSocket socket))
                     socket.IsConnected = false;
@@ -188,7 +188,7 @@ namespace AfterAll.Environment
         /// footprint (Y ignored — floors are flat and height-aligned). Used for point→room
         /// lookups (nav graph pathing). Tests against the baked <see cref="RoomFootprint"/>
         /// rectangle when wired, so it stays correct even when two rooms' loose renderer AABBs
-        /// (inflated by wall thickness / frame props, or a planner overlap-tolerance edge case)
+        /// (inflated by wall thickness / props, or a planner overlap-tolerance edge case)
         /// happen to overlap — falls back to the old renderer-bounds check only for rooms with
         /// no footprint reference (e.g. hand-placed test-scene rooms).</summary>
         public bool ContainsPointXZ(Vector3 worldPos)

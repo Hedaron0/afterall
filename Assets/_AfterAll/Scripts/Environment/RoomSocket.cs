@@ -94,8 +94,7 @@ namespace AfterAll.Environment
             // -0.125..+0.125 around it). That leaves the parent's inner face exactly coplanar with the
             // child's OUTER face — one lit, one baked against the void and therefore black — so which
             // one draws is decided per pixel by depth precision and the wall flickers black as the
-            // camera moves. Anything sitting inside that shared volume (a door frame is spawned right
-            // in it) fights the same way.
+            // camera moves. Anything sitting inside that shared volume fights the same way.
             //
             // Backing the child off by the two half-thicknesses puts the slabs side by side instead,
             // which is also what the planner already assumes: RoomFootprint's AABB edge sits on the

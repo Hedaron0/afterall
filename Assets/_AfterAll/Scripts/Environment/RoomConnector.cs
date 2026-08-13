@@ -59,8 +59,7 @@ namespace AfterAll.Environment
         public RoomInstance Connect(
             RoomInstance parent,
             WallGapController parentWall,
-            GameObject roomPrefab,
-            bool spawnFrame = false)
+            GameObject roomPrefab)
         {
             if (parent == null || parentWall == null || roomPrefab == null)
                 return null;
@@ -71,7 +70,7 @@ namespace AfterAll.Environment
             int attemptId = _connectionAttemptSerial++;
             System.Random rng = CreatePlacementRng(parentWall, attemptId);
             float parentOffset = GetInitialParentOffset(parentWall, rng);
-            parent.OpenWall(parentWall, parentOffset, false);
+            parent.OpenWall(parentWall, parentOffset);
 
             if (!parentWall.TryGetSocket(out RoomSocket parentSocket))
             {
@@ -90,7 +89,6 @@ namespace AfterAll.Environment
                     parentWall,
                     parentSocket,
                     attemptId,
-                    spawnFrame,
                     out WallGapController childWall))
             {
                 Destroy(go);
@@ -115,8 +113,7 @@ namespace AfterAll.Environment
         public bool TryLinkExistingRoom(
             RoomInstance parent,
             WallGapController parentWall,
-            RoomInstance existingChild,
-            bool spawnFrame = false)
+            RoomInstance existingChild)
         {
             if (parent == null || parentWall == null || existingChild == null)
                 return false;
@@ -127,7 +124,7 @@ namespace AfterAll.Environment
             int attemptId = _connectionAttemptSerial++;
             System.Random rng = CreatePlacementRng(parentWall, attemptId);
             float parentOffset = GetInitialParentOffset(parentWall, rng);
-            parent.OpenWall(parentWall, parentOffset, false);
+            parent.OpenWall(parentWall, parentOffset);
 
             if (!parentWall.TryGetSocket(out RoomSocket parentSocket))
             {
@@ -141,7 +138,6 @@ namespace AfterAll.Environment
                     parentWall,
                     parentSocket,
                     attemptId,
-                    spawnFrame,
                     out WallGapController childWall))
             {
                 RollbackParentWall(parentWall);
@@ -241,7 +237,7 @@ namespace AfterAll.Environment
             if (parentWall == null)
                 return;
 
-            parentWall.ConfigureOpening(false, false, 0f);
+            parentWall.ConfigureOpening(false);
         }
 
         private System.Random CreatePlacementRng(WallGapController wall, int attemptId)
@@ -256,7 +252,6 @@ namespace AfterAll.Environment
             WallGapController parentWall,
             RoomSocket parentSocket,
             int attemptId,
-            bool spawnFrame,
             out WallGapController selectedWall)
         {
             selectedWall = null;
@@ -316,8 +311,8 @@ namespace AfterAll.Environment
                         retryAttempts++;
 
                     childRoom.SealAllWalls();
-                    parentRoom.OpenWall(parentWall, parentOffsets[pi], false);
-                    childRoom.OpenWall(wall, childOffsets[ci], false);
+                    parentRoom.OpenWall(parentWall, parentOffsets[pi]);
+                    childRoom.OpenWall(wall, childOffsets[ci]);
 
                     if (!parentWall.TryGetSocket(out RoomSocket parentProbeSocket) || !wall.TryGetSocket(out RoomSocket probeSocket))
                         continue;
@@ -385,8 +380,8 @@ namespace AfterAll.Environment
             }
 
             childRoom.SealAllWalls();
-            parentRoom.OpenWall(parentWall, selectedParentOffset, spawnFrame && !parentWall.UsesFullOpening);
-            childRoom.OpenWall(selectedWall, selectedChildOffset, false);
+            parentRoom.OpenWall(parentWall, selectedParentOffset);
+            childRoom.OpenWall(selectedWall, selectedChildOffset);
             if (!parentWall.TryGetSocket(out RoomSocket selectedParentSocket) || !selectedWall.TryGetSocket(out RoomSocket selectedSocket))
             {
                 _stats.noCompatibleSocket++;
@@ -490,7 +485,6 @@ namespace AfterAll.Environment
             WallGapController childWall,
             float parentOffsetMeters,
             float childOffsetMeters,
-            bool spawnFrame = false,
             bool snapChildTransform = false)
         {
             if (parent == null || parentWall == null || child == null || childWall == null)
@@ -499,14 +493,13 @@ namespace AfterAll.Environment
             if (parent.IsWallConnected(parentWall) || child.IsWallConnected(childWall))
                 return false;
 
-            parent.OpenWall(parentWall, parentOffsetMeters, false);
-            bool childFrame = spawnFrame && !childWall.UsesFullOpening;
-            child.OpenWall(childWall, childOffsetMeters, childFrame);
+            parent.OpenWall(parentWall, parentOffsetMeters);
+            child.OpenWall(childWall, childOffsetMeters);
 
             if (!parentWall.TryGetSocket(out RoomSocket parentSocket) || !childWall.TryGetSocket(out RoomSocket childSocket))
             {
-                parentWall.ConfigureOpening(false, false, 0f);
-                childWall.ConfigureOpening(false, false, 0f);
+                parentWall.ConfigureOpening(false);
+                childWall.ConfigureOpening(false);
                 return false;
             }
 

@@ -318,7 +318,7 @@ namespace AfterAll.EditorTools
                 if (wall.OpeningMode != WallOpeningMode.StandardGap)
                     continue;
 
-                wall.ConfigureOpening(true, false, WallGapController.GetWallCenterGapOffset(wall));
+                wall.ConfigureOpening(true, WallGapController.GetWallCenterGapOffset(wall));
                 opened++;
             }
 

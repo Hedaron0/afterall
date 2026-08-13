@@ -59,10 +59,6 @@ namespace AfterAll.Environment
         [SerializeField, Min(0f)] private float _gapEdgeMarginM = 0.15f;
         [SerializeField, Range(0f, 1f)] private float _gapOffsetSpanFraction = 1f;
 
-        [Header("Door Frames")]
-        [SerializeField] private bool _forceFramesOnConnections;
-        [SerializeField, Range(0f, 1f)] private float _frameChance = 0.35f;
-
         [Header("Seed")]
         [SerializeField] private bool _useFixedSeed;
         [SerializeField] private int _fixedSeed = 12345;
@@ -415,7 +411,6 @@ namespace AfterAll.Environment
                     continue;
                 }
 
-                bool spawnFrame = ShouldSpawnFrame();
                 bool snap = !childAlreadyPlaced;
                 if (_connector.ApplyPlannedConnection(
                         parent,
@@ -424,7 +419,6 @@ namespace AfterAll.Environment
                         childWall,
                         connection.parentGapOffsetM,
                         connection.childGapOffsetM,
-                        spawnFrame,
                         snap))
                 {
                     connectionsApplied++;
@@ -458,7 +452,7 @@ namespace AfterAll.Environment
                     if (wall == null || !wall.hasOpening)
                         continue;
 
-                    wall.ConfigureOpening(true, false, wall.gapOffset);
+                    wall.ConfigureOpening(true, wall.gapOffset);
                 }
             }
 
@@ -731,10 +725,9 @@ namespace AfterAll.Environment
             // RenderMeshes measured ~8-23s to bake (scales with room count — 16.4M source
             // triangles from decorative room geometry on a 20-room floor). PhysicsColliders reads
             // the room kit's existing colliders instead (~1k tris, mostly BoxColliders) — 53ms.
-            // First attempt broke doorway pathing to ~30% of rooms: FrameDoor.prefab's DoorModel
-            // BoxCollider was solid (not a trigger), physically sealing ~35%-chance door frames
-            // that are meant to be purely decorative on an already-open connection — fixed
-            // 2026-07-22 (isTrigger=true), which PhysicsColliders correctly skips as a source.
+            // Anything decorative that stands inside a doorway must therefore be a trigger collider
+            // or it physically seals the connection for pathing (this cost ~30% of doorways back
+            // when the door-frame system still spawned solid-collider frames into open gaps).
             _navMeshSurface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
             return _navMeshSurface;
         }
@@ -830,10 +823,14 @@ namespace AfterAll.Environment
                 }
             }
 
+            int removed = 0;
             foreach (RoomInstance room in toDestroy)
-                DestroyUnreachableRoom(room);
+            {
+                if (DestroyUnreachableRoom(room))
+                    removed++;
+            }
 
-            return toDestroy.Count;
+            return removed;
         }
 
         /// <summary>Picks which side of an overlapping pair to remove: never the hub, otherwise
@@ -868,7 +865,7 @@ namespace AfterAll.Environment
                     Debug.LogWarning(
                         $"[RoomPoolSpawner] Orphan open wall: {room.name}/{wall.name} has no connected " +
                         "neighbor — resealing.");
-                    wall.ConfigureOpening(false, false, 0f);
+                    wall.ConfigureOpening(false);
                     resealed++;
                 }
             }
@@ -972,8 +969,25 @@ namespace AfterAll.Environment
             int destroyedCount = 0;
             var actionLines = new List<string>();
 
+            // Every iteration must either salvage or remove at least one component, so the number
+            // of placed rooms is a natural bound. This cap exists purely so that a future bug in
+            // that invariant degrades into a logged, finished build instead of a silent editor
+            // hang — the failure mode that made this loop unfixable to debug (you can't read a
+            // console that never comes back). Keep it: a wrong floor beats a dead editor.
+            int maxIterations = initialAudit.totalPlaced + 8;
+            int iterations = 0;
+
             while (true)
             {
+                if (++iterations > maxIterations)
+                {
+                    Debug.LogError(
+                        $"[RoomPoolSpawner] Reachability policy hit its {maxIterations}-iteration cap " +
+                        "without converging — a component is neither salvageable nor removable. " +
+                        "Aborting the pass and shipping the floor as-is; unreachable rooms may remain.");
+                    break;
+                }
+
                 RoomInstance spawnRoot = PickSpawnRoom(startRoom);
                 ReachabilityAuditResult current = AuditReachability(spawnRoot);
                 if (current.unreachableCount == 0)
@@ -991,10 +1005,7 @@ namespace AfterAll.Environment
 
                 bool salvaged = false;
                 if (_unreachableRoomPolicy == UnreachableRoomPolicy.RetryThenDestroy)
-                {
-                    RoomInstance representative = PickComponentRepresentative(component.rooms);
-                    salvaged = TrySalvageComponent(representative, ref retriedCount, ref salvagedCount);
-                }
+                    salvaged = TrySalvageComponent(component.rooms, ref retriedCount, ref salvagedCount);
 
                 if (salvaged)
                 {
@@ -1014,7 +1025,20 @@ namespace AfterAll.Environment
                         $"- {componentLabel} ({causeLabel}, size={component.rooms.Count}) -> destroyed");
                 }
 
-                destroyedCount += DestroyUnreachableComponent(component.rooms);
+                int removed = DestroyUnreachableComponent(component.rooms);
+                destroyedCount += removed;
+
+                // Neither salvaged nor removed: re-auditing would hand back the same component
+                // forever. Every earlier version of this loop only ever left via "unreachableCount
+                // == 0", which is precisely how it could spin without end.
+                if (removed == 0)
+                {
+                    Debug.LogError(
+                        $"[RoomPoolSpawner] Unreachable component '{componentLabel}' " +
+                        $"(size={component.rooms.Count}) could be neither salvaged nor removed — " +
+                        "stopping the policy pass so the build can finish.");
+                    break;
+                }
             }
 
             RoomInstance finalSpawnRoot = PickSpawnRoom(startRoom);
@@ -1067,11 +1091,24 @@ namespace AfterAll.Environment
             return FindUnreachableComponents(unreachable, new HashSet<RoomInstance>(unreachable));
         }
 
+        /// <summary>
+        /// Re-attaches a single stranded room to the reachable graph.
+        ///
+        /// Deliberately refuses multi-room components: TryLinkExistingRoom snaps the room it is
+        /// given onto the parent's socket — it MOVES it — while the rest of that component stays
+        /// put. Salvaging a component of 2+ that way teleports one room away from neighbours that
+        /// still consider themselves connected to it, leaving doorways opening onto empty space.
+        /// A stranded cluster is destroyed whole instead; only a lone room can be relocated safely.
+        /// </summary>
         private bool TrySalvageComponent(
-            RoomInstance representative,
+            List<RoomInstance> component,
             ref int retriedCount,
             ref int salvagedCount)
         {
+            if (component == null || component.Count != 1)
+                return false;
+
+            RoomInstance representative = component[0];
             if (representative == null)
                 return false;
 
@@ -1087,7 +1124,7 @@ namespace AfterAll.Environment
                 retriedCount++;
                 attempts++;
 
-                if (_connector.TryLinkExistingRoom(parent, wall, representative, ShouldSpawnFrame()))
+                if (_connector.TryLinkExistingRoom(parent, wall, representative))
                 {
                     salvagedCount++;
                     return true;
@@ -1118,52 +1155,64 @@ namespace AfterAll.Environment
             return candidates;
         }
 
+        /// <summary>Removes every room in the component; returns how many actually went away, so
+        /// the caller can tell "made progress" from "refused" and stop instead of looping.</summary>
         private int DestroyUnreachableComponent(List<RoomInstance> rooms)
         {
             int destroyed = 0;
             foreach (RoomInstance room in rooms.ToList())
             {
-                if (room == null)
-                    continue;
-
-                DestroyUnreachableRoom(room);
-                destroyed++;
+                if (room != null && DestroyUnreachableRoom(room))
+                    destroyed++;
             }
 
             return destroyed;
         }
 
-        private void DestroyUnreachableRoom(RoomInstance room)
+        /// <summary>
+        /// Removes a room from the floor *immediately as far as this build is concerned*.
+        ///
+        /// Object.Destroy is deferred to the end of the frame, but the whole post-build pass
+        /// (overlap resolve → reachability audit → reseal) runs synchronously inside a single
+        /// frame — so a plain Destroy leaves the room alive, non-null, and still returned by
+        /// every GetComponentsInChildren&lt;RoomInstance&gt;() for the rest of that pass. Unlinking
+        /// it from its neighbours then makes it permanently unreachable, and
+        /// <see cref="ApplyUnreachablePolicy"/> would keep re-finding the same corpse, failing to
+        /// salvage it, and "destroying" it again forever: an infinite loop that hangs the editor
+        /// with no exception and no log (2026-08-13 root cause of the intermittent Play freeze).
+        ///
+        /// Deactivating first is what makes the removal visible to those enumerations, since they
+        /// all use the default includeInactive:false overload. The unparent additionally keeps it
+        /// out of LevelRoot-scoped walks (static batching, NavMesh, content activation) that would
+        /// otherwise still pick up a room that is about to vanish.
+        /// </summary>
+        /// <returns>True when the room was actually removed; false when it was refused.</returns>
+        private bool DestroyUnreachableRoom(RoomInstance room)
         {
             if (room == null)
-                return;
+                return false;
+
+            // The player is standing in the cabin and the hub is the graph's root — removing
+            // either turns a bad floor into a broken run. Both are structurally unreachable-proof
+            // (the build aborts if the elevator can't attach), so this only fires on a regression.
+            if (room == _persistentElevator || room.IsHub)
+            {
+                Debug.LogError(
+                    $"[RoomPoolSpawner] Refusing to destroy {room.name} — it is the " +
+                    $"{(room.IsHub ? "hub" : "persistent elevator cabin")}. Reachability or " +
+                    "elevator-attach logic regressed; shipping the floor with it intact.");
+                return false;
+            }
 
             List<RoomInstance> neighbors = room.ConnectedRooms.ToList();
             foreach (RoomInstance neighbor in neighbors)
                 neighbor.UnlinkNeighbor(room);
 
+            room.ResetConnections();
+            room.gameObject.SetActive(false);
+            room.transform.SetParent(null, worldPositionStays: true);
             Destroy(room.gameObject);
-        }
-
-        private static RoomInstance PickComponentRepresentative(List<RoomInstance> rooms)
-        {
-            RoomInstance best = null;
-            int bestConnections = int.MaxValue;
-
-            foreach (RoomInstance room in rooms)
-            {
-                if (room == null)
-                    continue;
-
-                int connections = room.ConnectedRooms.Count;
-                if (connections < bestConnections)
-                {
-                    bestConnections = connections;
-                    best = room;
-                }
-            }
-
-            return best ?? rooms.FirstOrDefault();
+            return true;
         }
 
         private static string FormatComponentLabel(UnreachableComponent component)
@@ -1363,9 +1412,6 @@ namespace AfterAll.Environment
                 Debug.LogWarning("[RoomPoolSpawner] No valid room prefab entries (null prefab).");
         }
 
-        private bool ShouldSpawnFrame() =>
-            _forceFramesOnConnections || Chance(_frameChance);
-
         private void Shuffle<T>(IList<T> list)
         {
             for (int i = list.Count - 1; i > 0; i--)
@@ -1395,14 +1441,6 @@ namespace AfterAll.Environment
                 InitializeRng();
 
             return _rng.Next(minInclusive, maxExclusive);
-        }
-
-        private bool Chance(float probability)
-        {
-            if (_rng == null)
-                InitializeRng();
-
-            return _rng.NextDouble() <= probability;
         }
 
         private static RoomInstance GetRoom(GameObject go)
