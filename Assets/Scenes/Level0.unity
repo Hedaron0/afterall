@@ -1156,17 +1156,15 @@ MonoBehaviour:
   wallLeft: {fileID: 297802829}
   wallRight: {fileID: 525249324}
   _openingMode: 0
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
-  _frameChance: 0.35
   _recessDepthM: 0
   _wallLengthM: 17.5
   _leftExtentM: 8.75
   _rightExtentM: 8.75
-  _axisWorld: {x: 0, y: 0, z: -1}
-  _seamWorld: {x: 6.875, y: 0.125, z: 0}
+  _axisLocal: {x: 0, y: 1, z: 0.0000001192093}
+  _seamLocal: {x: 0.000000019073486, y: 0, z: 0}
   _leftScaleAxis: 1
   _rightScaleAxis: 1
-  _baselineCached: 1
+  _baselineCachedLocal: 1
 --- !u!64 &589342144
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -2088,17 +2086,15 @@ MonoBehaviour:
   wallLeft: {fileID: 1494905646}
   wallRight: {fileID: 2091828405}
   _openingMode: 0
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
-  _frameChance: 0.35
   _recessDepthM: 0
   _wallLengthM: 17.5
   _leftExtentM: 8.75
   _rightExtentM: 8.75
-  _axisWorld: {x: 0, y: 0, z: 1}
-  _seamWorld: {x: -6.875, y: 0.125, z: 0}
+  _axisLocal: {x: 0, y: -1, z: -0.0000001192093}
+  _seamLocal: {x: 0, y: 0, z: 0}
   _leftScaleAxis: 1
   _rightScaleAxis: 1
-  _baselineCached: 1
+  _baselineCachedLocal: 1
 --- !u!64 &1105921026
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -2351,17 +2347,15 @@ MonoBehaviour:
   wallLeft: {fileID: 191170983}
   wallRight: {fileID: 1628999994}
   _openingMode: 0
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
-  _frameChance: 0.35
   _recessDepthM: 0
   _wallLengthM: 13.5
-  _leftExtentM: 6.749999
-  _rightExtentM: 6.750001
-  _axisWorld: {x: -1, y: 0, z: 0}
-  _seamWorld: {x: 0, y: 0.125, z: -8.875}
+  _leftExtentM: 6.749998
+  _rightExtentM: 6.750002
+  _axisLocal: {x: -1, y: 0, z: 0}
+  _seamLocal: {x: 0, y: 0, z: 0}
   _leftScaleAxis: 0
   _rightScaleAxis: 0
-  _baselineCached: 1
+  _baselineCachedLocal: 1
 --- !u!64 &1377640149
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -3172,8 +3166,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1688563658}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 5.8557487, y: 1.3000004, z: 11.192952}
+  m_LocalRotation: {x: -0, y: 1, z: -0, w: -0.00000004371139}
+  m_LocalPosition: {x: -9.1581955, y: 0.18999982, z: -114.54572}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3193,7 +3187,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomSocket
   _wall: {fileID: 747106877}
   _width: 1.3
-  _direction: 1
+  _direction: 3
   _wallIndex: -1
   _socketTag: Default
   _sizeClass: M
@@ -3379,6 +3373,7 @@ GameObject:
   - component: {fileID: 2000000011}
   - component: {fileID: 2000000010}
   - component: {fileID: 2000000012}
+  - component: {fileID: 2000000013}
   m_Layer: 0
   m_Name: RoomLevelGen
   m_TagString: Untagged
@@ -3466,9 +3461,6 @@ MonoBehaviour:
   _randomGapOffset: 0
   _gapEdgeMarginM: 0.15
   _gapOffsetSpanFraction: 1
-  _forceFramesOnConnections: 0
-  _frameChance: 0.35
-  _connectedWallDepthNudge: 0.003
   _useFixedSeed: 1
   _fixedSeed: 323584595
   _randomizeSeedOnPlay: 0
@@ -3600,6 +3592,21 @@ MonoBehaviour:
   _player: {fileID: 1939944490}
   _visibleHopRadius: 2
   _pollIntervalSeconds: 0.2
+--- !u!114 &2000000013
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2000000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4a54f822b322d74cb08a9b1760c906b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.ProbeLightingDirector
+  _follow: {fileID: 1939944490}
+  _resampleDistanceM: 0.5
+  _blendSeconds: 0.25
 --- !u!1 &2069282035
 GameObject:
   m_ObjectHideFlags: 0
@@ -3934,17 +3941,15 @@ MonoBehaviour:
   wallLeft: {fileID: 1507411205}
   wallRight: {fileID: 1406697620}
   _openingMode: 0
-  _framePrefab: {fileID: 4850743809578545793, guid: 1baac6610487b93409641860a417f4b9, type: 3}
-  _frameChance: 0.35
   _recessDepthM: 0
   _wallLengthM: 13.5
-  _leftExtentM: 6.750001
-  _rightExtentM: 6.749999
-  _axisWorld: {x: 1, y: 0, z: 0}
-  _seamWorld: {x: 0, y: 0.125, z: 8.875}
+  _leftExtentM: 6.750002
+  _rightExtentM: 6.749998
+  _axisLocal: {x: 1, y: 0, z: 0}
+  _seamLocal: {x: 0, y: 0, z: 0}
   _leftScaleAxis: 0
   _rightScaleAxis: 0
-  _baselineCached: 1
+  _baselineCachedLocal: 1
 --- !u!64 &2124858153
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -4470,35 +4475,35 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8329111072287402456, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.15446332
+      value: 0.093326434
       objectReference: {fileID: 0}
     - target: {fileID: 8329111072287402456, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.19773981
+      value: 0.047600362
       objectReference: {fileID: 0}
     - target: {fileID: 8329111072287402456, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -1.2573866
+      value: -0.000000028610227
       objectReference: {fileID: 0}
     - target: {fileID: 8329111072287402456, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.011099854
+      value: -4.5474734e-15
       objectReference: {fileID: 0}
     - target: {fileID: 8469023269912498271, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalScale.x
-      value: 1.5979177
+      value: 1.6590545
       objectReference: {fileID: 0}
     - target: {fileID: 8469023269912498271, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.1847398
+      value: 0.034600362
       objectReference: {fileID: 0}
     - target: {fileID: 8469023269912498271, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -1.2573866
+      value: -0.000000028610227
       objectReference: {fileID: 0}
     - target: {fileID: 8469023269912498271, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.011099854
+      value: -4.5474734e-15
       objectReference: {fileID: 0}
     - target: {fileID: 8629647299632280796, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalScale.y
