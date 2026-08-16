@@ -24,7 +24,12 @@ namespace AfterAll.Environment
     {
         [Tooltip("Re-sample once the object has moved this far from its last sample point. Smaller " +
                  "reacts sooner across a lighting boundary; larger samples less often.")]
-        [SerializeField, Min(0.01f)] private float _resampleDistanceM = 0.4f;
+        [SerializeField, Min(0.01f)] private float _resampleDistanceM = 0.15f;
+
+        [Tooltip("Seconds to fade from the current lighting to a newly sampled value. Matches " +
+                 "ProbeLightingDirector's ambient blend so dynamic objects and the ambient they fall " +
+                 "back to move together. Zero snaps.")]
+        [SerializeField, Min(0f)] private float _blendSeconds = 0.25f;
 
         [Tooltip("Off for geometry that is placed once and never moves again (door-wall pieces are " +
                  "positioned during the build, then stay put) — saves the per-frame distance check.")]
@@ -39,10 +44,17 @@ namespace AfterAll.Environment
         /// whole level every frame forever.</summary>
         private const int SampleRetryFrames = 120;
 
+        /// <summary>Below this per-coefficient difference the blend is close enough to be finished,
+        /// so the component stops writing property blocks every frame.</summary>
+        private const float BlendSettleThreshold = 0.002f;
+
         private Renderer[] _renderers;
         private MaterialPropertyBlock _block;
         private readonly SphericalHarmonicsL2[] _sh = new SphericalHarmonicsL2[1];
         private Vector3 _lastSamplePosition;
+        private SphericalHarmonicsL2 _current;
+        private SphericalHarmonicsL2 _target;
+        private bool _blending;
         private bool _sampled;
         private int _retriesLeft;
 
@@ -50,6 +62,7 @@ namespace AfterAll.Environment
         {
             CacheRenderers();
             _sampled = false;
+            _blending = false;
             _retriesLeft = SampleRetryFrames;
             Resample();
         }
@@ -60,6 +73,15 @@ namespace AfterAll.Environment
             {
                 if (--_retriesLeft <= 0)
                 {
+                    // Giving up used to be silent, which made this the quietest way for an object to
+                    // end up wrong: no sample means it keeps LightProbeUsage.BlendProbes and falls
+                    // through to RenderSettings ambient — a flat value that belongs to no room. Say
+                    // which object, because the fix is always specific to it.
+                    Debug.LogWarning(
+                        $"[ProbeLitRenderer] {name}: no room probe field covered this object after " +
+                        $"{SampleRetryFrames} frames, so it is lit by the flat fallback ambient " +
+                        "instead of its surroundings.", this);
+
                     enabled = false;
                     return;
                 }
@@ -68,17 +90,58 @@ namespace AfterAll.Environment
                 return;
             }
 
-            // Placed once and then still: nothing left to do, so drop off the update list entirely
-            // rather than pay a call per object per frame on a floor's worth of props.
-            if (!_trackMovement)
+            if (_blending)
+                StepBlend();
+
+            if (_trackMovement)
             {
-                enabled = false;
+                if ((GetSamplePosition() - _lastSamplePosition).sqrMagnitude >=
+                    _resampleDistanceM * _resampleDistanceM)
+                    Resample();
+
                 return;
             }
 
-            if ((GetSamplePosition() - _lastSamplePosition).sqrMagnitude >=
-                _resampleDistanceM * _resampleDistanceM)
-                Resample();
+            // Placed once and then still: nothing left to do, so drop off the update list entirely
+            // rather than pay a call per object per frame on a floor's worth of props. Only once the
+            // fade has finished, or it would freeze part-way there.
+            if (!_blending)
+                enabled = false;
+        }
+
+        /// <summary>Advances the fade toward the latest sample and pushes the result.</summary>
+        private void StepBlend()
+        {
+            float t = _blendSeconds > 0f ? Time.deltaTime / _blendSeconds : 1f;
+            if (t >= 1f)
+            {
+                _current = _target;
+                _blending = false;
+            }
+            else
+            {
+                float largestRemaining = 0f;
+
+                for (int channel = 0; channel < 3; channel++)
+                for (int coefficient = 0; coefficient < 9; coefficient++)
+                {
+                    float value = Mathf.Lerp(
+                        _current[channel, coefficient], _target[channel, coefficient], t);
+                    _current[channel, coefficient] = value;
+
+                    largestRemaining = Mathf.Max(
+                        largestRemaining, Mathf.Abs(_target[channel, coefficient] - value));
+                }
+
+                // Exponential blending never quite arrives; stop once the gap is invisible.
+                if (largestRemaining < BlendSettleThreshold)
+                {
+                    _current = _target;
+                    _blending = false;
+                }
+            }
+
+            Push();
         }
 
         /// <summary>Re-samples every probe-lit renderer under <paramref name="root"/>. Called once a
@@ -107,8 +170,33 @@ namespace AfterAll.Environment
                 return;
 
             _lastSamplePosition = position;
-            _sampled = true;
-            _sh[0] = sh;
+            _target = sh;
+
+            // The first sample is what the object should already have been lit by when it appeared,
+            // so it lands instantly. Fading in from black would just be a different pop.
+            if (!_sampled)
+            {
+                _sampled = true;
+                _current = sh;
+                _blending = false;
+                Push();
+                return;
+            }
+
+            if (_blendSeconds > 0f)
+            {
+                _blending = true;
+                return;
+            }
+
+            _current = sh;
+            Push();
+        }
+
+        /// <summary>Writes the current lighting into every renderer's property block.</summary>
+        private void Push()
+        {
+            _sh[0] = _current;
             _block ??= new MaterialPropertyBlock();
 
             foreach (Renderer renderer in _renderers)

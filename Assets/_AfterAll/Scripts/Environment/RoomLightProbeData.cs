@@ -92,15 +92,40 @@ namespace AfterAll.Environment
             _applied = _variants[0];
         }
 
+        /// <summary>Beyond this distance from a room's grid footprint that room stops contributing.
+        /// Only has to span the gap between two neighbouring grids, which is the bake's wall inset on
+        /// both sides plus the shared wall.</summary>
+        private const float RoomBlendRadiusM = 6f;
+
+        /// <summary>Softens the inverse-square weight at zero distance. Small, so the room a point is
+        /// actually standing in stays overwhelmingly dominant: a neighbour 1m outside contributes
+        /// about 8%, one 2m out about 2%.</summary>
+        private const float RoomBlendEpsilon = 0.1f;
+
         /// <summary>
-        /// Samples the room whose probe grid contains <paramref name="worldPosition"/>. Falls back to
-        /// the room whose grid centre is nearest, so an object standing in a doorway (technically
-        /// between two grids) or just outside one still gets plausible light rather than black.
+        /// Samples the probe field at <paramref name="worldPosition"/>, blending across every room
+        /// near enough to matter.
+        ///
+        /// This used to return the FIRST room whose footprint contained the point, and the nearest
+        /// room otherwise. Both halves of that are hard switches, and rooms do not tile the world
+        /// continuously: the bake insets each grid from its walls, so there is a band around every
+        /// wall and across every doorway that no grid contains. An object in that band read some
+        /// other room's clamped edge value, and moving it a few centimetres flipped which room won —
+        /// a jump from lit to black with nothing in between, which is exactly what it looked like.
+        ///
+        /// Inverse-square weighting removes the switch: the room a point stands in dominates, a
+        /// neighbour fades in as the point approaches it, and at a doorway the two cross over evenly.
+        /// The result is continuous everywhere, so light on a dynamic object now changes as smoothly
+        /// as the object moves.
         /// </summary>
         public static bool TryFindSample(Vector3 worldPosition, out SphericalHarmonicsL2 sh)
         {
+            var accumulated = new SphericalHarmonicsL2();
+            accumulated.Clear();
+
             RoomLightProbeData nearest = null;
             float nearestSqr = float.PositiveInfinity;
+            float totalWeight = 0f;
 
             for (int i = 0; i < Active.Count; i++)
             {
@@ -109,16 +134,39 @@ namespace AfterAll.Environment
                     continue;
 
                 float sqr = room.SqrDistanceToGridXZ(worldPosition);
-                if (sqr <= 0f)
-                    return room.TrySample(worldPosition, out sh);
-
                 if (sqr < nearestSqr)
                 {
                     nearestSqr = sqr;
                     nearest = room;
                 }
+
+                if (sqr > RoomBlendRadiusM * RoomBlendRadiusM)
+                    continue;
+
+                if (!room.TrySample(worldPosition, out SphericalHarmonicsL2 roomSh))
+                    continue;
+
+                float weight = 1f / (sqr + RoomBlendEpsilon);
+                for (int channel = 0; channel < 3; channel++)
+                for (int coefficient = 0; coefficient < 9; coefficient++)
+                    accumulated[channel, coefficient] += roomSh[channel, coefficient] * weight;
+
+                totalWeight += weight;
             }
 
+            if (totalWeight > 0f)
+            {
+                float normalise = 1f / totalWeight;
+                for (int channel = 0; channel < 3; channel++)
+                for (int coefficient = 0; coefficient < 9; coefficient++)
+                    accumulated[channel, coefficient] *= normalise;
+
+                sh = accumulated;
+                return true;
+            }
+
+            // Nothing within blend range — a point far outside the level. Clamped edge light from the
+            // closest room is still better than black.
             if (nearest != null)
                 return nearest.TrySample(worldPosition, out sh);
 
@@ -174,6 +222,11 @@ namespace AfterAll.Environment
         ///
         /// Distance is measured to the grid's footprint rather than to its centre, so a 100x50m room
         /// does not lose the point standing inside it to a small room 40m away.
+        ///
+        /// The footprint is widened by half a cell on each side, because the lattice stops short of
+        /// the walls (the bake insets it so no probe ends up inside the shell). Without that, an
+        /// object set down against a wall — which is where the dark corners are — measured as OUTSIDE
+        /// its own room and could score closer to the room on the far side of that wall.
         /// </summary>
         private float SqrDistanceToGridXZ(Vector3 worldPosition)
         {
@@ -182,8 +235,11 @@ namespace AfterAll.Environment
             Vector3 min = variant.originLocal;
             Vector3 max = min + Vector3.Scale(variant.cellSize, variant.dimensions - Vector3Int.one);
 
-            float dx = Mathf.Max(min.x - local.x, 0f, local.x - max.x);
-            float dz = Mathf.Max(min.z - local.z, 0f, local.z - max.z);
+            float marginX = variant.cellSize.x * 0.5f;
+            float marginZ = variant.cellSize.z * 0.5f;
+
+            float dx = Mathf.Max(min.x - marginX - local.x, 0f, local.x - (max.x + marginX));
+            float dz = Mathf.Max(min.z - marginZ - local.z, 0f, local.z - (max.z + marginZ));
             return dx * dx + dz * dz;
         }
 
