@@ -80,6 +80,19 @@ namespace AfterAll.Environment
             StartCoroutine(FlickerBurst());
         }
 
+        /// <summary>
+        /// Works out this panel's lit emission colour. Deliberately touches nothing on the material.
+        ///
+        /// This used to write the emission colour AND globalIlluminationFlags onto sharedMaterial,
+        /// which is the project asset: every Play session rewrote `fluorescent_emissive` on disk
+        /// (measured — the asset's stored emission was exactly _emissionColor * _emissionIntensity),
+        /// flipped its GI mode to RealtimeEmissive behind the bake's back, and dirtied the file in
+        /// git. A per-instance MaterialPropertyBlock is the supported way to drive this, and
+        /// SetPanelEmission already does exactly that — the shared writes were never needed.
+        ///
+        /// The material must therefore be authored with emission enabled. If it is not, say so once
+        /// rather than silently repairing it, because silently repairing it is what caused this.
+        /// </summary>
         private void SetupEmission()
         {
             if (_panel == null)
@@ -91,15 +104,13 @@ namespace AfterAll.Environment
             if (!_hasEmission)
                 return;
 
+#if UNITY_EDITOR
             var shared = _panel.sharedMaterial;
-            if (shared == null)
-                return;
-
-            shared.EnableKeyword("_EMISSION");
-            shared.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
-
-            if (shared.HasProperty(EmissionColorId))
-                shared.SetColor(EmissionColorId, _baseEmission);
+            if (shared != null && !shared.IsKeywordEnabled("_EMISSION"))
+                Debug.LogWarning(
+                    $"[FluorescentLight] Material '{shared.name}' has emission disabled, so the panel " +
+                    "will not glow. Enable Emission on the material asset itself.", this);
+#endif
         }
 
         private void UpdateFlickerState()
