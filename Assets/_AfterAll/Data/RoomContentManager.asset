@@ -12,11 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 56d8a2eee505d234f9e4a3c928674562, type: 3}
   m_Name: RoomContentManager
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.RoomContentSettings
-  _forcePresetIndex: -1
-  _presetWeights:
-  - 10
-  - 3
-  - 3
-  _randomPickMin: 2
-  _randomPickMax: 2
+  _lootTable: {fileID: 11400000, guid: b99b9aa3d8b73014ba477146da923c6b, type: 2}
+  _lootDepthNearMultiplier: 0.4
+  _lootDepthFarDepth: 8
+  _lootDepthFarMultiplier: 1.6
   _logActivation: 1

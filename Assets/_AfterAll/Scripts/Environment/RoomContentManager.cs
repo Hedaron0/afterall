@@ -72,8 +72,6 @@ namespace AfterAll.Environment
                         usedPresetsPerPrefab[prefabId] = usedPresets;
                     }
 
-                    ApplyLootDepthWeighting(content, room.GraphDepth);
-
                     if (!content.TryGetComponent(out WeightedRandomGroup presetGroup))
                     {
                         Transform presetContainer = content.Find("Preset");
@@ -87,8 +85,6 @@ namespace AfterAll.Environment
                             usedPresets.Add(selectedPreset.name);
                     }
 
-                    RoomContentActivation.ApplyRandomPool(content, _settings, rng);
-
                     // Prop placement alternatives (e.g. "DuckPropPositions") nested anywhere under the
                     // winning preset. Same mechanic as the preset pick, walked in hierarchy order so the
                     // shared rng is consumed deterministically for a given seed.
@@ -97,6 +93,11 @@ namespace AfterAll.Environment
                         foreach (WeightedRandomGroup nested in selectedPreset.GetComponentsInChildren<WeightedRandomGroup>(true))
                             nested.Activate(rng);
                     }
+
+                    // Loot last of the three, because it reads the spawn points that the preset pick
+                    // and the nested prop alternatives just decided the existence of — a point under
+                    // a losing alternative is inactive by now and correctly ignored.
+                    RoomLootPlacer.Populate(room, _settings, rng);
 
                     if (_settings.LogActivation)
                     {
@@ -127,35 +128,6 @@ namespace AfterAll.Environment
             // piece to its final position, so a sample taken here is the first one that is actually
             // correct. Objects sampled earlier (on spawn) would have used the prefab-local pose.
             ProbeLitRenderer.RefreshAll(_connector.LevelRoot);
-        }
-
-        /// <summary>
-        /// Thin pre-pass over RoomContentActivation: scales Loot-category (e.g. Echo) world-items in
-        /// the Random pool by how far this room sits from the hub/elevator (RoomInstance.GraphDepth),
-        /// so loot skews rarer/cheaper near the elevator and richer deep in the floor.
-        /// </summary>
-        private void ApplyLootDepthWeighting(Transform content, int graphDepth)
-        {
-            Transform randomPool = content.Find("Random");
-            if (randomPool == null)
-                return;
-
-            int depth = Mathf.Max(0, graphDepth);
-            float t = Mathf.Clamp01(depth / (float)_settings.LootChanceFarDepth);
-            float multiplier = Mathf.Lerp(_settings.LootChanceNearMultiplier, _settings.LootChanceFarMultiplier, t);
-
-            for (int i = 0; i < randomPool.childCount; i++)
-            {
-                Transform child = randomPool.GetChild(i);
-                if (!child.TryGetComponent(out RoomContentPickable pickable))
-                    continue;
-                if (!child.TryGetComponent(out WorldItem worldItem))
-                    continue;
-                if (worldItem.Item == null || worldItem.Item.Category != ItemCategory.Loot)
-                    continue;
-
-                pickable.SetRuntimeChanceMultiplier(multiplier);
-            }
         }
 
         private void RefreshOpenWalls()

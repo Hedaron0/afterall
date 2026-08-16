@@ -5,26 +5,29 @@ namespace AfterAll.Environment
   [CreateAssetMenu(fileName = "RoomContentSettings", menuName = "AfterAll/Room Content Settings")]
   public class RoomContentSettings : ScriptableObject
   {
-    [Header("Random Pool")]
-    [SerializeField, Min(0)] private int _randomPickMin = 2;
-    [SerializeField, Min(0)] private int _randomPickMax = 2;
+    [Header("Loot")]
+    [Tooltip("What can spawn at a LootSpawnPoint. One table for the whole game for now; a per-room " +
+             "override is a single extra field on RoomLootBudget when it is wanted.")]
+    [SerializeField] private LootTable _lootTable;
 
     [Header("Loot Depth Weighting")]
-    [Tooltip("Loot-category (e.g. Echo) spawn-chance multiplier at GraphDepth 0 (hub/elevator).")]
-    [SerializeField, Range(0f, 2f)] private float _lootChanceNearMultiplier = 0.4f;
+    [Tooltip("Loot count multiplier at GraphDepth 0 (hub/elevator) — below 1 makes the rooms you " +
+             "start in thin.")]
+    [SerializeField, Range(0f, 2f)] private float _lootDepthNearMultiplier = 0.4f;
+
     [Tooltip("GraphDepth at and beyond which the far multiplier applies at full strength.")]
-    [SerializeField, Min(1)] private int _lootChanceFarDepth = 8;
-    [Tooltip("Loot-category spawn-chance multiplier at or beyond Loot Chance Far Depth.")]
-    [SerializeField, Range(0f, 2f)] private float _lootChanceFarMultiplier = 1.6f;
+    [SerializeField, Min(1)] private int _lootDepthFarDepth = 8;
+
+    [Tooltip("Loot count multiplier at or beyond Loot Depth Far Depth — above 1 rewards going deep.")]
+    [SerializeField, Range(0f, 2f)] private float _lootDepthFarMultiplier = 1.6f;
 
     [Header("Debug")]
     [SerializeField] private bool _logActivation;
 
-    public int RandomPickMin => _randomPickMin;
-    public int RandomPickMax => _randomPickMax;
+    public LootTable LootTable => _lootTable;
     public bool LogActivation => _logActivation;
-    public float LootChanceNearMultiplier => _lootChanceNearMultiplier;
-    public int LootChanceFarDepth => _lootChanceFarDepth;
-    public float LootChanceFarMultiplier => _lootChanceFarMultiplier;
+    public float LootDepthNearMultiplier => _lootDepthNearMultiplier;
+    public int LootDepthFarDepth => _lootDepthFarDepth;
+    public float LootDepthFarMultiplier => _lootDepthFarMultiplier;
   }
 }
