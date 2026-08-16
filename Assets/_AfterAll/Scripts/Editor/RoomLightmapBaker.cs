@@ -30,24 +30,44 @@ namespace AfterAll.EditorTools
         private const string BakeSceneFolder  = "Assets/_AfterAll/Data/RoomLightmaps";
         private const string FinalSettings    = "Assets/_AfterAll/Settings/Lighting/Bake_Final.lighting";
 
-        /// <summary>Horizontal probe spacing. Coarse on purpose — the field only has to describe how
-        /// the room's own fluorescents fall off, and every probe costs bake time on room10.</summary>
-        private const float ProbeSpacingM = 4f;
+        /// <summary>
+        /// Horizontal probe spacing. This is the size of the smallest dark patch the field can
+        /// describe, so it is what decides whether an object lying in an unlit corner reads dark.
+        ///
+        /// It was 4m, which put room10's 5000m² floor on a 26x14 lattice — measured, its darkest
+        /// probe of 1092 was 0.33 and room4's darkest of 150 was 0.58, i.e. the field contained no
+        /// darkness anywhere in the kit and every dynamic object read "average room light" wherever
+        /// it stood. Halving it roughly doubles the probe count (kit ~2.2k → ~4.7k, still ~230KB)
+        /// and costs bake time, which is the trade being made deliberately.
+        /// </summary>
+        private const float ProbeSpacingM = 2.5f;
 
         /// <summary>Keeps the outermost probes off the walls, so trilinear sampling near a wall never
         /// blends in a probe sitting inside (or outside) the shell, where the bake is black.</summary>
         private const float ProbeWallInsetM = 0.8f;
 
-        /// <summary>Height of the lowest probe layer above the walkable floor — low enough to describe
-        /// the light on loot lying on the ground.</summary>
-        private const float ProbeFloorOffsetM = 0.5f;
+        /// <summary>Height of the lowest probe layer above the walkable floor. Loot lies ON the floor
+        /// and samples get clamped to this layer, so this is the height a dropped item is really lit
+        /// at — keep it low, but far enough up that <see cref="ProbeBuriedRadiusM"/> does not touch
+        /// the floor collider and report every ground-level probe as buried.</summary>
+        private const float ProbeFloorOffsetM = 0.3f;
 
         /// <summary>Clearance kept below the top of the room's bounds. The bounds top is the OUTSIDE of
         /// the ceiling slab, so the layers are pulled down far enough to stay in open air rather than
         /// inside the slab, where the bake is black.</summary>
         private const float ProbeCeilingInsetM = 0.9f;
 
-        private const int ProbeLayers = 3;
+        /// <summary>Vertical spacing between probe layers. Three fixed layers stretched to fit meant a
+        /// tall room sampled floor light from a probe a metre and a half up.</summary>
+        private const float ProbeVerticalSpacingM = 1.5f;
+
+        /// <summary>Never lay fewer than this many layers, however low the ceiling.</summary>
+        private const int MinProbeLayers = 3;
+
+        /// <summary>Probe is treated as sitting inside solid geometry if anything overlaps this radius.
+        /// Small on purpose: it must clear the floor from <see cref="ProbeFloorOffsetM"/> while still
+        /// catching a probe swallowed by a pillar or partition, which are far thicker than this.</summary>
+        private const float ProbeBuriedRadiusM = 0.15f;
 
         /// <summary>Matches RoomStaticMeshCombiner's generated shell child.</summary>
         private const string CombinedChildName = "CombinedStatic";
@@ -258,7 +278,8 @@ namespace AfterAll.EditorTools
 
             int countX = Mathf.Max(2, Mathf.CeilToInt((maxX - minX) / ProbeSpacingM) + 1);
             int countZ = Mathf.Max(2, Mathf.CeilToInt((maxZ - minZ) / ProbeSpacingM) + 1);
-            int countY = Mathf.Max(2, ProbeLayers);
+            int countY = Mathf.Max(MinProbeLayers,
+                Mathf.CeilToInt((maxY - minY) / ProbeVerticalSpacingM) + 1);
 
             return new ProbeGrid
             {
@@ -312,7 +333,7 @@ namespace AfterAll.EditorTools
                     coefficients[start + channel * 4 + k] = sh[channel, k];
             }
 
-            int repaired = RepairDeadProbes(grid.Dimensions, coefficients);
+            int repaired = RepairDeadProbes(grid.Dimensions, coefficients, FindBuriedProbes(grid));
             if (repaired > 0)
                 Debug.Log($"[RoomLightmapBaker] preset '{presetName}': repaired {repaired} of " +
                           $"{grid.Count} probe(s) that landed inside geometry.");
@@ -327,9 +348,40 @@ namespace AfterAll.EditorTools
             };
         }
 
-        /// <summary>Below this L0 luminance a probe is treated as buried rather than merely dim. Real
-        /// dim spots in the kit measure ~0.03 and up; buried ones measure 0.000-0.003.</summary>
+        /// <summary>Below this L0 luminance a probe has effectively no light on it.</summary>
         private const float DeadProbeLuminance = 0.01f;
+
+        /// <summary>
+        /// Marks the probes that sit inside solid geometry, by asking physics rather than by looking
+        /// at how dark they baked.
+        ///
+        /// This is the half of the buried-probe test that used to be missing, and its absence is why
+        /// the kit ended up with no dark places in it: darkness and burial look identical in the
+        /// coefficients (both are black), so a luminance-only test cannot tell a probe stuck inside a
+        /// pillar from a probe standing in an unlit corner, and the repair flood-filled both.
+        ///
+        /// Colliders are live here — RoomStaticMeshCombiner disables the original Renderers but not
+        /// their GameObjects, precisely so collision survives the combine.
+        /// </summary>
+        private static bool[] FindBuriedProbes(ProbeGrid grid)
+        {
+            // Edit-mode physics does not auto-sync, and everything in this scene was moved into place
+            // moments ago (preset activation, RefreshOpenWalls), so the query would otherwise run
+            // against stale collider poses.
+            Physics.SyncTransforms();
+
+            var buried = new bool[grid.Count];
+            for (int z = 0; z < grid.Dimensions.z; z++)
+            for (int y = 0; y < grid.Dimensions.y; y++)
+            for (int x = 0; x < grid.Dimensions.x; x++)
+            {
+                int index = x + grid.Dimensions.x * (y + grid.Dimensions.y * z);
+                buried[index] = Physics.CheckSphere(
+                    grid.PositionAt(x, y, z), ProbeBuriedRadiusM, ~0, QueryTriggerInteraction.Ignore);
+            }
+
+            return buried;
+        }
 
         /// <summary>
         /// Replaces probes that baked black because they landed inside solid geometry.
@@ -345,8 +397,14 @@ namespace AfterAll.EditorTools
         /// each dead probe is flood-filled from its live 6-neighbours instead, repeatedly, until the
         /// whole field is live. That is the standard fix for buried probes and it also softens the
         /// field, since a repaired probe is by construction the average of what surrounds it.
+        ///
+        /// A probe is only repaired when it is black AND <paramref name="buried"/> says geometry is
+        /// sitting on it. Black-but-in-open-air is a genuinely unlit corner: leaving it alone is the
+        /// whole point, because that darkness is what makes a dropped item disappear into an unlit
+        /// part of the floor instead of glowing there. An earlier version keyed off luminance alone
+        /// and therefore erased every dark spot in the kit.
         /// </summary>
-        internal static int RepairDeadProbes(Vector3Int dimensions, float[] coefficients)
+        internal static int RepairDeadProbes(Vector3Int dimensions, float[] coefficients, bool[] buried)
         {
             int count = dimensions.x * dimensions.y * dimensions.z;
             var alive = new bool[count];
@@ -358,7 +416,7 @@ namespace AfterAll.EditorTools
                 float luminance = 0.2126f * coefficients[b] +
                                   0.7152f * coefficients[b + 4] +
                                   0.0722f * coefficients[b + 8];
-                alive[i] = luminance >= DeadProbeLuminance;
+                alive[i] = luminance >= DeadProbeLuminance || !buried[i];
                 if (alive[i])
                     aliveCount++;
             }

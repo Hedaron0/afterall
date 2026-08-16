@@ -80,71 +80,77 @@ namespace AfterAll.EditorTools
         }
 
         /// <summary>
-        /// Runs the buried-probe repair over probe grids that were already baked, so fixing them does
-        /// not cost a full re-bake of the kit. The repair is a pure post-process on stored
-        /// coefficients — the same pass RoomLightmapBaker now runs inline — so applying it here gives
-        /// exactly the result a fresh bake would.
+        /// Prints how dark each room's baked probe field actually gets.
+        ///
+        /// This is the check on the thing that goes wrong silently: a probe field can be perfectly
+        /// valid, apply cleanly, throw no warning, and still describe a room as uniformly lit — at
+        /// which point every dropped item reads "average room light" wherever it lies and nothing in
+        /// the console says so. The kit measured exactly that before the bake was reworked: room10's
+        /// darkest probe of 1092 was 0.33 and room4's darkest of 150 was 0.58.
+        ///
+        /// Read the min and p05 columns. A room with unlit corners should show a min near zero; a
+        /// min that sits close to the median means the field has no darkness left in it.
         /// </summary>
-        [MenuItem("AfterAll/Lighting/Repair Buried Probes On Room Prefabs")]
-        private static void RepairBuriedProbes()
+        [MenuItem("AfterAll/Lighting/Report Probe Field Darkness")]
+        private static void ReportProbeFieldDarkness()
         {
             string[] guids = AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/_AfterAll/Prefabs/Rooms" });
-            int roomsChanged = 0;
-            int probesRepaired = 0;
+            var report = new System.Text.StringBuilder(
+                "[ProbeLightingSetup] Probe field luminance per room (first variant)\n" +
+                "room                 grid        probes    min    p05    median   mean     max\n");
 
             foreach (string guid in guids.OrderBy(g => g))
             {
                 string path = AssetDatabase.GUIDToAssetPath(guid);
-                GameObject root = PrefabUtility.LoadPrefabContents(path);
-                try
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                var data = prefab != null ? prefab.GetComponent<RoomLightProbeData>() : null;
+                if (data == null || !data.HasBakedData)
+                    continue;
+
+                var serialized = new SerializedObject(data);
+                SerializedProperty variants = serialized.FindProperty("_variants");
+                if (variants.arraySize == 0)
+                    continue;
+
+                SerializedProperty variant = variants.GetArrayElementAtIndex(0);
+                Vector3Int dimensions = variant.FindPropertyRelative("dimensions").vector3IntValue;
+                SerializedProperty coefficients = variant.FindPropertyRelative("coefficients");
+
+                int probes = coefficients.arraySize / RoomLightProbeData.CoefficientsPerProbe;
+                if (probes == 0)
+                    continue;
+
+                var luminance = new List<float>(probes);
+                float sum = 0f;
+                for (int i = 0; i < probes; i++)
                 {
-                    var data = root.GetComponent<RoomLightProbeData>();
-                    if (data == null || !data.HasBakedData)
-                        continue;
+                    int b = i * RoomLightProbeData.CoefficientsPerProbe;
 
-                    var serialized = new SerializedObject(data);
-                    SerializedProperty variants = serialized.FindProperty("_variants");
-                    int repairedHere = 0;
+                    // L0 only: the flat band is the average light arriving at the probe, which is
+                    // what decides whether an object there reads lit or dark.
+                    float value =
+                        0.2126f * coefficients.GetArrayElementAtIndex(b).floatValue +
+                        0.7152f * coefficients.GetArrayElementAtIndex(b + 4).floatValue +
+                        0.0722f * coefficients.GetArrayElementAtIndex(b + 8).floatValue;
 
-                    for (int v = 0; v < variants.arraySize; v++)
-                    {
-                        SerializedProperty variant = variants.GetArrayElementAtIndex(v);
-                        SerializedProperty dims = variant.FindPropertyRelative("dimensions");
-                        SerializedProperty coefficients = variant.FindPropertyRelative("coefficients");
-
-                        var dimensions = dims.vector3IntValue;
-                        var values = new float[coefficients.arraySize];
-                        for (int i = 0; i < values.Length; i++)
-                            values[i] = coefficients.GetArrayElementAtIndex(i).floatValue;
-
-                        int repaired = RoomLightmapBaker.RepairDeadProbes(dimensions, values);
-                        if (repaired == 0)
-                            continue;
-
-                        for (int i = 0; i < values.Length; i++)
-                            coefficients.GetArrayElementAtIndex(i).floatValue = values[i];
-
-                        repairedHere += repaired;
-                    }
-
-                    if (repairedHere == 0)
-                        continue;
-
-                    serialized.ApplyModifiedPropertiesWithoutUndo();
-                    PrefabUtility.SaveAsPrefabAsset(root, path);
-                    roomsChanged++;
-                    probesRepaired += repairedHere;
-                    Debug.Log($"[ProbeLightingSetup] {System.IO.Path.GetFileNameWithoutExtension(path)}: " +
-                              $"repaired {repairedHere} buried probe(s).");
+                    luminance.Add(value);
+                    sum += value;
                 }
-                finally
-                {
-                    PrefabUtility.UnloadPrefabContents(root);
-                }
+
+                luminance.Sort();
+                report.AppendLine(string.Format(
+                    "{0,-20} {1,-11} {2,6}  {3,6:F3} {4,6:F3} {5,7:F3} {6,7:F3} {7,7:F3}",
+                    System.IO.Path.GetFileNameWithoutExtension(path),
+                    $"{dimensions.x}x{dimensions.y}x{dimensions.z}",
+                    probes,
+                    luminance[0],
+                    luminance[Mathf.Clamp(Mathf.FloorToInt(probes * 0.05f), 0, probes - 1)],
+                    luminance[probes / 2],
+                    sum / probes,
+                    luminance[probes - 1]));
             }
 
-            Debug.Log($"[ProbeLightingSetup] Buried-probe repair done: {probesRepaired} probe(s) across " +
-                      $"{roomsChanged} room(s).");
+            Debug.Log(report.ToString());
         }
 
         private static void AddPrefabPath(HashSet<string> targets, GameObject prefab)
