@@ -23,6 +23,15 @@ namespace AfterAll.Environment
         /// prefab look different.</summary>
         private const float DefaultFillRatio = 0.35f;
 
+        /// <summary>How far an item may lean off flat when it spawns. Small — the Rigidbody drops it
+        /// the last few centimetres, and this only has to break the "everything at the same angle"
+        /// look, not simulate a throw.</summary>
+        private const float MaxTiltDegrees = 12f;
+
+        /// <summary>Rest rotation per pickup prefab, measured once. See <see cref="ResolveRestRotation"/>.</summary>
+        private static readonly Dictionary<GameObject, Quaternion> RestRotations =
+            new Dictionary<GameObject, Quaternion>();
+
         public static int Populate(
             RoomInstance room, RoomContentSettings settings, System.Random rng)
         {
@@ -31,19 +40,39 @@ namespace AfterAll.Environment
 
             LootTable table = settings.LootTable;
             if (table == null)
+            {
+                Debug.LogWarning(
+                    "[RoomLoot] No LootTable assigned on the room content settings — no room can " +
+                    "spawn loot until one is.", settings);
                 return 0;
+            }
 
             // Inactive points belong to a preset that lost, so includeInactive stays false — this is
             // the whole of the preset integration.
             var points = new List<LootSpawnPoint>(
                 room.GetComponentsInChildren<LootSpawnPoint>(false));
 
-            if (points.Count == 0)
+            // Every return below this line used to be silent, which made the first authoring pass
+            // unreadable: a room whose points all sat under a losing preset looked exactly like a room
+            // with no points and a room whose count rolled to zero, and none of the three logged
+            // anything. The reason is the only thing worth logging here.
+            int pointCount = points.Count;
+            if (pointCount == 0)
+            {
+                if (settings.LogActivation)
+                    Debug.Log($"[RoomLoot] {room.name}: no ACTIVE spawn points.", room);
                 return 0;
+            }
 
-            int count = ResolveCount(room, settings, points.Count, rng);
+            int count = ResolveCount(room, settings, pointCount, rng);
             if (count <= 0)
+            {
+                if (settings.LogActivation)
+                    Debug.Log(
+                        $"[RoomLoot] {room.name}: 0 items from {pointCount} point(s) at depth " +
+                        $"{room.GraphDepth} — count rolled to zero.", room);
                 return 0;
+            }
 
             Transform container = PrepareContainer(room.transform);
             int spawned = 0;
@@ -58,18 +87,17 @@ namespace AfterAll.Environment
                 if (item == null || item.WorldPickupPrefab == null)
                     continue;
 
-                // Yaw only: an item tipped onto its side by a random full rotation reads as dropped
-                // from a height rather than left on a desk. The Rigidbody settles the rest.
-                var rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f);
-
                 Object.Instantiate(
-                    item.WorldPickupPrefab, point.ResolveSpawnPosition(), rotation, container);
+                    item.WorldPickupPrefab,
+                    point.ResolveSpawnPosition(),
+                    ResolveRotation(item.WorldPickupPrefab, rng),
+                    container);
                 spawned++;
             }
 
             if (settings.LogActivation)
                 Debug.Log(
-                    $"[RoomLoot] {room.name}: {spawned} item(s) across {points.Count + spawned} " +
+                    $"[RoomLoot] {room.name}: {spawned} item(s) across {pointCount} " +
                     $"point(s), depth {room.GraphDepth}.", room);
 
             return spawned;
@@ -107,7 +135,114 @@ namespace AfterAll.Environment
             float multiplier = Mathf.Lerp(
                 settings.LootDepthNearMultiplier, settings.LootDepthFarMultiplier, t);
 
-            return Mathf.Clamp(Mathf.RoundToInt(rolled * multiplier), 0, pointCount);
+            float expected = rolled * multiplier;
+
+            // Round by chance, not by value. Rooms are authored with a handful of points, so the
+            // expected count is routinely a fraction below 1 — room7 with 4 points at depth 0 comes out
+            // at 0.4, and rounding that turned a working system into a guaranteed zero with nothing in
+            // the console to say so. Carrying the fraction as a probability keeps the average intact
+            // and lets a thin room still hold one item some of the time.
+            int count = Mathf.FloorToInt(expected);
+            if (rng.NextDouble() < expected - count)
+                count++;
+
+            return Mathf.Clamp(count, 0, pointCount);
+        }
+
+        /// <summary>
+        /// How an item is oriented when it lands: laid flat, spun to a random heading, and leaned a
+        /// few degrees so a shelf of loot doesn't read as a row of placed props.
+        ///
+        /// The old version was yaw-only, on the reasoning that a full random rotation looks like the
+        /// item fell from a height. That was right about the rotation and wrong about the starting
+        /// pose — the pickup prefabs are authored standing on their thinnest axis (Book's collider is
+        /// 2.02 x 1.14 x 0.29, Tape's 2.77 x 4.94 x 0.64, both thin in Z), so yaw-only left every book
+        /// on the floor balanced on its edge.
+        /// </summary>
+        private static Quaternion ResolveRotation(GameObject prefab, System.Random rng)
+        {
+            // Yaw is applied last so it also rotates which way the lean points.
+            return Quaternion.AngleAxis((float)rng.NextDouble() * 360f, Vector3.up)
+                   * Quaternion.AngleAxis(
+                       (float)rng.NextDouble() * MaxTiltDegrees, Vector3.forward)
+                   * ResolveRestRotation(prefab);
+        }
+
+        /// <summary>
+        /// The rotation that puts a prefab's thinnest axis vertical — i.e. lays it down on the face a
+        /// real object of that shape would rest on.
+        ///
+        /// Measured off the meshes rather than authored per item, so a new entry in the LootTable needs
+        /// no extra setup and a re-modelled prop can't drift out of sync with a hand-typed value. The
+        /// result only depends on the prefab, so it is cached: a floor build spawns loot for every room
+        /// inside one frame.
+        /// </summary>
+        private static Quaternion ResolveRestRotation(GameObject prefab)
+        {
+            if (RestRotations.TryGetValue(prefab, out Quaternion cached))
+                return cached;
+
+            Quaternion rest = Quaternion.identity;
+
+            if (TryMeasureLocalSize(prefab, out Vector3 size))
+            {
+                if (size.x <= size.y && size.x <= size.z)
+                    rest = Quaternion.FromToRotation(Vector3.right, Vector3.up);
+                else if (size.z <= size.y)
+                    rest = Quaternion.FromToRotation(Vector3.forward, Vector3.up);
+                // else Y is already the thinnest axis and the prefab is authored lying down.
+            }
+
+            RestRotations[prefab] = rest;
+            return rest;
+        }
+
+        /// <summary>
+        /// Bounding size of every mesh in a prefab, expressed in the prefab root's own space.
+        ///
+        /// Walks the corners through each child's transform rather than reading world bounds, because a
+        /// prefab asset is never actually placed in the world and its renderers have no meaningful
+        /// world bounds to read.
+        /// </summary>
+        private static bool TryMeasureLocalSize(GameObject prefab, out Vector3 size)
+        {
+            size = Vector3.zero;
+
+            Transform root = prefab.transform;
+            var bounds = new Bounds();
+            bool measured = false;
+
+            foreach (MeshFilter filter in prefab.GetComponentsInChildren<MeshFilter>(true))
+            {
+                Mesh mesh = filter.sharedMesh;
+                if (mesh == null)
+                    continue;
+
+                Bounds local = mesh.bounds;
+
+                for (int corner = 0; corner < 8; corner++)
+                {
+                    var offset = new Vector3(
+                        (corner & 1) == 0 ? local.min.x : local.max.x,
+                        (corner & 2) == 0 ? local.min.y : local.max.y,
+                        (corner & 4) == 0 ? local.min.z : local.max.z);
+
+                    Vector3 point = root.InverseTransformPoint(filter.transform.TransformPoint(offset));
+
+                    if (!measured)
+                    {
+                        bounds = new Bounds(point, Vector3.zero);
+                        measured = true;
+                    }
+                    else
+                    {
+                        bounds.Encapsulate(point);
+                    }
+                }
+            }
+
+            size = bounds.size;
+            return measured && size.sqrMagnitude > 0f;
         }
 
         /// <summary>Picks a point by weight and removes it, so no two items land on the same spot.</summary>
