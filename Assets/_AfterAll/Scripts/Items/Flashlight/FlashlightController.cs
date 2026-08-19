@@ -85,6 +85,14 @@ namespace AfterAll.Items.Flashlight
                 PersistedOnState[_item] = _isOn;
         }
 
+        /// <summary>
+        /// The remembered lamp state for a flashlight item, for whoever spawns its world pickup —
+        /// the held viewmodel is already destroyed by then, so it cannot be asked directly.
+        /// Falls back to AutoOnWhenEquipped-free "off" for an item that has never been drawn.
+        /// </summary>
+        public static bool IsOnFor(ItemDefinition item) =>
+            item != null && PersistedOnState.TryGetValue(item, out bool on) && on;
+
         private void Update()
         {
             if (!_equipped || _inventory == null || _item == null)

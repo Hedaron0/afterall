@@ -1,26 +1,40 @@
+using AfterAll.Environment;
+using AfterAll.Items.Flashlight;
 using AfterAll.Inventories;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 
 namespace AfterAll.Items
 {
     /// <summary>
     /// Spawns the selected item's held prefab under the hand anchor (Main Camera/Hand).
-    /// Also handles throwing the currently-selected hotbar item away (same Drop action as
+    /// Also handles putting the currently-selected hotbar item down (same Drop action as
     /// BulkyCarrier — mutually exclusive states, hands can't be full of both at once): removes it
-    /// from the inventory slot and instantiates its WorldPickupPrefab with a simple forward
-    /// impulse, same feel as BulkyCarrier.TryThrow.
+    /// from the inventory slot and instantiates its WorldPickupPrefab at its feet, laid out the way
+    /// authored floor loot is. This used to be a forward throw; throwing hard is BulkyCarrier's job
+    /// on Attack, and having both do it left no way to simply set something down.
     /// </summary>
     public sealed class ItemHolder : MonoBehaviour
     {
         [SerializeField] private Inventory _inventory;
         [SerializeField] private Transform _handAnchor;
 
-        [Header("Throw")]
-        [SerializeField] private InputActionReference _throwAction;
-        [SerializeField] private float _throwSpawnDistance = 0.8f;
-        [SerializeField] private float _throwImpulse = 4f;
-        [SerializeField] private float _throwSpinImpulse = 0.05f;
+        [Header("Drop (G)")]
+        [Tooltip("Player/Drop. This is a place-it-down, not a throw — BulkyCarrier keeps the hard throw on Attack.")]
+        [FormerlySerializedAs("_throwAction")]
+        [SerializeField] private InputActionReference _dropAction;
+        [Tooltip("How far in front of the eyes the item appears. Short, so it lands at your feet rather than being lobbed.")]
+        [SerializeField] private float _dropForwardOffset = 0.45f;
+        [Tooltip("How far below eye level it appears. Roughly waist height, so it has a short fall.")]
+        [SerializeField] private float _dropDownOffset = 0.55f;
+        [Tooltip("Gentle push so it clears the player's own collider instead of resting against their legs.")]
+        [SerializeField] private float _dropNudgeSpeed = 0.6f;
+        [Tooltip("Noise a set-down makes. Much quieter than a throw — the hunter should not hear you tidying up.")]
+        [SerializeField] private float _dropNoiseRadius = 4f;
+
+        /// <summary>Matches RoomLootPlacer's authored-loot lean so dropped and spawned items read alike.</summary>
+        private const float DropTiltDegrees = 12f;
 
         private GameObject _heldInstance;
         private IHeldItemBehaviour[] _heldBehaviours;
@@ -39,8 +53,8 @@ namespace AfterAll.Items
 
         private void OnEnable()
         {
-            if (_throwAction != null)
-                _throwAction.action.Enable();
+            if (_dropAction != null)
+                _dropAction.action.Enable();
 
             if (_inventory == null)
                 return;
@@ -52,8 +66,8 @@ namespace AfterAll.Items
 
         private void OnDisable()
         {
-            if (_throwAction != null)
-                _throwAction.action.Disable();
+            if (_dropAction != null)
+                _dropAction.action.Disable();
 
             if (_inventory != null)
             {
@@ -66,11 +80,20 @@ namespace AfterAll.Items
 
         private void Update()
         {
-            if (_throwAction != null && _throwAction.action.WasPressedThisFrame())
-                TryThrowSelected();
+            if (_dropAction != null && _dropAction.action.WasPressedThisFrame())
+                TryDropSelected();
         }
 
-        private void TryThrowSelected()
+        /// <summary>
+        /// Sets the selected hotbar item down rather than throwing it. It appears just in front of
+        /// and below the eyes already turned onto the face it would naturally rest on, with a small
+        /// lean and a random heading, then falls the short remaining distance under gravity — the
+        /// same treatment authored floor loot gets, so a dropped book reads identically to one that
+        /// was always lying there. No torque: spin is what made this look like a throw.
+        ///
+        /// The hard forward throw deliberately stays on BulkyCarrier/Attack; this is the quiet half.
+        /// </summary>
+        private void TryDropSelected()
         {
             if (_inventory == null)
                 return;
@@ -82,23 +105,26 @@ namespace AfterAll.Items
             if (!_inventory.TryConsumeSelected())
                 return;
 
-            Vector3 forward = _camera != null ? _camera.transform.forward : transform.forward;
-            Vector3 origin = _camera != null ? _camera.transform.position : transform.position;
-            Vector3 spawnPos = origin + forward * _throwSpawnDistance;
+            Transform eye = _camera != null ? _camera.transform : transform;
+            Vector3 forward = Vector3.ProjectOnPlane(eye.forward, Vector3.up).normalized;
+            if (forward.sqrMagnitude < 0.01f)
+                forward = transform.forward;
 
-            GameObject spawned = Instantiate(item.WorldPickupPrefab, spawnPos, Quaternion.identity);
-            Entities.NoiseEvents.Report(spawnPos, 10f);
+            Vector3 spawnPos = eye.position + forward * _dropForwardOffset + Vector3.down * _dropDownOffset;
+
+            Quaternion rest = Quaternion.AngleAxis(Random.Range(0f, 360f), Vector3.up)
+                              * Quaternion.AngleAxis(Random.Range(0f, DropTiltDegrees), Vector3.forward)
+                              * RoomLootPlacer.ResolveRestRotation(item.WorldPickupPrefab);
+
+            GameObject spawned = Instantiate(item.WorldPickupPrefab, spawnPos, rest);
+            Entities.NoiseEvents.Report(spawnPos, _dropNoiseRadius);
+
+            // A flashlight keeps shining where it lands if it was on when it left the hand. No-ops
+            // for anything without a Light, so it costs a lookup and no branching on item type.
+            WorldFlashlight.ApplyTo(spawned, FlashlightController.IsOnFor(item));
 
             if (spawned.TryGetComponent(out Rigidbody rb))
-            {
-                rb.AddForce(forward * _throwImpulse, ForceMode.Impulse);
-
-                Vector3 randomSpinAxis = new Vector3(
-                    Random.Range(-1f, 1f),
-                    Random.Range(-1f, 1f),
-                    Random.Range(-1f, 1f)).normalized;
-                rb.AddTorque(randomSpinAxis * _throwSpinImpulse, ForceMode.Impulse);
-            }
+                rb.linearVelocity = forward * _dropNudgeSpeed;
         }
 
         private Transform ResolveHandAnchor()

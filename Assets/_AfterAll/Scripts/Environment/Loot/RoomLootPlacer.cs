@@ -176,8 +176,13 @@ namespace AfterAll.Environment
         /// no extra setup and a re-modelled prop can't drift out of sync with a hand-typed value. The
         /// result only depends on the prefab, so it is cached: a floor build spawns loot for every room
         /// inside one frame.
+        ///
+        /// Public because a player-dropped item has exactly the same problem as an authored one: the
+        /// pickup prefabs are modelled standing on their thinnest face, so anything spawned at
+        /// identity lands on its edge. ItemHolder reuses this so a dropped item settles the same way
+        /// floor loot does.
         /// </summary>
-        private static Quaternion ResolveRestRotation(GameObject prefab)
+        public static Quaternion ResolveRestRotation(GameObject prefab)
         {
             if (RestRotations.TryGetValue(prefab, out Quaternion cached))
                 return cached;

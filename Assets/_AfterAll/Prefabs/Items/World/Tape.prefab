@@ -134,7 +134,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8b2c3d4e5f678901234567890abcd12, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Items.WorldItem
-  _item: {fileID: 11400000, guid: b0c01ac3af6535145b297996f25124c2, type: 2}
+  _item: {fileID: 11400000, guid: 8574960ccc348264d9d9b2f919e96c8c, type: 2}
   _inventory: {fileID: 0}
   _fullPromptText: Inventory full
   _selectOnPickup: 1
