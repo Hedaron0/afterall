@@ -119,9 +119,12 @@ namespace AfterAll.Items
             GameObject spawned = Instantiate(item.WorldPickupPrefab, spawnPos, rest);
             Entities.NoiseEvents.Report(spawnPos, _dropNoiseRadius);
 
-            // A flashlight keeps shining where it lands if it was on when it left the hand. No-ops
-            // for anything without a Light, so it costs a lookup and no branching on item type.
-            WorldFlashlight.ApplyTo(spawned, FlashlightController.IsOnFor(item));
+            // A flashlight keeps shining where it lands if it was on when it left the hand, with the
+            // same beam it had in hand. No-ops for anything without a Light, so this costs a lookup
+            // and no branching on item type.
+            WorldFlashlight.ApplyTo(spawned,
+                                    FlashlightController.IsOnFor(item),
+                                    FlashlightController.SettingsFor(item));
 
             if (spawned.TryGetComponent(out Rigidbody rb))
                 rb.linearVelocity = forward * _dropNudgeSpeed;

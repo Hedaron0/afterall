@@ -29,6 +29,10 @@ namespace AfterAll.Items.Flashlight
         /// </summary>
         private static readonly Dictionary<ItemDefinition, bool> PersistedOnState = new Dictionary<ItemDefinition, bool>();
 
+        /// <summary>The settings asset the held viewmodel was using, kept for the dropped world form.</summary>
+        private static readonly Dictionary<ItemDefinition, FlashlightSettings> PersistedSettings =
+            new Dictionary<ItemDefinition, FlashlightSettings>();
+
         private bool _isOn;
         private float _baseIntensity;
         private float _flickerSeed;
@@ -81,8 +85,14 @@ namespace AfterAll.Items.Flashlight
 
         private void RememberOnState()
         {
-            if (_item != null)
-                PersistedOnState[_item] = _isOn;
+            if (_item == null)
+                return;
+
+            PersistedOnState[_item] = _isOn;
+            // Remembered alongside the state so the dropped world pickup can be lit with exactly the
+            // beam the player was just holding, instead of whatever the world prefab's Light happens
+            // to be authored with.
+            PersistedSettings[_item] = _settings;
         }
 
         /// <summary>
@@ -92,6 +102,10 @@ namespace AfterAll.Items.Flashlight
         /// </summary>
         public static bool IsOnFor(ItemDefinition item) =>
             item != null && PersistedOnState.TryGetValue(item, out bool on) && on;
+
+        /// <summary>The beam settings this item was last held with, or null if it never was.</summary>
+        public static FlashlightSettings SettingsFor(ItemDefinition item) =>
+            item != null && PersistedSettings.TryGetValue(item, out FlashlightSettings s) ? s : null;
 
         private void Update()
         {

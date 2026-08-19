@@ -35,27 +35,31 @@ namespace AfterAll.Items.Flashlight
         /// <summary>Current lamp state of this dropped flashlight.</summary>
         public bool IsOn { get; private set; }
 
-        public void SetOn(bool on)
+        public void SetOn(bool on, FlashlightSettings settings = null)
         {
             IsOn = on;
             Apply(_light != null ? _light : GetComponentInChildren<Light>(true),
                   _emissiveRenderer != null ? _emissiveRenderer : FindEmissiveRenderer(gameObject),
-                  on);
+                  on, settings);
         }
 
         /// <summary>
         /// Sets the lamp state on a spawned pickup that has no WorldFlashlight component. No-ops on
         /// anything without a Light, which is what keeps it safe to call on every dropped item
         /// rather than having to ask first whether the item is a flashlight.
+        ///
+        /// Pass the settings the player was holding it with and the dropped beam matches the held
+        /// one exactly. Without them the world prefab's own authored Light is used as-is, which is
+        /// dimmer and narrower than the in-hand beam.
         /// </summary>
-        public static void ApplyTo(GameObject spawned, bool on)
+        public static void ApplyTo(GameObject spawned, bool on, FlashlightSettings settings = null)
         {
             if (spawned == null)
                 return;
 
             if (spawned.TryGetComponent(out WorldFlashlight existing))
             {
-                existing.SetOn(on);
+                existing.SetOn(on, settings);
                 return;
             }
 
@@ -63,13 +67,31 @@ namespace AfterAll.Items.Flashlight
             if (light == null)
                 return;
 
-            Apply(light, FindEmissiveRenderer(spawned), on);
+            Apply(light, FindEmissiveRenderer(spawned), on, settings);
         }
 
-        private static void Apply(Light light, Renderer emissive, bool on)
+        private static void Apply(Light light, Renderer emissive, bool on, FlashlightSettings settings)
         {
             if (light != null)
+            {
+                // Same assignment FlashlightController.ApplySettingsToLight makes on the held
+                // viewmodel, so a flashlight lying on the floor throws the same beam it threw a
+                // second ago in the player's hand. Shadows included — a dropped torch that lights
+                // the room flatly reads as a bug.
+                if (on && settings != null)
+                {
+                    light.type = LightType.Spot;
+                    light.color = settings.Color;
+                    light.intensity = settings.Intensity;
+                    light.range = settings.Range;
+                    light.spotAngle = settings.SpotAngle;
+                    light.innerSpotAngle = settings.InnerSpotAngle;
+                    light.shadows = settings.Shadows;
+                    light.shadowStrength = settings.ShadowStrength;
+                }
+
                 light.enabled = on;
+            }
 
             if (emissive == null || emissive.sharedMaterial == null)
                 return;
