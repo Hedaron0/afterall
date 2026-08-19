@@ -23,12 +23,19 @@ namespace AfterAll.Run
     {
         [SerializeField] private RoomPoolSpawner _spawner;
         [SerializeField] private PlayerMovement _playerMovement;
+        [SerializeField] private PlayerLook _playerLook;
         [SerializeField] private EchoPocket _echoPocket;
         [SerializeField] private BulkyCarrier _bulkyCarrier;
 
         [Header("Loot")]
         [Tooltip("Every EchoDefinition asset in the game. Forces them to load so EchoDefinition.TryGetFor can resolve value/size class — see EchoDefinition.RegisterAll.")]
         [SerializeField] private EchoDefinition[] _knownEchoDefinitions;
+
+        [Header("Run Goal")]
+        [Tooltip("Extract from at least this depth, with at least Target Banked Echoes of value, and the run counts as COMPLETED instead of a plain extract. Core Design 6: the White Door sits at depth 6.")]
+        [SerializeField, Min(1)] private int _targetDepth = 6;
+        [Tooltip("Value that single extraction must be worth to complete the run. Extracting with less is still a successful run, it just does not finish the goal.")]
+        [SerializeField, Min(0)] private int _targetBankedEchoes = 500;
 
         [Header("Floor Budget")]
         [SerializeField, Min(8)] private int _baseRoomCount = 20;
@@ -46,14 +53,28 @@ namespace AfterAll.Run
         private System.Random _seedRng;
         private Coroutine _transitionRoutine;
 
+        // Set while a run summary is on screen: the next floor keeps building behind the closed
+        // door, but the player stays frozen in the cabin until they acknowledge it.
+        private bool _awaitingSummaryAck;
+        private RoomInstance _pendingElevatorRoom;
+
         public int Depth { get; private set; }
         public RunState State { get; private set; } = RunState.InElevator;
+
+        public int TargetDepth => _targetDepth;
+        public int TargetBankedEchoes => _targetBankedEchoes;
 
         public event Action<int> DepthChanged;
         public event Action RunEnded;
         public event Action RunFailed;
         /// <summary>Fired when the player first leaves the elevator on a floor (S4: hunter spawn).</summary>
         public event Action ExploreStarted;
+        /// <summary>
+        /// Fired on death AND on extract, with everything the summary screen needs. Having a
+        /// subscriber is what makes the run pause for acknowledgement — with no UI wired, the run
+        /// loop keeps its old uninterrupted behavior instead of soft-locking the player.
+        /// </summary>
+        public event Action<RunSummary> RunConcluded;
 
         private void Awake()
         {
@@ -64,6 +85,9 @@ namespace AfterAll.Run
 
             if (_playerMovement == null)
                 _playerMovement = FindAnyObjectByType<PlayerMovement>();
+
+            if (_playerLook == null)
+                _playerLook = FindAnyObjectByType<PlayerLook>();
 
             if (_echoPocket == null)
                 _echoPocket = FindAnyObjectByType<EchoPocket>();
@@ -106,7 +130,7 @@ namespace AfterAll.Run
         /// <summary>Descend: current floor's progress is discarded, a new deeper floor is generated.</summary>
         public void GoDown()
         {
-            if (_transitionRoutine != null)
+            if (_transitionRoutine != null || _awaitingSummaryAck)
                 return;
 
             _transitionRoutine = StartCoroutine(TransitionRoutine(descending: true));
@@ -115,7 +139,7 @@ namespace AfterAll.Run
         /// <summary>Extract: run ends successfully, EchoPocket contents are banked to MetaProgress.</summary>
         public void GoUp()
         {
-            if (_transitionRoutine != null)
+            if (_transitionRoutine != null || _awaitingSummaryAck)
                 return;
 
             _transitionRoutine = StartCoroutine(TransitionRoutine(descending: false));
@@ -158,12 +182,17 @@ namespace AfterAll.Run
 
                 MetaProgress.AddBanked(banked);
 
+                bool completed = Depth >= _targetDepth && banked >= _targetBankedEchoes;
+                RunOutcome outcome = completed ? RunOutcome.Completed : RunOutcome.Extracted;
+
                 RunEnded?.Invoke();
                 // Interim economy (no shop yet, Core Design §7): extract just starts a fresh
                 // depth-0 run behind the already-closed door, same sequencing GoDown uses — so
                 // extract no longer leaves the player standing in the stale floor with nothing
-                // visibly happening. Player can move freely inside the cabin the whole time.
-                BeginRun();
+                // visibly happening. ConcludeRun holds them in the cabin until the summary is
+                // dismissed, then hands them the new floor.
+                ConcludeRun(new RunSummary(outcome, Depth, banked, MetaProgress.BankedEchoes,
+                                           _targetDepth, _targetBankedEchoes));
             }
 
             _transitionRoutine = null;
@@ -179,6 +208,16 @@ namespace AfterAll.Run
         {
             if (_playerMovement != null)
                 _playerMovement.enabled = true;
+        }
+
+        /// <summary>Look is toggled separately from movement so the summary screen can hand the
+        /// mouse back: PlayerLook re-locks and hides the cursor every Update while it is enabled, so
+        /// nothing on a UI panel is clickable on desktop until it is switched off. Re-enabling it
+        /// restores the lock through its own OnEnable.</summary>
+        private void SetLookEnabled(bool value)
+        {
+            if (_playerLook != null && _playerLook.enabled != value)
+                _playerLook.enabled = value;
         }
 
         private void CloseCurrentElevatorDoor()
@@ -202,6 +241,18 @@ namespace AfterAll.Run
 
         private void HandleFloorReady(RoomInstance elevatorRoom)
         {
+            _pendingElevatorRoom = elevatorRoom;
+
+            // Floor is built, but the run summary still owns the screen — keep the player frozen
+            // and the door shut until they dismiss it.
+            if (_awaitingSummaryAck)
+                return;
+
+            ReleasePlayerIntoFloor(elevatorRoom);
+        }
+
+        private void ReleasePlayerIntoFloor(RoomInstance elevatorRoom)
+        {
             UnfreezePlayer();
 
             if (elevatorRoom == null)
@@ -216,6 +267,8 @@ namespace AfterAll.Run
         /// freshly generated floor behind the closed door.</summary>
         public void OnPlayerDied()
         {
+            int depthReached = Depth; // ResetRunState zeroes this — capture it for the summary first.
+
             _echoPocket?.Clear();
             _bulkyCarrier?.Clear();
             GetCurrentElevatorStashVolume()?.ClearOnDeath();
@@ -225,8 +278,10 @@ namespace AfterAll.Run
             TeleportPlayerToCabin();
             FreezePlayer();
             CloseCurrentElevatorDoor();
-            BeginRun();
-            // Unfrozen (and door reopened) by HandleFloorReady once the depth-0 floor lands.
+            ConcludeRun(new RunSummary(RunOutcome.Died, depthReached, 0, MetaProgress.BankedEchoes,
+                                       _targetDepth, _targetBankedEchoes));
+            // Unfrozen (and door reopened) once the summary is acknowledged and the depth-0 floor
+            // has landed — whichever happens last.
         }
 
         private void TeleportPlayerToCabin()
@@ -243,6 +298,36 @@ namespace AfterAll.Run
             playerTransform.position = spawnPos;
             if (controller != null)
                 controller.enabled = true;
+        }
+
+        /// <summary>Publishes the finished run and starts the next one behind the closed door. The
+        /// player is only held in place if something is actually listening to show the summary.</summary>
+        private void ConcludeRun(RunSummary summary)
+        {
+            _awaitingSummaryAck = RunConcluded != null;
+            _pendingElevatorRoom = null;
+
+            if (_awaitingSummaryAck)
+            {
+                FreezePlayer();
+                SetLookEnabled(false);
+            }
+
+            RunConcluded?.Invoke(summary);
+            BeginRun();
+        }
+
+        /// <summary>Called by the summary screen's continue button. Hands the player the floor that
+        /// has been building behind the door — or just unfreezes them if it has not landed yet, in
+        /// which case HandleFloorReady opens the door when it does.</summary>
+        public void AcknowledgeRunSummary()
+        {
+            if (!_awaitingSummaryAck)
+                return;
+
+            _awaitingSummaryAck = false;
+            SetLookEnabled(true);
+            ReleasePlayerIntoFloor(_pendingElevatorRoom);
         }
 
         private void SpawnFloor()
