@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using AfterAll.Inventories;
 using AfterAll.Items;
 using UnityEngine;
@@ -17,6 +18,16 @@ namespace AfterAll.Items.Flashlight
         private Light _light;
         private AudioSource _humSource;
         private InputAction _toggleAction;
+
+        /// <summary>
+        /// On/off has to live outside this component. ItemHolder.Refresh Instantiates the held
+        /// viewmodel fresh on every equip and ClearHeld Destroys it on every unequip, so an
+        /// instance field would reset each time the hotbar moved — which is exactly why a
+        /// flashlight switched off came back on after a slot change. Keyed by ItemDefinition so
+        /// each flashlight item keeps its own state, and AutoOnWhenEquipped only applies the very
+        /// first time that item is drawn.
+        /// </summary>
+        private static readonly Dictionary<ItemDefinition, bool> PersistedOnState = new Dictionary<ItemDefinition, bool>();
 
         private bool _isOn;
         private float _baseIntensity;
@@ -48,7 +59,12 @@ namespace AfterAll.Items.Flashlight
             _equipped = true;
 
             ApplySettingsToLight();
-            _isOn = _settings != null && _settings.AutoOnWhenEquipped;
+
+            bool remembered;
+            _isOn = _item != null && PersistedOnState.TryGetValue(_item, out remembered)
+                ? remembered
+                : _settings != null && _settings.AutoOnWhenEquipped;
+
             UpdateLightState(force: true);
 
             _toggleAction?.Enable();
@@ -56,10 +72,17 @@ namespace AfterAll.Items.Flashlight
 
         public void OnUnequipped()
         {
+            RememberOnState();
             _equipped = false;
             SetLightEnabled(false);
             StopHum();
             _toggleAction?.Disable();
+        }
+
+        private void RememberOnState()
+        {
+            if (_item != null)
+                PersistedOnState[_item] = _isOn;
         }
 
         private void Update()
@@ -92,6 +115,7 @@ namespace AfterAll.Items.Flashlight
         private void Toggle()
         {
             _isOn = !_isOn;
+            RememberOnState();
             UpdateLightState(force: true);
             PlayToggleSound(_isOn);
         }

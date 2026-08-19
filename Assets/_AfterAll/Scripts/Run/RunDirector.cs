@@ -110,6 +110,25 @@ namespace AfterAll.Run
 
         private void Start() => BeginRun();
 
+        /// <summary>
+        /// Keeps State honest about where the player actually is. ElevatorExitTrigger only ever
+        /// fired one way, so after the first step onto a floor the run stayed Exploring for the
+        /// rest of that floor even once the player walked back into the cabin. Two things silently
+        /// broke as a result: ElevatorPanel gates on InElevator, so both buttons went dead for the
+        /// remainder of the floor, and HunterEntity's "the cabin is safe ground" rule stopped
+        /// applying. ElevatorStashVolume.PlayerInside is a fresh physics sweep every frame, so it
+        /// is the ground truth to sync against rather than another one-shot trigger.
+        /// </summary>
+        private void Update()
+        {
+            if (State != RunState.Exploring)
+                return;
+
+            ElevatorStashVolume stash = GetCurrentElevatorStashVolume();
+            if (stash != null && stash.PlayerInside)
+                State = RunState.InElevator;
+        }
+
         public void BeginRun()
         {
             _seedRng = new System.Random(_useFixedRunSeed ? _fixedRunSeed : System.Environment.TickCount ^ Guid.NewGuid().GetHashCode());
@@ -212,12 +231,22 @@ namespace AfterAll.Run
 
         /// <summary>Look is toggled separately from movement so the summary screen can hand the
         /// mouse back: PlayerLook re-locks and hides the cursor every Update while it is enabled, so
-        /// nothing on a UI panel is clickable on desktop until it is switched off. Re-enabling it
-        /// restores the lock through its own OnEnable.</summary>
+        /// nothing on a UI panel is clickable on desktop until it is switched off.
+        ///
+        /// Switching it off is NOT enough on its own — PlayerLook.OnDisable calls UpdateCursorState
+        /// too, which re-locks the cursor on the way out. So the unlock has to be applied after the
+        /// component is down, or the summary screen appears with an invisible, captured cursor and
+        /// its button cannot be clicked. Re-enabling restores the lock through PlayerLook.OnEnable.</summary>
         private void SetLookEnabled(bool value)
         {
             if (_playerLook != null && _playerLook.enabled != value)
                 _playerLook.enabled = value;
+
+            if (!value)
+            {
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+            }
         }
 
         private void CloseCurrentElevatorDoor()

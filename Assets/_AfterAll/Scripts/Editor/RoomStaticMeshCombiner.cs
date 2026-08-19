@@ -6,6 +6,8 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
 using AfterAll.Environment;
+using AfterAll.Interaction;
+using AfterAll.Run;
 
 namespace AfterAll.EditorTools
 {
@@ -143,6 +145,19 @@ namespace AfterAll.EditorTools
                 if (t.GetComponent<WeightedRandomGroup>() != null)
                     return;
                 if (t.GetComponent<RoomSocket>() != null)
+                    return;
+
+                // Anything the player operates, or that the run moves at runtime, has to keep its
+                // own renderer and transform: ElevatorPanel recesses into the wall on press and
+                // ElevatorDoorSeal slides shut. Welding those into the shell disables their
+                // renderer and freezes them in place.
+                //
+                // Note this walk deliberately never reads the Static flag — selection is purely
+                // structural — so unticking Static on a button does NOT keep it out of the shell.
+                // Exclusion has to be a rule here, like every other one.
+                if (t.GetComponent<IInteractable>() != null)
+                    return;
+                if (t.GetComponent<ElevatorDoorSeal>() != null)
                     return;
 
                 var mr = t.GetComponent<MeshRenderer>();
