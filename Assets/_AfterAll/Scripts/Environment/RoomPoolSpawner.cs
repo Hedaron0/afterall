@@ -109,16 +109,53 @@ namespace AfterAll.Environment
             Build();
         }
 
+#if UNITY_EDITOR
+        /// <summary>
+        /// Where Layout Top View parks the seed it wants Play to reproduce, for
+        /// <see cref="ConsumeSeedOverride"/> to pick up one time.
+        ///
+        /// SessionState rather than a serialized field on purpose. The seed has to survive exactly one
+        /// domain reload — the one entering Play — and nothing beyond it, so writing it into the scene
+        /// was wrong twice over: it left Level0 dirty after every push, and it left the pinned seed
+        /// sitting in the Inspector afterwards looking like a deliberate setting.
+        /// </summary>
+        public const string PendingLayoutSeedKey = "AfterAll.PendingLayoutSeed";
+#endif
+
+        /// <summary>
+        /// The seed the next floor should use: whatever Layout Top View pushed if a push is pending,
+        /// otherwise the caller's own.
+        ///
+        /// A push is consumed once and then gone, so Push → Play shows you the layout you previewed and
+        /// every floor after it — and every later Play — is random again.
+        ///
+        /// This exists because pinning the spawner's own seed fields no longer reaches the run loop at
+        /// all: RunDirector.BeginRun drives the first floor through BeginNewFloor, which overwrites
+        /// them, so a pushed seed was being discarded a frame after it was set.
+        /// </summary>
+        public int ConsumeSeedOverride(int fallbackSeed)
+        {
+#if UNITY_EDITOR
+            const int none = int.MinValue;
+            int pending = UnityEditor.SessionState.GetInt(PendingLayoutSeedKey, none);
+            if (pending != none)
+            {
+                UnityEditor.SessionState.EraseInt(PendingLayoutSeedKey);
+                Debug.Log(
+                    $"[RoomPoolSpawner] Using seed {pending} pushed from Layout Top View for this " +
+                    "floor. Later floors are random again.");
+                return pending;
+            }
+#endif
+            return fallbackSeed;
+        }
+
         public void ConfigurePaintGrowthFromEditor(
-            int seed,
             PaintGrowthConfig config,
             RoomFootprint[] footprints,
             RoomFootprint elevatorFootprint = null)
         {
             config.Clamp();
-            _useFixedSeed = true;
-            _fixedSeed = seed;
-            _randomizeSeedOnPlay = false;
             _randomGapOffset = config.randomGapOffset;
             _roomCount = Mathf.Max(8, config.targetRoomCount);
             if (config.gapPolicy.edgeMarginM > 0f)

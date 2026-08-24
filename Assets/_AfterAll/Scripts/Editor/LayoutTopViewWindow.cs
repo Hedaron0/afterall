@@ -159,10 +159,15 @@ namespace AfterAll.Editor
             }
 
             Undo.RecordObject(spawner, "Set Paint Growth Seed");
-            spawner.ConfigurePaintGrowthFromEditor(_seed, BuildConfig(), _library.ToArray(), _elevatorFootprint);
+            spawner.ConfigurePaintGrowthFromEditor(BuildConfig(), _library.ToArray(), _elevatorFootprint);
             EditorUtility.SetDirty(spawner);
             if (spawner.gameObject.scene.IsValid())
                 UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(spawner.gameObject.scene);
+
+            // The seed rides in SessionState, not the scene, so it applies to the floor this push
+            // builds and nothing after it. Writing it onto the spawner used to leave the scene dirty
+            // and the seed pinned until someone noticed and cleared it by hand.
+            SessionState.SetInt(RoomPoolSpawner.PendingLayoutSeedKey, _seed);
 
             _status = $"Pushed seed={_seed}, rooms={_roomCount} → entering Play…";
             Repaint();

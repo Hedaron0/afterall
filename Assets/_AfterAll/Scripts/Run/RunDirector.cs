@@ -363,7 +363,9 @@ namespace AfterAll.Run
         {
             State = RunState.InElevator;
             int roomCount = Mathf.Min(_maxRoomCount, _baseRoomCount + Depth * _roomCountPerDepth);
-            int seed = _seedRng.Next();
+            // Normally our own seed, but a Push → Play from Layout Top View gets to override the first
+            // floor so you actually see the layout you previewed. The override is one-shot.
+            int seed = _spawner.ConsumeSeedOverride(_seedRng.Next());
             _spawner.BeginNewFloor(seed, roomCount);
             DepthChanged?.Invoke(Depth);
         }
