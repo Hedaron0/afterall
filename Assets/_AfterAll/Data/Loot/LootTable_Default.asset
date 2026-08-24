@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Environment.LootTable
   _entries:
   - item: {fileID: 11400000, guid: b0c01ac3af6535145b297996f25124c2, type: 2}
-    weight: 1
+    weight: 5
   - item: {fileID: 11400000, guid: 8574960ccc348264d9d9b2f919e96c8c, type: 2}
-    weight: 1
+    weight: 5
   - item: {fileID: 11400000, guid: 2e0ac6a014543704b91ff9925c8f17d4, type: 2}
     weight: 1

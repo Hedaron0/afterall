@@ -3490,7 +3490,7 @@ Transform:
   m_GameObject: {fileID: 1688563658}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 1, z: -0, w: -0.00000004371139}
-  m_LocalPosition: {x: -16.727442, y: 0.18999982, z: -114.54572}
+  m_LocalPosition: {x: -10.161546, y: 0.18999982, z: -114.54572}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3784,8 +3784,8 @@ MonoBehaviour:
   _randomGapOffset: 0
   _gapEdgeMarginM: 0.15
   _gapOffsetSpanFraction: 1
-  _useFixedSeed: 1
-  _fixedSeed: 323584595
+  _useFixedSeed: 0
+  _fixedSeed: 0
   _randomizeSeedOnPlay: 0
   _lastUsedSeed: -1
   _spawnDelaySeconds: 0.05
@@ -3882,9 +3882,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3c0ace50ffb3e5f47aa89fc29ff1498e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AfterAll.Entities.EntityDirector
-  _runDirector: {fileID: 0}
-  _spawner: {fileID: 0}
-  _navGraph: {fileID: 0}
+  _runDirector: {fileID: 2000000009}
+  _spawner: {fileID: 2000000005}
+  _navGraph: {fileID: 2000000011}
   _hunterPrefab: {fileID: 921237973838811011, guid: a8533d356b7593f4fa0406925028e608, type: 3}
   _spawnHeightAboveFloor: 1.02
   _minDepthToSpawn: 0
@@ -4799,11 +4799,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8329111072287402456, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalScale.x
-      value: 1.5350875
+      value: 0.28444067
       objectReference: {fileID: 0}
     - target: {fileID: 8329111072287402456, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.028092097
+      value: 0.037566863
       objectReference: {fileID: 0}
     - target: {fileID: 8329111072287402456, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.y
@@ -4815,11 +4815,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8469023269912498271, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.21729349
+      value: 1.4679403
       objectReference: {fileID: 0}
     - target: {fileID: 8469023269912498271, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.04109209
+      value: 0.024566859
       objectReference: {fileID: 0}
     - target: {fileID: 8469023269912498271, guid: 8e3e6b0b92168e845befa8c8fce7428e, type: 3}
       propertyPath: m_LocalPosition.y
